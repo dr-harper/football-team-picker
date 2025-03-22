@@ -10,6 +10,7 @@ import { getPlacesBasedOnLocation } from './utils/locationUtils'; // Import loca
 import Notification from './components/Notification'; // Import Notification component
 import Footer from './components/Footer'; // Import Footer component
 import { teamPlaces } from './constants/teamConstants';
+import { positionsByTeamSizeAndSide, placeholderPositions } from './constants/positionsConstants';
 
 const FootballTeamPicker = () => {
     const [playersText, setPlayersText] = useState(() => {
@@ -262,47 +263,8 @@ const FootballTeamPicker = () => {
     };
 
     const getPositionsForTeam = (team: any, isLeftSide: boolean, totalPlayers: number) => {
-        let positions: { top: string; left: string }[] = [];
-
-        if (totalPlayers === 5) {
-            positions = [
-                { top: '50%', left: isLeftSide ? '10%' : '90%' }, // Goalkeeper
-                { top: '30%', left: isLeftSide ? '25%' : '75%' }, // Defender 1
-                { top: '70%', left: isLeftSide ? '25%' : '75%' }, // Defender 2
-                { top: '30%', left: isLeftSide ? '40%' : '60%' }, // Midfielder
-                { top: '70%', left: isLeftSide ? '40%' : '60%' }, // Striker
-            ];
-        } else if (totalPlayers === 6) {
-            positions = [
-                { top: '50%', left: isLeftSide ? '10%' : '90%' }, // Goalkeeper
-                { top: '30%', left: isLeftSide ? '25%' : '75%' }, // Defender 1
-                { top: '70%', left: isLeftSide ? '25%' : '75%' }, // Defender 2
-                { top: '20%', left: isLeftSide ? '40%' : '60%' }, // Midfielder 1
-                { top: '80%', left: isLeftSide ? '40%' : '60%' }, // Midfielder 2
-                { top: '50%', left: isLeftSide ? '40%' : '60%' }, // Striker
-            ];
-        } else if (totalPlayers === 7) {
-            positions = [
-                { top: '50%', left: isLeftSide ? '10%' : '90%' }, // Goalkeeper
-                { top: '20%', left: isLeftSide ? '25%' : '75%' }, // Defender 1
-                { top: '50%', left: isLeftSide ? '25%' : '75%' }, // Defender 2
-                { top: '80%', left: isLeftSide ? '25%' : '75%' }, // Defender 3
-                { top: '20%', left: isLeftSide ? '42%' : '57%' }, // Striker 1
-                { top: '50%', left: isLeftSide ? '42%' : '57%' }, // Striker 2
-                { top: '80%', left: isLeftSide ? '42%' : '57%' }, // Striker 3
-            ];
-        } else if (totalPlayers === 8) {
-            positions = [
-                { top: '50%', left: isLeftSide ? '10%' : '90%' }, // Goalkeeper
-                { top: '25%', left: isLeftSide ? '20%' : '80%' }, // Defender 1
-                { top: '75%', left: isLeftSide ? '20%' : '80%' }, // Defender 2
-                { top: '40%', left: isLeftSide ? '30%' : '70%' }, // Midfielder 1
-                { top: '60%', left: isLeftSide ? '30%' : '70%' }, // Midfielder 2
-                { top: '20%', left: isLeftSide ? '45%' : '55%' }, // Midfielder 3
-                { top: '80%', left: isLeftSide ? '45%' : '55%' }, // Midfielder 4
-                { top: '50%', left: isLeftSide ? '50%' : '50%' }, // Striker
-            ];
-        }
+        const side = isLeftSide ? 'left' : 'right';
+        const positions = positionsByTeamSizeAndSide[totalPlayers]?.[side] || [];
 
         const goalkeeper = team.players.find((p: any) => p.isGoalkeeper);
 
@@ -402,25 +364,9 @@ const FootballTeamPicker = () => {
     };
 
     const renderPlaceholderPlayers = () => {
-        const placeholderPositionsLeft = [
-            { top: '53%', left: '10%' }, // Goalkeeper
-            { top: '30%', left: '25%' }, // Defender 1
-            { top: '78%', left: '25%' }, // Defender 2
-            { top: '40%', left: '40%' }, // Midfielder
-            { top: '70%', left: '40%' }, // Striker
-        ];
-
-        const placeholderPositionsRight = [
-            { top: '53%', left: '90%' }, // Goalkeeper
-            { top: '30%', left: '75%' }, // Defender 1
-            { top: '78%', left: '75%' }, // Defender 2
-            { top: '40%', left: '60%' }, // Midfielder
-            { top: '70%', left: '60%' }, // Striker
-        ];
-
         return (
             <>
-                {placeholderPositionsLeft.map((position, index) => (
+                {placeholderPositions.left.map((position, index) => (
                     <div
                         key={`left-${index}`}
                         className="absolute w-8 h-8 sm:w-12 sm:h-12 transform -translate-x-1/2 -translate-y-1/2"
@@ -432,7 +378,7 @@ const FootballTeamPicker = () => {
                         <PlayerIcon isPlaceholder />
                     </div>
                 ))}
-                {placeholderPositionsRight.map((position, index) => (
+                {placeholderPositions.right.map((position, index) => (
                     <div
                         key={`right-${index}`}
                         className="absolute w-8 h-8 sm:w-12 sm:h-12 transform -translate-x-1/2 -translate-y-1/2"
