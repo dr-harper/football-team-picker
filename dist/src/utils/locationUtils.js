@@ -15,11 +15,11 @@ export const getPlacesBasedOnLocation = async () => {
             }
         }
         // Default to Generic places
-        return { location: 'Generic', places: teamPlaces['Generic'].places };
+        return { location: 'Generic', places: teamPlaces.Generic.places };
     }
     catch (error) {
         console.error('Failed to get location:', error);
-        return { location: 'Generic', places: teamPlaces['Generic'].places }; // Default to Generic places if location fails
+        return { location: 'Generic', places: teamPlaces.Generic.places }; // Default to Generic places if location fails
     }
 };
 const isWithinRadius = (lat1, lon1, lat2, lon2, radiusKm) => {

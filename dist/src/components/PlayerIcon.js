@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { cn } from "@/lib/utils";
+import { cn } from '../lib/utils';
 const PlayerIcon = ({ color, number, name, isGoalkeeper, isPlaceholder }) => {
     const fillColor = isPlaceholder ? '#6b7280' : isGoalkeeper ? '#facc15' : color || '#ffffff'; // Grey for placeholders
     const displayNumber = isPlaceholder ? '?' : number !== null ? number : '-';
