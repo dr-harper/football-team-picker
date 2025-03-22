@@ -2,7 +2,7 @@
   "name": "football-team-picker",
   "private": true,
   "version": "0.0.0",
-  "homepage": "https://dr-harper.github.io/football-team-picker",
+  "homepage": "https://teamshuffle.app",
   "type": "module",
   "scripts": {
     "dev": "vite",
