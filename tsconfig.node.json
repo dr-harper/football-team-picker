@@ -1,19 +1,17 @@
 {
   "compilerOptions": {
-    rm -rf dist node_modules
-        "composite": true, // Required for referenced projects
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "target": "ES2022",
     "lib": ["ES2023"],
-    "module": "CommonJS",
+    "module": "ESNext",
     "skipLibCheck": true,
-    "allowSyntheticDefaultImports": true,
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
-    "noEmit": false, // Ensure emitting is enabled
+    "noEmit": true,
 
     /* Linting */
     "strict": true,
