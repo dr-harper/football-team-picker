@@ -54,7 +54,6 @@ export const teamPlaces = {
         ]
     },
 };
-
 export const teamSuffixes = [
     "Rangers", "Wanderers", "Athletic", "Rovers", "United",
     "Invincibles", "Gladiators", "Strikers", "Titans", "Warriors",

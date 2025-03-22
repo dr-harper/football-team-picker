@@ -1,5 +1,6 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "football-team-picker",
+  "homepage": "https://dr-harper.github.io/football-team-picker",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,7 +8,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.0.2",
@@ -15,6 +18,7 @@
     "clsx": "^2.1.0",
     "d3": "^7.9.0",
     "framer-motion": "^10.16.1",
+    "gh-pages": "^5.0.0",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.358.0",
     "react": "^18.2.0",

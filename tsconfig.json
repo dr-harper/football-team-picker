@@ -1,7 +1,23 @@
 {
   "files": [],
   "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ] // Ensure this matches the alias in vite.config.ts
+    }
+  },
+  "include": [
+    "src/**/*"
+  ], // Ensure all source files are included
+  "exclude": [
+    "node_modules",
+    "dist"
   ]
 }

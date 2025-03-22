@@ -19,7 +19,7 @@ const FootballTeamPicker = () => {
     const [errorMessage, setErrorMessage] = useState('');
     const [playerNumbers, setPlayerNumbers] = useState<{ [playerName: string]: number }>({});
     const [selectedLocation, setSelectedLocation] = useState(() => {
-        return localStorage.getItem('selectedLocation') || 'Generic UK'; // Load from localStorage or default to Hampshire
+        return localStorage.getItem('selectedLocation') || 'Generic'; // Load from localStorage or default to Hampshire
     });
     const [places, setPlaces] = useState<string[]>(teamPlaces.Hampshire); // Default to Hampshire places
     const [notification, setNotification] = useState<string | null>(null); // State for notification message
@@ -36,7 +36,7 @@ const FootballTeamPicker = () => {
 
     useEffect(() => {
         // Update places based on selected location
-        setPlaces(teamPlaces[selectedLocation]?.places || teamPlaces.GenericUK.places);
+        setPlaces(teamPlaces[selectedLocation]?.places || teamPlaces.Generic.places);
     }, [selectedLocation]);
 
     const handleLocationChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -48,8 +48,8 @@ const FootballTeamPicker = () => {
         setSelectedLocation(location);
         setPlaces(places);
         setIsLoadingLocation(false); // Stop loading animation
-        if (location === 'Generic UK') {
-            setNotification("Sorry, we don't have any regional data for your location.Defaulting to Generic UK");
+        if (location === 'Generic') {
+            setNotification("Sorry, we don't have any regional data for your location.Defaulting to Generic");
         } else {
             setNotification(`Location found: ${location}`); // Show notification
         }
