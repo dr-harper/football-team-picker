@@ -1,4 +1,5 @@
 # Football Team Picker
+https://github.com/dr-harper/football-team-picker
 
 A React web app built to simplify picking 5-a-side football teams.
 
