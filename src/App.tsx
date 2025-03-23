@@ -96,7 +96,7 @@ const FootballTeamPicker = () => {
         }
 
         if (players.length > 14) {
-            setErrorMessage('You can only have a maximum of 14 players');
+            setErrorMessage('You can only have a maximum of 16 players');
             return;
         }
 
