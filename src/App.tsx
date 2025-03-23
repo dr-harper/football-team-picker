@@ -421,7 +421,7 @@ const FootballTeamPicker = () => {
                     <div className="mt-4 flex justify-center items-center gap-4">
                         <div>
                             <label htmlFor="location-select" className="text-white font-semibold mr-2">
-                                Team Names:
+                                Local Team Names:
                             </label>
                             <select
                                 id="location-select"

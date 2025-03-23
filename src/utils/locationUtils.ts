@@ -11,14 +11,36 @@ export const getPlacesBasedOnLocation = async (): Promise<{ location: string; pl
         // Print the latitude and longitude
         console.log(`Latitude: ${latitude}, Longitude: ${longitude}`);
 
-        // Iterate through teamPlaces to find the nearest location
+        let closestLocation = 'Generic';
+        let closestPlaces = teamPlaces.Generic.places;
+        let shortestDistance = Infinity;
+
+        // Iterate through teamPlaces to find the closest location
         for (const [location, data] of Object.entries(teamPlaces)) {
             if (data.coordinates) {
                 const { latitude: locLat, longitude: locLon } = data.coordinates;
-                const isNear = isWithinRadius(latitude, longitude, locLat, locLon, 50); // 50km radius
-                if (isNear) return { location, places: data.places };
+                const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+
+                const earthRadiusKm = 6371;
+                const dLat = toRadians(locLat - latitude);
+                const dLon = toRadians(locLon - longitude);
+
+                const a =
+                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(toRadians(latitude)) * Math.cos(toRadians(locLat)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                const distance = earthRadiusKm * c;
+
+                if (distance < shortestDistance) {
+                    shortestDistance = distance;
+                    closestLocation = location;
+                    closestPlaces = data.places;
+                }
             }
         }
+
+        return { location: closestLocation, places: closestPlaces };
 
         // Default to Generic places
         return { location: 'Generic', places: teamPlaces.Generic.places };
