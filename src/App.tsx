@@ -22,7 +22,7 @@ const FootballTeamPicker = () => {
     const [selectedLocation, setSelectedLocation] = useState(() => {
         return localStorage.getItem('selectedLocation') || 'Generic'; // Load from localStorage or default to Hampshire
     });
-    const [places, setPlaces] = useState<string[]>(teamPlaces.Hampshire); // Default to Hampshire places
+    const [places, setPlaces] = useState<string[]>(teamPlaces.Generic); // Default to Hampshire places
     const [notification, setNotification] = useState<string | null>(null); // State for notification message
     const [showNoGoalkeeperInfo, setShowNoGoalkeeperInfo] = useState(false); // State to track if the info box should be shown
     const [isLoadingLocation, setIsLoadingLocation] = useState(false); // New state for loading animation
@@ -71,15 +71,19 @@ const FootballTeamPicker = () => {
 
         const players = playerLines.map(line => {
             const [name, ...tags] = line.split('#').map(item => item.trim());
-            const isGoalkeeper = tags.some(tag => tag.toLowerCase() === 'gk');
-            const isStriker = tags.some(tag => tag.toLowerCase() === 'striker');
-            const isDefender = tags.some(tag => tag.toLowerCase() === 'defender');
+            const isGoalkeeper = tags.some(tag => tag.toLowerCase() === 'g');
+            const isStriker = tags.some(tag => tag.toLowerCase() === 's');
+            const isDefender = tags.some(tag => tag.toLowerCase() === 'd');
+            const isteam1 = tags.some(tag => tag.toLowerCase() === 't1');
+            const isteam2 = tags.some(tag => tag.toLowerCase() === 't2');
 
             return {
                 name,
                 isGoalkeeper,
                 isStriker,
                 isDefender,
+                isteam1,
+                isteam2,
                 role: isGoalkeeper ? 'goalkeeper' : (isStriker ? 'striker' : (isDefender ? 'defender' : 'outfield')),
                 shirtNumber: null,
             };
@@ -88,7 +92,7 @@ const FootballTeamPicker = () => {
         const goalkeepers = players.filter(player => player.isGoalkeeper);
         const strikers = players.filter(player => player.isStriker);
         const defenders = players.filter(player => player.isDefender);
-        const outfieldPlayers = players.filter(player => !player.isGoalkeeper && !player.isStriker && !player.isDefender);
+        const outfieldPlayers = players.filter(player => !player.isGoalkeeper && !player.isStriker && !player.isDefender && !player.isteam1 && !player.isteam2);
 
         const numTeams = Math.floor(players.length / 5);
         if (goalkeepers.length < numTeams) {
@@ -105,7 +109,11 @@ const FootballTeamPicker = () => {
         const shuffledDefenders = [...defenders].sort(() => Math.random() - 0.5);
         const shuffledOutfield = [...outfieldPlayers].sort(() => Math.random() - 0.5);
 
-        const generatedTeams = [];
+
+        const selectedTeam1 = players.filter(player => player.isteam1);
+        const selectedTeam2 = players.filter(player => player.isteam2);
+
+        const generatedTeams: any[] = [];
         const existingNames = new Set<string>();
         const usedColors = new Set();
 
@@ -185,9 +193,13 @@ const FootballTeamPicker = () => {
         }
 
         let teamIndex = 0;
-        shuffledStrikers.forEach(player => {
-            generatedTeams[teamIndex].players.push(player);
-            teamIndex = (teamIndex + 1) % numTeams;
+
+        selectedTeam1.forEach(player => {
+            generatedTeams[0].players.push(player);
+        });
+
+        selectedTeam2.forEach(player => {
+            generatedTeams[1].players.push(player);
         });
 
         shuffledDefenders.forEach(player => {
@@ -200,13 +212,17 @@ const FootballTeamPicker = () => {
             teamIndex = (teamIndex + 1) % numTeams;
         });
 
+        shuffledStrikers.forEach(player => {
+            generatedTeams[teamIndex].players.push(player);
+            teamIndex = (teamIndex + 1) % numTeams;
+        });
+
         // for generated team, check if player index 0 is empty, if so reindex the players
         generatedTeams.forEach(team => {
             if (!team.players[0]) {
                 team.players = team.players.filter(player => player);
             }
         });
-
 
         const availableNumbers = Array.from({ length: 20 }, (_, i) => i + 2);
         const newPlayerNumbers: { [playerName: string]: number } = { ...playerNumbers };
@@ -255,13 +271,6 @@ const FootballTeamPicker = () => {
 
     };
 
-    const resetAll = () => {
-        setPlayersText('');
-        setTeamSetups([]);
-        setErrorMessage('');
-        setPlayerNumbers({});
-    };
-
     const getPositionsForTeam = (team: any, isLeftSide: boolean, totalPlayers: number) => {
         const side = isLeftSide ? 'left' : 'right';
         const positions = positionsByTeamSizeAndSide[totalPlayers]?.[side] || [];
@@ -296,14 +305,35 @@ const FootballTeamPicker = () => {
         setTeamSetups(prevSetups => prevSetups.filter((_, index) => index !== indexToDelete));
     };
 
+    const handleColorChange = (setupIndex: number, teamIndex: number, color: string) => {
+        setTeamSetups(prevSetups =>
+            prevSetups.map((setup, currentSetupIndex) => {
+                if (currentSetupIndex === setupIndex) {
+                    return {
+                        ...setup,
+                        teams: setup.teams.map((team, currentTeamIndex) => ({
+                            ...team,
+                            color: currentTeamIndex === teamIndex ? color : team.color,
+                        })),
+                    };
+                }
+                return setup;
+            })
+        );
+    };
+
     const exportAllImages = async () => {
         const elements = teamSetups.map((_, index) => document.getElementById(`team-setup-${index}`));
         if (elements.some(element => !element)) return;
 
-        // Temporarily hide delete buttons
+        // Temporarily hide delete buttons, color pickers, and color circles
         elements.forEach(element => {
             const deleteButtons = element?.querySelectorAll('.delete-button');
+            const colorPickers = element?.querySelectorAll('.color-picker');
+            const colorCircles = element?.querySelectorAll('.color-circle');
             deleteButtons?.forEach(button => (button.style.display = 'none'));
+            colorPickers?.forEach(picker => (picker.style.display = 'none'));
+            colorCircles?.forEach(circle => (circle.style.display = 'none'));
         });
 
         try {
@@ -355,10 +385,14 @@ const FootballTeamPicker = () => {
         } catch (error) {
             console.error('Failed to export images:', error);
         } finally {
-            // Restore delete buttons
+            // Restore delete buttons, color pickers, and color circles
             elements.forEach(element => {
                 const deleteButtons = element?.querySelectorAll('.delete-button');
+                const colorPickers = element?.querySelectorAll('.color-picker');
+                const colorCircles = element?.querySelectorAll('.color-circle');
                 deleteButtons?.forEach(button => (button.style.display = ''));
+                colorPickers?.forEach(picker => (picker.style.display = ''));
+                colorCircles?.forEach(circle => (circle.style.display = ''));
             });
         }
     };
@@ -421,7 +455,7 @@ const FootballTeamPicker = () => {
                     <div className="mt-4 flex justify-center items-center gap-4">
                         <div>
                             <label htmlFor="location-select" className="text-white font-semibold mr-2">
-                                Locale:
+                                Local:
                             </label>
                             <select
                                 id="location-select"
@@ -494,7 +528,10 @@ const FootballTeamPicker = () => {
                             <div className="mb-4">
                                 <h2 className="text-xl font-semibold mb-2 text-white">Enter Players</h2>
                                 <p className="text-sm text-green-100 mt-1">
-                                    Format: One player per line. Tags: #gk, #striker, #defender can be used to assign roles and ensure equal distribution.
+                                    Format: One player per line. Use tags to assign roles and ensure equal distribution.<br />
+                                    <span className="font-bold">#g</span> = Goalkeeper, <span className="font-bold">#s</span> = Striker, <span className="font-bold">#d</span> = Defender, <span className="font-bold">#1</span> = Team 1, <span className="font-bold">#2</span> = Team 2.<br />
+
+
                                 </p>
 
                                 <Textarea
@@ -650,18 +687,42 @@ Mark Wilson #defender"
                                         {setup.teams.length > 0 && setup.teams.length <= 2 && (
                                             <>
                                                 <div className="flex justify-center mb-2 gap-8">
-                                                    {setup.teams.map((team: any, index: number) => (
+                                                    {setup.teams.map((team: any, teamIndex: number) => (
                                                         <div
-                                                            key={`team-name-${index}`}
-                                                            className={`text-white px-4 py-1 rounded shadow-md font-bold flex-grow text-center`}
-                                                            style={{ width: '50%', backgroundColor: '#2f4f2f' }}
+                                                            key={`team-name-${teamIndex}`}
+                                                            className="relative text-white px-4 py-1 rounded shadow-md font-bold flex-grow text-center"
+                                                            style={{
+                                                                width: '50%',
+                                                                backgroundColor: '#2f4f2f',
+                                                            }}
                                                         >
                                                             {team.name}
+                                                            <div className="absolute top-1/2 right-2 transform -translate-y-1/2">
+                                                                <label
+                                                                    htmlFor={`color-picker-${setupIndex}-${teamIndex}`}
+                                                                    className="cursor-pointer"
+                                                                >
+                                                                    <div
+                                                                        className="w-5 h-5 rounded-full border border-white color-circle"
+                                                                        style={{ backgroundColor: team.color }}
+                                                                    ></div>
+                                                                </label>
+                                                                <input
+                                                                    id={`color-picker-${setupIndex}-${teamIndex}`}
+                                                                    type="color"
+                                                                    value={team.color}
+                                                                    onChange={(e) =>
+                                                                        handleColorChange(setupIndex, teamIndex, e.target.value)
+                                                                    }
+                                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer color-picker"
+                                                                />
+                                                            </div>
                                                         </div>
                                                     ))}
                                                 </div>
 
                                                 <div className="w-full aspect-video relative bg-green-600 border-2 border-white rounded-lg shadow-lg overflow-hidden sm:aspect-video sm:w-full sm:h-auto">
+                                                    {/* Football pitch lines */}
                                                     <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-white"></div>
                                                     <div className="absolute top-1/2 left-1/2 w-16 h-16 sm:w-24 sm:h-24 rounded-full border-2 border-white transform -translate-x-1/2 -translate-y-1/2"></div>
                                                     <div className="absolute top-1/2 left-0 w-1 h-12 sm:w-2 sm:h-16 bg-white transform -translate-y-1/2"></div>
@@ -669,6 +730,7 @@ Mark Wilson #defender"
                                                     <div className="absolute top-1/2 left-0 w-8 h-24 sm:w-12 sm:h-32 border-2 border-white border-l-0 transform -translate-y-1/2"></div>
                                                     <div className="absolute top-1/2 right-0 w-8 h-24 sm:w-12 sm:h-32 border-2 border-white border-r-0 transform -translate-y-1/2"></div>
 
+                                                    {/* Team 1 players */}
                                                     {getPositionsForTeam(setup.teams[0], true, setup.teams[0].players.length).map((position: any, index: number) => (
                                                         <div
                                                             key={`team1-${index}`}
@@ -687,6 +749,7 @@ Mark Wilson #defender"
                                                         </div>
                                                     ))}
 
+                                                    {/* Team 2 players */}
                                                     {getPositionsForTeam(setup.teams[1], false, setup.teams[1].players.length).map((position: any, index: number) => (
                                                         <div
                                                             key={`team2-${index}`}
