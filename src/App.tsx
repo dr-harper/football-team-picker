@@ -543,10 +543,13 @@ const FootballTeamPicker = () => {
                                 <Textarea
                                     value={playersText}
                                     onChange={(e) => setPlayersText(e.target.value)}
-                                    placeholder="Enter one player per line. Add tags: #gk, #striker, #defender, e.g.:
-John Smith #gk
-David Jones #striker
-Mark Wilson #defender"
+                                    placeholder="Enter one player per line. Add optional tags:
+John  #g
+Henry 
+David #s
+Mark #d
+Tom
+Billy #g"
                                     className="p-3 border border-green-300 rounded w-full h-40 font-mono bg-green-600 text-white placeholder-green-200"
                                 />
                                 <div className="flex justify-between items-center mb-2">
