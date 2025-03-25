@@ -365,9 +365,15 @@ const FootballTeamPicker = () => {
             const maxWidth = Math.max(...images.map(img => img?.width || 0));
 
             canvas.width = maxWidth;
-            canvas.height = totalHeight;
+            canvas.height = totalHeight + 100; // Add space for the text overlay
 
-            let yOffset = 0;
+            // Draw the text overlay
+            context.fillStyle = 'white';
+            context.font = 'bold 48px Arial';
+            context.textAlign = 'center';
+            context.fillText('Made with teamshuffle.app', canvas.width / 2, canvas.height - 30);
+
+            let yOffset = 0; // Start drawing images below the text overlay
             images.forEach(img => {
                 if (img) {
                     context.drawImage(img, 0, yOffset, img.width, img.height);
@@ -671,7 +677,16 @@ Mark Wilson #defender"
                                         className="bg-green-700 p-4 shadow-lg text-white rounded-lg"
                                     >
                                         <div className="flex justify-between items-start mb-2">
-                                            <h2 className="text-xl font-bold text-white">Option {setupIndex + 1}</h2>
+                                            {teamSetups.length > 1 && (
+                                                <h2 className="text-xl font-bold text-white">
+                                                    Option {setupIndex + 1}
+                                                </h2>
+                                            )}
+                                            {teamSetups.length <= 1 && (
+                                                <h2 className="text-xl font-bold text-white">
+                                                    Selected Option
+                                                </h2>
+                                            )}
                                             <div className="flex gap-2">
                                                 <Button
                                                     variant="destructive"
