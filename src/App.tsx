@@ -557,8 +557,8 @@ Billy #g"
                                         Players: {playersText.split('\n').filter(line => line.trim()).length} / 16
                                     </p>
 
-                                    <p className={`text-sm font-bold ${playersText.split('\n').filter(line => line.includes('#gk')).length < 2 ? 'text-orange-500' : 'text-green-200'}`}>
-                                        Goalkeepers: {playersText.split('\n').filter(line => line.includes('#gk')).length}/2
+                                    <p className={`text-sm font-bold ${playersText.split('\n').filter(line => line.includes('#g')).length < 2 ? 'text-orange-500' : 'text-green-200'}`}>
+                                        Goalkeepers: {playersText.split('\n').filter(line => line.includes('#g')).length}/2
                                     </p>
                                 </div>
 
