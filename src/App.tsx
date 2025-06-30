@@ -485,7 +485,10 @@ const FootballTeamPicker = () => {
                         </h1>
                     </div>
                     <p className="text-gray-200 text-lg sm:text-xl">
-                        Pick your 5-a-side football teams
+                        Pick your 5-a-side football teams<br />
+                        <span className="text-yellow-300 text-base sm:text-lg font-semibold block mt-2">
+                            Tip: Click one player, then another to swap their positions on the pitch!
+                        </span>
                     </p>
                     <div className="mt-4 flex justify-center items-center gap-4">
                         <div>
