@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './components/ui/button';
 import { Textarea } from './components/ui/textarea';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,6 +11,7 @@ import Notification from './components/Notification'; // Import Notification com
 import Footer from './components/Footer'; // Import Footer component
 import { teamPlaces } from './constants/teamConstants';
 import { positionsByTeamSizeAndSide, placeholderPositions } from './constants/positionsConstants';
+import ReactMarkdown from 'react-markdown';
 
 const FootballTeamPicker = () => {
     const [playersText, setPlayersText] = useState(() => {
@@ -31,6 +32,11 @@ const FootballTeamPicker = () => {
         teamIndex: number;
         playerIndex: number;
     } | null>(null);
+    const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('geminiKey') || '');
+    const [showAIDropdown, setShowAIDropdown] = useState(false);
+    const [aiSummaries, setAISummaries] = useState<{ [setupIndex: number]: string }>({});
+    const [geminiKeyError, setGeminiKeyError] = useState<string | null>(null);
+    const aiInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         localStorage.setItem('playersText', playersText);
@@ -44,6 +50,11 @@ const FootballTeamPicker = () => {
         // Update places based on selected location
         setPlaces((teamPlaces as any)[selectedLocation]?.places || teamPlaces.Generic.places);
     }, [selectedLocation]);
+
+    // Clear AI summary if a team setup changes
+    useEffect(() => {
+        setAISummaries({});
+    }, [teamSetups]);
 
     const handleLocationChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         setSelectedLocation(event.target.value);
@@ -464,6 +475,52 @@ const FootballTeamPicker = () => {
     };
 
 
+    const handleGeminiKeySave = async () => {
+        if (aiInputRef.current) {
+            const key = aiInputRef.current.value;
+            setGeminiKeyError(null);
+            // Validate Gemini key with a test request
+            try {
+                const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + key, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: 'Reply with OK' }] }] })
+                });
+                const data = await res.json();
+                const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                if (reply === 'OK') {
+                    setGeminiKey(key);
+                    localStorage.setItem('geminiKey', key);
+                    setShowAIDropdown(false);
+                } else {
+                    setGeminiKeyError('Invalid Gemini API key or unexpected response.');
+                }
+            } catch (e) {
+                setGeminiKeyError('Error validating Gemini API key.');
+            }
+        }
+    };
+
+    const handleGenerateSummary = async (setupIndex: number) => {
+        if (!geminiKey) return;
+        const setup = teamSetups[setupIndex];
+        const prompt = `Write a colourful, fun, and slightly cheeky pre-match hype summary for this football game (the match has not been played yet). Mention the teams, their names, and comment on the players and their roles. Be creative and playful, add some relevant emojis, and keep it under 100 words. Format your response in markdown.` +
+            `\n\n${setup.teams.map((team: any, idx: number) => `Team ${idx + 1} (${team.name}):\n` + team.players.map((p: any) => `- ${p.name} (${p.role})`).join('\n')).join('\n\n')}`;
+        setAISummaries(prev => ({ ...prev, [setupIndex]: 'Loading...' }));
+        try {
+            const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + geminiKey, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            });
+            const data = await res.json();
+            const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No summary generated.';
+            setAISummaries(prev => ({ ...prev, [setupIndex]: summary }));
+        } catch (e) {
+            setAISummaries(prev => ({ ...prev, [setupIndex]: 'Error generating summary.' }));
+        }
+    };
+
     return (
         <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-green-700">
             <div className="flex-grow p-4 sm:p-6">
@@ -780,60 +837,68 @@ Billy #g"
                                                     <div className="absolute top-1/2 right-0 w-8 h-24 sm:w-12 sm:h-32 border-2 border-white border-r-0 transform -translate-y-1/2"></div>
 
                                                     {/* Team 1 players */}
-                                                    {getPositionsForTeam(setup.teams[0], true, setup.teams[0].players.length).map((position: any, index: number) => (
+                                                    {getPositionsForTeam(setup.teams[0], true, setup.teams[0].players.length).map((position: any) => (
                                                         <div
-                                                            key={`team1-${index}`}
-                                                            onClick={() => handlePlayerClick(setupIndex, 0, position.playerIndex)}
-                                                            className={`absolute w-8 h-8 sm:w-12 sm:h-12 transform -translate-x-1/2 -translate-y-1/2
-                                                                ${selectedPlayer &&
-                                                                    selectedPlayer.setupIndex === setupIndex &&
-                                                                    selectedPlayer.teamIndex === 0 &&
-                                                                    selectedPlayer.playerIndex === position.playerIndex
-                                                                    ? 'ring-2 ring-yellow-400 rounded-full'
-                                                                    : selectedPlayer && !(selectedPlayer.setupIndex === setupIndex && selectedPlayer.teamIndex === 0 && selectedPlayer.playerIndex === position.playerIndex)
-                                                                    ? 'ring-2 ring-blue-400 ring-offset-2 rounded-full cursor-pointer'
-                                                                    : ''
-                                                                }`}
-                                                            style={{
-                                                                top: position.top,
-                                                                left: position.left,
-                                                            }}
+                                                            key={`team1-${position.player.name}-${position.player.shirtNumber}`}
+                                                            className="absolute"
+                                                            style={{ top: position.top, left: position.left, transform: 'translate(-50%, -50%)' }}
                                                         >
-                                                            <PlayerIcon
-                                                                color={setup.teams[0].color}
-                                                                number={position.player.shirtNumber}
-                                                                name={position.player.name}
-                                                                isGoalkeeper={position.player.isGoalkeeper}
-                                                            />
+                                                            <motion.div
+                                                                layoutId={`player-${position.player.name}-${position.player.shirtNumber}`}
+                                                                layout
+                                                                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                                                                onClick={() => handlePlayerClick(setupIndex, 0, position.playerIndex)}
+                                                                className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center
+                                                                    ${selectedPlayer &&
+                                                                        selectedPlayer.setupIndex === setupIndex &&
+                                                                        selectedPlayer.teamIndex === 0 &&
+                                                                        selectedPlayer.playerIndex === position.playerIndex
+                                                                        ? 'ring-2 ring-yellow-400 rounded-full'
+                                                                        : selectedPlayer && !(selectedPlayer.setupIndex === setupIndex && selectedPlayer.teamIndex === 0 && selectedPlayer.playerIndex === position.playerIndex)
+                                                                            ? 'ring-2 ring-blue-400 ring-offset-2 rounded-full cursor-pointer'
+                                                                            : ''
+                                                                    }`}
+                                                            >
+                                                                <PlayerIcon
+                                                                    color={setup.teams[0].color}
+                                                                    number={position.player.shirtNumber}
+                                                                    name={position.player.name}
+                                                                    isGoalkeeper={position.player.isGoalkeeper}
+                                                                />
+                                                            </motion.div>
                                                         </div>
                                                     ))}
 
                                                     {/* Team 2 players */}
-                                                    {getPositionsForTeam(setup.teams[1], false, setup.teams[1].players.length).map((position: any, index: number) => (
+                                                    {getPositionsForTeam(setup.teams[1], false, setup.teams[1].players.length).map((position: any) => (
                                                         <div
-                                                            key={`team2-${index}`}
-                                                            onClick={() => handlePlayerClick(setupIndex, 1, position.playerIndex)}
-                                                            className={`absolute w-8 h-8 sm:w-12 sm:h-12 transform -translate-x-1/2 -translate-y-1/2
-                                                                ${selectedPlayer &&
-                                                                    selectedPlayer.setupIndex === setupIndex &&
-                                                                    selectedPlayer.teamIndex === 1 &&
-                                                                    selectedPlayer.playerIndex === position.playerIndex
-                                                                    ? 'ring-2 ring-yellow-400 rounded-full'
-                                                                    : selectedPlayer && !(selectedPlayer.setupIndex === setupIndex && selectedPlayer.teamIndex === 1 && selectedPlayer.playerIndex === position.playerIndex)
-                                                                    ? 'ring-2 ring-blue-400 ring-offset-2 rounded-full cursor-pointer'
-                                                                    : ''
-                                                                }`}
-                                                            style={{
-                                                                top: position.top,
-                                                                left: position.left,
-                                                            }}
+                                                            key={`team2-${position.player.name}-${position.player.shirtNumber}`}
+                                                            className="absolute"
+                                                            style={{ top: position.top, left: position.left, transform: 'translate(-50%, -50%)' }}
                                                         >
-                                                            <PlayerIcon
-                                                                color={setup.teams[1].color}
-                                                                number={position.player.shirtNumber}
-                                                                name={position.player.name}
-                                                                isGoalkeeper={position.player.isGoalkeeper}
-                                                            />
+                                                            <motion.div
+                                                                layoutId={`player-${position.player.name}-${position.player.shirtNumber}`}
+                                                                layout
+                                                                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                                                                onClick={() => handlePlayerClick(setupIndex, 1, position.playerIndex)}
+                                                                className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center
+                                                                    ${selectedPlayer &&
+                                                                        selectedPlayer.setupIndex === setupIndex &&
+                                                                        selectedPlayer.teamIndex === 1 &&
+                                                                        selectedPlayer.playerIndex === position.playerIndex
+                                                                        ? 'ring-2 ring-yellow-400 rounded-full'
+                                                                        : selectedPlayer && !(selectedPlayer.setupIndex === setupIndex && selectedPlayer.teamIndex === 1 && selectedPlayer.playerIndex === position.playerIndex)
+                                                                            ? 'ring-2 ring-blue-400 ring-offset-2 rounded-full cursor-pointer'
+                                                                            : ''
+                                                                    }`}
+                                                            >
+                                                                <PlayerIcon
+                                                                    color={setup.teams[1].color}
+                                                                    number={position.player.shirtNumber}
+                                                                    name={position.player.name}
+                                                                    isGoalkeeper={position.player.isGoalkeeper}
+                                                                />
+                                                            </motion.div>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -866,11 +931,11 @@ Billy #g"
                                                                             key={playerIndex}
                                                                             onClick={() => handlePlayerClick(setupIndex, teamIndex, playerIndex)}
                                                                             className={`py-1 px-2 rounded-lg bg-green-600 text-white border border-green-500 cursor-pointer ${selectedPlayer &&
-                                                                                    selectedPlayer.setupIndex === setupIndex &&
-                                                                                    selectedPlayer.teamIndex === teamIndex &&
-                                                                                    selectedPlayer.playerIndex === playerIndex
-                                                                                    ? 'ring-2 ring-yellow-400'
-                                                                                    : ''
+                                                                                selectedPlayer.setupIndex === setupIndex &&
+                                                                                selectedPlayer.teamIndex === teamIndex &&
+                                                                                selectedPlayer.playerIndex === playerIndex
+                                                                                ? 'ring-2 ring-yellow-400'
+                                                                                : ''
                                                                                 }`}
                                                                         >
                                                                             {player.shirtNumber}. {player.name}{' '}
@@ -888,6 +953,20 @@ Billy #g"
                                                 </div>
                                             </div>
                                         )}
+                                        <div className="flex justify-end mt-2">
+                                            <Button
+                                                onClick={() => handleGenerateSummary(setupIndex)}
+                                                className="bg-yellow-400 text-green-900 font-bold px-3 py-1 rounded shadow flex items-center gap-2"
+                                                disabled={!geminiKey || aiSummaries[setupIndex] === 'Loading...'}
+                                            >
+                                                {aiSummaries[setupIndex] === 'Loading...' ? 'Generating...' : 'Generate AI Match Summary'}
+                                            </Button>
+                                        </div>
+                                        {aiSummaries[setupIndex] && (
+                                            <div className="backdrop-blur bg-white/10 border border-white/20 rounded p-4 mt-2 text-white prose prose-sm max-w-none">
+                                                <ReactMarkdown>{aiSummaries[setupIndex]}</ReactMarkdown>
+                                            </div>
+                                        )}
                                     </motion.div>
                                 ))}
                             </AnimatePresence>
@@ -898,6 +977,29 @@ Billy #g"
 
             {/* Footer */}
             <Footer />
+            {/* AI Key Dropdown */}
+            <div className="absolute right-4 top-4 z-20">
+                <div className="relative">
+                    <Button onClick={() => setShowAIDropdown(v => !v)} className="bg-yellow-400 text-green-900 font-bold px-3 py-1 rounded shadow flex items-center gap-2">
+                        Enable AI Mode
+                        {geminiKey ? <span title="Gemini key set" className="text-green-700">✔️</span> : <span title="No Gemini key" className="text-red-700">❌</span>}
+                    </Button>
+                    {showAIDropdown && (
+                        <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-300 rounded shadow-lg p-4 z-30">
+                            <div className="mb-2 font-bold text-green-900">Gemini API Key</div>
+                            <div className="mb-2 text-sm text-gray-700">
+                                Enabling AI Mode allows you to generate fun, pre-match summaries for your teams using Google Gemini. Your API key is stored securely in your browser and never sent anywhere except directly to Google.
+                            </div>
+                            <input ref={aiInputRef} type="password" defaultValue={geminiKey} className="w-full border p-2 rounded mb-2" placeholder="Paste your Gemini API key here" />
+                            <Button onClick={handleGeminiKeySave} className="bg-green-700 text-white w-full mb-2">Save Key</Button>
+                            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-700 underline text-sm">Get your Gemini API key from Google AI Studio</a>
+                            {geminiKeyError && (
+                                <div className="text-red-600 text-sm mt-2">{geminiKeyError}</div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 };
