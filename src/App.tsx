@@ -26,6 +26,11 @@ const FootballTeamPicker = () => {
     const [notification, setNotification] = useState<string | null>(null); // State for notification message
     const [showNoGoalkeeperInfo, setShowNoGoalkeeperInfo] = useState(false); // State to track if the info box should be shown
     const [isLoadingLocation, setIsLoadingLocation] = useState(false); // New state for loading animation
+    const [selectedPlayer, setSelectedPlayer] = useState<{
+        setupIndex: number;
+        teamIndex: number;
+        playerIndex: number;
+    } | null>(null);
 
     useEffect(() => {
         localStorage.setItem('playersText', playersText);
@@ -286,6 +291,7 @@ const FootballTeamPicker = () => {
             result.push({
                 ...positions[0],
                 player: goalkeeper,
+                playerIndex: team.players.findIndex((p: any) => p === goalkeeper),
             });
         }
 
@@ -295,6 +301,7 @@ const FootballTeamPicker = () => {
                 result.push({
                     ...positions[index + index_offset],
                     player,
+                    playerIndex: team.players.findIndex((p: any) => p === player),
                 });
             }
         });
@@ -320,6 +327,46 @@ const FootballTeamPicker = () => {
                 return setup;
             })
         );
+    };
+
+    const swapPlayers = (
+        first: { setupIndex: number; teamIndex: number; playerIndex: number },
+        second: { setupIndex: number; teamIndex: number; playerIndex: number }
+    ) => {
+        setTeamSetups(prevSetups => {
+            const newSetups = [...prevSetups];
+            const playerA =
+                newSetups[first.setupIndex].teams[first.teamIndex].players[first.playerIndex];
+            const playerB =
+                newSetups[second.setupIndex].teams[second.teamIndex].players[second.playerIndex];
+            newSetups[first.setupIndex].teams[first.teamIndex].players[first.playerIndex] =
+                playerB;
+            newSetups[second.setupIndex].teams[second.teamIndex].players[second.playerIndex] =
+                playerA;
+            return newSetups;
+        });
+    };
+
+    const handlePlayerClick = (
+        setupIndex: number,
+        teamIndex: number,
+        playerIndex: number
+    ) => {
+        const clicked = { setupIndex, teamIndex, playerIndex };
+        if (!selectedPlayer) {
+            setSelectedPlayer(clicked);
+        } else {
+            if (
+                selectedPlayer.setupIndex === setupIndex &&
+                selectedPlayer.teamIndex === teamIndex &&
+                selectedPlayer.playerIndex === playerIndex
+            ) {
+                setSelectedPlayer(null);
+            } else {
+                swapPlayers(selectedPlayer, clicked);
+                setSelectedPlayer(null);
+            }
+        }
     };
 
     const exportAllImages = async () => {
@@ -752,7 +799,15 @@ Billy #g"
                                                     {getPositionsForTeam(setup.teams[0], true, setup.teams[0].players.length).map((position: any, index: number) => (
                                                         <div
                                                             key={`team1-${index}`}
-                                                            className="absolute w-8 h-8 sm:w-12 sm:h-12 transform -translate-x-1/2 -translate-y-1/2"
+                                                            onClick={() => handlePlayerClick(setupIndex, 0, position.playerIndex)}
+                                                            className={`absolute w-8 h-8 sm:w-12 sm:h-12 transform -translate-x-1/2 -translate-y-1/2 ${
+                                                                selectedPlayer &&
+                                                                selectedPlayer.setupIndex === setupIndex &&
+                                                                selectedPlayer.teamIndex === 0 &&
+                                                                selectedPlayer.playerIndex === position.playerIndex
+                                                                    ? 'ring-2 ring-yellow-400 rounded-full'
+                                                                    : ''
+                                                            }`}
                                                             style={{
                                                                 top: position.top,
                                                                 left: position.left,
@@ -771,7 +826,15 @@ Billy #g"
                                                     {getPositionsForTeam(setup.teams[1], false, setup.teams[1].players.length).map((position: any, index: number) => (
                                                         <div
                                                             key={`team2-${index}`}
-                                                            className="absolute w-8 h-8 sm:w-12 sm:h-12 transform -translate-x-1/2 -translate-y-1/2"
+                                                            onClick={() => handlePlayerClick(setupIndex, 1, position.playerIndex)}
+                                                            className={`absolute w-8 h-8 sm:w-12 sm:h-12 transform -translate-x-1/2 -translate-y-1/2 ${
+                                                                selectedPlayer &&
+                                                                selectedPlayer.setupIndex === setupIndex &&
+                                                                selectedPlayer.teamIndex === 1 &&
+                                                                selectedPlayer.playerIndex === position.playerIndex
+                                                                    ? 'ring-2 ring-yellow-400 rounded-full'
+                                                                    : ''
+                                                            }`}
                                                             style={{
                                                                 top: position.top,
                                                                 left: position.left,
@@ -811,8 +874,24 @@ Billy #g"
                                                             <div className="p-2">
                                                                 <ul className="space-y-1">
                                                                     {team.players.map((player: any, playerIndex: number) => (
-                                                                        <li key={playerIndex} className="py-1 px-2 rounded-lg bg-green-600 text-white border border-green-500">
-                                                                            {player.shirtNumber}. {player.name} {player.isGoalkeeper && <span className="bg-yellow-400 text-green-900 text-xs px-2 py-1 rounded ml-2 font-bold">GK</span>}
+                                                                        <li
+                                                                            key={playerIndex}
+                                                                            onClick={() => handlePlayerClick(setupIndex, teamIndex, playerIndex)}
+                                                                            className={`py-1 px-2 rounded-lg bg-green-600 text-white border border-green-500 cursor-pointer ${
+                                                                                selectedPlayer &&
+                                                                                selectedPlayer.setupIndex === setupIndex &&
+                                                                                selectedPlayer.teamIndex === teamIndex &&
+                                                                                selectedPlayer.playerIndex === playerIndex
+                                                                                    ? 'ring-2 ring-yellow-400'
+                                                                                    : ''
+                                                                            }`}
+                                                                        >
+                                                                            {player.shirtNumber}. {player.name}{' '}
+                                                                            {player.isGoalkeeper && (
+                                                                                <span className="bg-yellow-400 text-green-900 text-xs px-2 py-1 rounded ml-2 font-bold">
+                                                                                    GK
+                                                                                </span>
+                                                                            )}
                                                                         </li>
                                                                     ))}
                                                                 </ul>
