@@ -19,17 +19,18 @@ const PlayerIcon: React.FC<PlayerIconProps> = ({ color, number, name, isGoalkeep
             "w-full h-full flex items-center justify-center relative",
             "text-white font-bold text-sm",
             "transition-all duration-300",
-        )}>
+        )} style={{ width: '100%', height: '100%' }}>
             <svg
                 fill={fillColor}
-                stroke="#000000" // Add a dark border
-                strokeWidth="5" // Adjust the border width as needed
-                height="300"
-                width="300"
-                version="1.1"
+                stroke="#000000"
+                strokeWidth="5"
+                width="100%"
+                height="100%"
+                viewBox="0 0 295.526 295.526"
+                style={{ display: 'block' }}
                 xmlns="http://www.w3.org/2000/svg"
                 xmlnsXlink="http://www.w3.org/1999/xlink"
-                viewBox="0 70 295.526 295.526"
+                version="1.1"
                 xmlSpace="preserve"
             >
                 <g>
@@ -45,11 +46,10 @@ const PlayerIcon: React.FC<PlayerIconProps> = ({ color, number, name, isGoalkeep
                         "/>
                 </g>
             </svg>
-
-            <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold text-white" style={{ textShadow: '0px 0px 1px black, 0px 0px 3px black' }}>
+            <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold text-white pointer-events-none" style={{ textShadow: '0px 0px 1px black, 0px 0px 3px black' }}>
                 {displayNumber}
             </div>
-            <div className="absolute top-3/4 left-1/2 transform -translate-x-1/2 text-lg text-center bg-black bg-opacity-60 px-1 py-0.5 rounded">
+            <div className="absolute top-3/4 left-1/2 transform -translate-x-1/2 text-lg text-center bg-black bg-opacity-60 px-1 py-0.5 rounded pointer-events-none">
                 {displayName}
             </div>
         </div>

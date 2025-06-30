@@ -22,10 +22,15 @@ const FootballTeamPicker = () => {
     const [selectedLocation, setSelectedLocation] = useState(() => {
         return localStorage.getItem('selectedLocation') || 'Generic'; // Load from localStorage or default to Hampshire
     });
-    const [places, setPlaces] = useState<string[]>(teamPlaces.Generic); // Default to Hampshire places
+    const [places, setPlaces] = useState<string[]>(teamPlaces.Generic.places); // Default to Hampshire places
     const [notification, setNotification] = useState<string | null>(null); // State for notification message
     const [showNoGoalkeeperInfo, setShowNoGoalkeeperInfo] = useState(false); // State to track if the info box should be shown
     const [isLoadingLocation, setIsLoadingLocation] = useState(false); // New state for loading animation
+    const [selectedPlayer, setSelectedPlayer] = useState<{
+        setupIndex: number;
+        teamIndex: number;
+        playerIndex: number;
+    } | null>(null);
 
     useEffect(() => {
         localStorage.setItem('playersText', playersText);
@@ -37,7 +42,7 @@ const FootballTeamPicker = () => {
 
     useEffect(() => {
         // Update places based on selected location
-        setPlaces(teamPlaces[selectedLocation]?.places || teamPlaces.Generic.places);
+        setPlaces((teamPlaces as any)[selectedLocation]?.places || teamPlaces.Generic.places);
     }, [selectedLocation]);
 
     const handleLocationChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -164,22 +169,22 @@ const FootballTeamPicker = () => {
         };
 
         for (let i = 0; i < numTeams; i++) {
-            const teamName = generateTeamName(existingNames, places); // Use selected location's places
+            const teamName = generateTeamName(existingNames, places) as string; // Use selected location's places
             existingNames.add(teamName);
 
-            const boldColors = ['#ff0000', '#0000ff', '#00ff00', '#ff00ff', '#00ffff', '#ff4500', '#8a2be2', '#ff1493', '#1e90ff'];
-            let color1;
+            const boldColors: string[] = ['#ff0000', '#0000ff', '#00ff00', '#ff00ff', '#00ffff', '#ff4500', '#8a2be2', '#ff1493', '#1e90ff'];
+            let color1: string;
             do {
                 color1 = boldColors[Math.floor(Math.random() * boldColors.length)];
-            } while ([...usedColors].some((usedColor) => isSimilarColor(usedColor, color1)));
+            } while (Array.from(usedColors).some((usedColor) => isSimilarColor(usedColor as string, color1)));
             usedColors.add(color1);
 
-            let color2;
+            let color2: string;
             do {
                 color2 = boldColors[Math.floor(Math.random() * boldColors.length)];
             } while (
                 color1 === color2 ||
-                [...usedColors].some((usedColor) => isSimilarColor(usedColor, color2)) ||
+                Array.from(usedColors).some((usedColor) => isSimilarColor(usedColor as string, color2)) ||
                 isSimilarColor(color1, color2)
             );
             usedColors.add(color2);
@@ -220,7 +225,7 @@ const FootballTeamPicker = () => {
         // for generated team, check if player index 0 is empty, if so reindex the players
         generatedTeams.forEach(team => {
             if (!team.players[0]) {
-                team.players = team.players.filter(player => player);
+                team.players = team.players.filter((player: any) => player);
             }
         });
 
@@ -228,7 +233,7 @@ const FootballTeamPicker = () => {
         const newPlayerNumbers: { [playerName: string]: number } = { ...playerNumbers };
 
         generatedTeams.forEach(team => {
-            team.players.forEach(player => {
+            team.players.forEach((player: any) => {
                 if (player.isGoalkeeper) {
                     player.shirtNumber = 1;
                     newPlayerNumbers[player.name] = 1;
@@ -274,31 +279,12 @@ const FootballTeamPicker = () => {
     const getPositionsForTeam = (team: any, isLeftSide: boolean, totalPlayers: number) => {
         const side = isLeftSide ? 'left' : 'right';
         const positions = positionsByTeamSizeAndSide[totalPlayers]?.[side] || [];
-
-        const goalkeeper = team.players.find((p: any) => p.isGoalkeeper);
-
-        // Determine the index offset based on whether there is a goalkeeper
-        const index_offset = goalkeeper ? 1 : 0;
-
-        const result: any = [];
-
-        if (goalkeeper) {
-            result.push({
-                ...positions[0],
-                player: goalkeeper,
-            });
-        }
-
-        const outfieldPlayers = team.players.filter((p: any) => !p.isGoalkeeper);
-        outfieldPlayers.forEach((player, index) => {
-            if (index < positions.length - index_offset) {
-                result.push({
-                    ...positions[index + index_offset],
-                    player,
-                });
-            }
-        });
-        return result;
+        // Map each player in order to a position slot
+        return team.players.map((player: any, idx: number) => ({
+            ...positions[idx],
+            player,
+            playerIndex: idx,
+        }));
     };
 
     const deleteTeamSetup = (indexToDelete: number) => {
@@ -307,11 +293,11 @@ const FootballTeamPicker = () => {
 
     const handleColorChange = (setupIndex: number, teamIndex: number, color: string) => {
         setTeamSetups(prevSetups =>
-            prevSetups.map((setup, currentSetupIndex) => {
+            prevSetups.map((setup: any, currentSetupIndex: number) => {
                 if (currentSetupIndex === setupIndex) {
                     return {
                         ...setup,
-                        teams: setup.teams.map((team, currentTeamIndex) => ({
+                        teams: setup.teams.map((team: any, currentTeamIndex: number) => ({
                             ...team,
                             color: currentTeamIndex === teamIndex ? color : team.color,
                         })),
@@ -321,6 +307,53 @@ const FootballTeamPicker = () => {
             })
         );
     };
+
+    const swapPlayers = (
+        first: { setupIndex: number; teamIndex: number; playerIndex: number },
+        second: { setupIndex: number; teamIndex: number; playerIndex: number }
+    ) => {
+        setTeamSetups(prevSetups => {
+            const newSetups = prevSetups.map((setup, sIdx) => {
+                if (sIdx !== first.setupIndex) return setup;
+                // Deep copy teams and players arrays for the affected setup
+                const newTeams = setup.teams.map((team: any, tIdx: number) => ({
+                    ...team,
+                    players: [...team.players],
+                }));
+                // Swap players
+                const temp = newTeams[first.teamIndex].players[first.playerIndex];
+                newTeams[first.teamIndex].players[first.playerIndex] = newTeams[second.teamIndex].players[second.playerIndex];
+                newTeams[second.teamIndex].players[second.playerIndex] = temp;
+                return { ...setup, teams: newTeams };
+            });
+            return newSetups;
+        });
+    };
+
+    const handlePlayerClick = (
+        setupIndex: number,
+        teamIndex: number,
+        playerIndex: number
+    ) => {
+        const clicked = { setupIndex, teamIndex, playerIndex };
+        if (!selectedPlayer) {
+            setSelectedPlayer(clicked);
+        } else {
+            if (
+                selectedPlayer.setupIndex === setupIndex &&
+                selectedPlayer.teamIndex === teamIndex &&
+                selectedPlayer.playerIndex === playerIndex
+            ) {
+                setSelectedPlayer(null);
+            } else {
+                swapPlayers(selectedPlayer, clicked);
+                setSelectedPlayer(null);
+            }
+        }
+    };
+
+    // Helper to get a unique key for a player
+    const getPlayerKey = (setupIndex: number, teamIndex: number, playerIndex: number) => `${setupIndex}-${teamIndex}-${playerIndex}`;
 
     const exportAllImages = async () => {
         const elements = teamSetups.map((_, index) => document.getElementById(`team-setup-${index}`));
@@ -347,12 +380,7 @@ const FootballTeamPicker = () => {
                     if (!element) return null;
                     const dataUrl = await toPng(element, {
                         backgroundColor: '#146434', // Set background color to match the app's background
-                        width: element.offsetWidth * scale, // Scale the width
-                        height: element.offsetHeight * scale, // Scale the height
-                        style: {
-                            transform: `scale(${scale})`,
-                            transformOrigin: 'top left',
-                        },
+                        // Remove width and height for natural size export
                     });
                     const img = new Image();
                     img.src = dataUrl;
@@ -371,7 +399,8 @@ const FootballTeamPicker = () => {
             context.fillStyle = 'white';
             context.font = 'bold 48px Arial';
             context.textAlign = 'center';
-            context.fillText('Made with teamshuffle.app', canvas.width / 2, canvas.height - 30);
+            // Shift the footer text further down
+            context.fillText('Made with teamshuffle.app', canvas.width / 2, canvas.height - 10);
 
             let yOffset = 0; // Start drawing images below the text overlay
             images.forEach(img => {
@@ -715,7 +744,7 @@ Billy #g"
                                                             }}
                                                         >
                                                             {team.name}
-                                                            <div className="absolute top-1/2 right-2 transform -translate-y-1/2">
+                                                            <div className="absolute top-1/2 right-2 transform -translate-y-1/2 flex items-center gap-2">
                                                                 <label
                                                                     htmlFor={`color-picker-${setupIndex}-${teamIndex}`}
                                                                     className="cursor-pointer"
@@ -738,7 +767,6 @@ Billy #g"
                                                         </div>
                                                     ))}
                                                 </div>
-
                                                 <div className="w-full aspect-video relative bg-green-600 border-2 border-white rounded-lg shadow-lg overflow-hidden sm:aspect-video sm:w-full sm:h-auto">
                                                     {/* Football pitch lines */}
                                                     <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-white"></div>
@@ -752,7 +780,17 @@ Billy #g"
                                                     {getPositionsForTeam(setup.teams[0], true, setup.teams[0].players.length).map((position: any, index: number) => (
                                                         <div
                                                             key={`team1-${index}`}
-                                                            className="absolute w-8 h-8 sm:w-12 sm:h-12 transform -translate-x-1/2 -translate-y-1/2"
+                                                            onClick={() => handlePlayerClick(setupIndex, 0, position.playerIndex)}
+                                                            className={`absolute w-8 h-8 sm:w-12 sm:h-12 transform -translate-x-1/2 -translate-y-1/2
+                                                                ${selectedPlayer &&
+                                                                    selectedPlayer.setupIndex === setupIndex &&
+                                                                    selectedPlayer.teamIndex === 0 &&
+                                                                    selectedPlayer.playerIndex === position.playerIndex
+                                                                    ? 'ring-2 ring-yellow-400 rounded-full'
+                                                                    : selectedPlayer && !(selectedPlayer.setupIndex === setupIndex && selectedPlayer.teamIndex === 0 && selectedPlayer.playerIndex === position.playerIndex)
+                                                                    ? 'ring-2 ring-blue-400 ring-offset-2 rounded-full cursor-pointer'
+                                                                    : ''
+                                                                }`}
                                                             style={{
                                                                 top: position.top,
                                                                 left: position.left,
@@ -771,7 +809,17 @@ Billy #g"
                                                     {getPositionsForTeam(setup.teams[1], false, setup.teams[1].players.length).map((position: any, index: number) => (
                                                         <div
                                                             key={`team2-${index}`}
-                                                            className="absolute w-8 h-8 sm:w-12 sm:h-12 transform -translate-x-1/2 -translate-y-1/2"
+                                                            onClick={() => handlePlayerClick(setupIndex, 1, position.playerIndex)}
+                                                            className={`absolute w-8 h-8 sm:w-12 sm:h-12 transform -translate-x-1/2 -translate-y-1/2
+                                                                ${selectedPlayer &&
+                                                                    selectedPlayer.setupIndex === setupIndex &&
+                                                                    selectedPlayer.teamIndex === 1 &&
+                                                                    selectedPlayer.playerIndex === position.playerIndex
+                                                                    ? 'ring-2 ring-yellow-400 rounded-full'
+                                                                    : selectedPlayer && !(selectedPlayer.setupIndex === setupIndex && selectedPlayer.teamIndex === 1 && selectedPlayer.playerIndex === position.playerIndex)
+                                                                    ? 'ring-2 ring-blue-400 ring-offset-2 rounded-full cursor-pointer'
+                                                                    : ''
+                                                                }`}
                                                             style={{
                                                                 top: position.top,
                                                                 left: position.left,
@@ -811,8 +859,23 @@ Billy #g"
                                                             <div className="p-2">
                                                                 <ul className="space-y-1">
                                                                     {team.players.map((player: any, playerIndex: number) => (
-                                                                        <li key={playerIndex} className="py-1 px-2 rounded-lg bg-green-600 text-white border border-green-500">
-                                                                            {player.shirtNumber}. {player.name} {player.isGoalkeeper && <span className="bg-yellow-400 text-green-900 text-xs px-2 py-1 rounded ml-2 font-bold">GK</span>}
+                                                                        <li
+                                                                            key={playerIndex}
+                                                                            onClick={() => handlePlayerClick(setupIndex, teamIndex, playerIndex)}
+                                                                            className={`py-1 px-2 rounded-lg bg-green-600 text-white border border-green-500 cursor-pointer ${selectedPlayer &&
+                                                                                    selectedPlayer.setupIndex === setupIndex &&
+                                                                                    selectedPlayer.teamIndex === teamIndex &&
+                                                                                    selectedPlayer.playerIndex === playerIndex
+                                                                                    ? 'ring-2 ring-yellow-400'
+                                                                                    : ''
+                                                                                }`}
+                                                                        >
+                                                                            {player.shirtNumber}. {player.name}{' '}
+                                                                            {player.isGoalkeeper && (
+                                                                                <span className="bg-yellow-400 text-green-900 text-xs px-2 py-1 rounded ml-2 font-bold">
+                                                                                    GK
+                                                                                </span>
+                                                                            )}
                                                                         </li>
                                                                     ))}
                                                                 </ul>
