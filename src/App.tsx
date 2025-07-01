@@ -370,14 +370,16 @@ const FootballTeamPicker = () => {
         const elements = teamSetups.map((_, index) => document.getElementById(`team-setup-${index}`));
         if (elements.some(element => !element)) return;
 
-        // Temporarily hide delete buttons, color pickers, and color circles
+        // Temporarily hide delete buttons, color pickers, color circles, and AI Match Summary
         elements.forEach(element => {
             const deleteButtons = element?.querySelectorAll('.delete-button');
             const colorPickers = element?.querySelectorAll('.color-picker');
             const colorCircles = element?.querySelectorAll('.color-circle');
-            deleteButtons?.forEach(button => (button.style.display = 'none'));
-            colorPickers?.forEach(picker => (picker.style.display = 'none'));
-            colorCircles?.forEach(circle => (circle.style.display = 'none'));
+            const aiSummaryButtons = element?.querySelectorAll('.generate-ai-summary'); // Adjusted selector
+            deleteButtons?.forEach(button => ((button as HTMLElement).style.display = 'none'));
+            colorPickers?.forEach(picker => ((picker as HTMLElement).style.display = 'none'));
+            colorCircles?.forEach(circle => ((circle as HTMLElement).style.display = 'none'));
+            aiSummaryButtons?.forEach(button => ((button as HTMLElement).style.display = 'none')); // Adjusted logic
         });
 
         try {
@@ -385,13 +387,11 @@ const FootballTeamPicker = () => {
             const context = canvas.getContext('2d');
             if (!context) return;
 
-            const scale = 2; // Increase the scale for higher resolution
             const images = await Promise.all(
                 elements.map(async (element) => {
                     if (!element) return null;
                     const dataUrl = await toPng(element, {
                         backgroundColor: '#146434', // Set background color to match the app's background
-                        // Remove width and height for natural size export
                     });
                     const img = new Image();
                     img.src = dataUrl;
@@ -404,14 +404,13 @@ const FootballTeamPicker = () => {
             const maxWidth = Math.max(...images.map(img => img?.width || 0));
 
             canvas.width = maxWidth;
-            canvas.height = totalHeight + 100; // Add space for the text overlay
+            canvas.height = totalHeight + 40; // Add space for the text overlay
 
             // Draw the text overlay
             context.fillStyle = 'white';
-            context.font = 'bold 48px Arial';
+            context.font = 'bold 24px Arial';
             context.textAlign = 'center';
-            // Shift the footer text further down
-            context.fillText('Made with teamshuffle.app', canvas.width / 2, canvas.height - 10);
+            context.fillText('Made with teamshuffle.app', canvas.width / 2, canvas.height - 5);
 
             let yOffset = 0; // Start drawing images below the text overlay
             images.forEach(img => {
@@ -431,14 +430,16 @@ const FootballTeamPicker = () => {
         } catch (error) {
             console.error('Failed to export images:', error);
         } finally {
-            // Restore delete buttons, color pickers, and color circles
+            // Restore delete buttons, color pickers, color circles, and AI Match Summary
             elements.forEach(element => {
                 const deleteButtons = element?.querySelectorAll('.delete-button');
                 const colorPickers = element?.querySelectorAll('.color-picker');
                 const colorCircles = element?.querySelectorAll('.color-circle');
-                deleteButtons?.forEach(button => (button.style.display = ''));
-                colorPickers?.forEach(picker => (picker.style.display = ''));
-                colorCircles?.forEach(circle => (circle.style.display = ''));
+                const aiSummaryButtons = element?.querySelectorAll('.generate-ai-summary'); // Adjusted selector
+                deleteButtons?.forEach(button => ((button as HTMLElement).style.display = ''));
+                colorPickers?.forEach(picker => ((picker as HTMLElement).style.display = ''));
+                colorCircles?.forEach(circle => ((circle as HTMLElement).style.display = ''));
+                aiSummaryButtons?.forEach(button => ((button as HTMLElement).style.display = '')); // Adjusted logic
             });
         }
     };
@@ -776,7 +777,6 @@ Billy #g"
                                             )}
                                             {teamSetups.length <= 1 && (
                                                 <h2 className="text-xl font-bold text-white">
-                                                    Selected Option
                                                 </h2>
                                             )}
                                             <div className="flex gap-2">
@@ -954,13 +954,15 @@ Billy #g"
                                             </div>
                                         )}
                                         <div className="flex justify-end mt-2">
-                                            <Button
-                                                onClick={() => handleGenerateSummary(setupIndex)}
-                                                className="bg-yellow-400 text-green-900 font-bold px-3 py-1 rounded shadow flex items-center gap-2"
-                                                disabled={!geminiKey || aiSummaries[setupIndex] === 'Loading...'}
-                                            >
-                                                {aiSummaries[setupIndex] === 'Loading...' ? 'Generating...' : 'Generate AI Match Summary'}
-                                            </Button>
+                                            {!aiSummaries[setupIndex] && (
+                                                <Button
+                                                    onClick={() => handleGenerateSummary(setupIndex)}
+                                                    className="bg-yellow-400 text-green-900 font-bold px-3 py-1 rounded shadow flex items-center gap-2 generate-ai-summary"
+                                                    disabled={!geminiKey || aiSummaries[setupIndex] === 'Loading...'}
+                                                >
+                                                    {aiSummaries[setupIndex] === 'Loading...' ? 'Generating...' : 'Generate AI Match Summary'}
+                                                </Button>
+                                            )}
                                         </div>
                                         {aiSummaries[setupIndex] && (
                                             <div className="backdrop-blur bg-white/10 border border-white/20 rounded p-4 mt-2 text-white prose prose-sm max-w-none">
