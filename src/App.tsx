@@ -115,7 +115,7 @@ const FootballTeamPicker = () => {
             setErrorMessage(`You need at least ${numTeams} goalkeepers`);
         }
 
-        if (players.length > 14) {
+        if (players.length > 16) {
             setErrorMessage('You can only have a maximum of 16 players');
             return;
         }
