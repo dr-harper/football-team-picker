@@ -439,21 +439,26 @@ const FootballTeamPicker = () => {
             const maxWidth = Math.max(...images.map(img => img?.width || 0));
 
             canvas.width = maxWidth;
-            canvas.height = totalHeight + 40; // Add space for the text overlay
+            canvas.height = totalHeight + 40; // Space for footer
 
-            // Draw the text overlay
-            context.fillStyle = 'white';
-            context.font = 'bold 24px Arial';
-            context.textAlign = 'center';
-            context.fillText('Made with teamshuffle.app', canvas.width / 2, canvas.height - 5);
-
-            let yOffset = 0; // Start drawing images below the text overlay
+            let yOffset = 0;
             images.forEach(img => {
                 if (img) {
                     context.drawImage(img, 0, yOffset, img.width, img.height);
                     yOffset += img.height;
                 }
             });
+
+            // Draw footer bar
+            context.fillStyle = '#0A2507';
+            context.fillRect(0, totalHeight, canvas.width, 40);
+
+            // Footer text
+            context.fillStyle = 'white';
+            context.font = 'bold 20px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText('Made with teamshuffle.app', canvas.width / 2, totalHeight + 20);
 
             const finalDataUrl = canvas.toDataURL('image/png');
             const link = document.createElement('a');
