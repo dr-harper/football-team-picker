@@ -9,6 +9,7 @@ import { generateTeamName } from './utils/teamNameGenerator'; // Import the util
 import { getPlacesBasedOnLocation } from './utils/locationUtils'; // Import location utility
 import Notification from './components/Notification'; // Import Notification component
 import Footer from './components/Footer'; // Import Footer component
+import FloatingFooter from './components/FloatingFooter';
 import HeaderBar from './components/HeaderBar';
 import { teamPlaces } from './constants/teamConstants';
 import { positionsByTeamSizeAndSide, placeholderPositions } from './constants/positionsConstants';
@@ -643,31 +644,6 @@ Billy #g"
                                     </div>
                                 )}
 
-                                {/* Export Button */}
-                                {teamSetups.length > 0 && (
-                                    <div className="text-center my-4 w-full">
-                                        <Button
-                                            onClick={exportAllImages}
-                                            className="bg-blue-700 text-white py-2 px-6 rounded font-bold shadow-md hover:bg-blue-800 flex items-center gap-2 w-full"
-                                        >
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                strokeWidth={1.5}
-                                                stroke="currentColor"
-                                                className="w-5 h-5"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    d="M7.5 12l4.5 4.5m0 0l4.5-4.5m-4.5 4.5V3"
-                                                />
-                                            </svg>
-                                            Download Teams as Image
-                                        </Button>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>
@@ -922,6 +898,7 @@ Billy #g"
 
             {/* Footer */}
             <Footer />
+            <FloatingFooter visible={teamSetups.length > 0} onExport={exportAllImages} />
         </div>
     );
 };
