@@ -15,11 +15,40 @@ import { teamPlaces } from './constants/teamConstants';
 import { positionsByTeamSizeAndSide, placeholderPositions } from './constants/positionsConstants';
 import ReactMarkdown from 'react-markdown';
 
+interface Player {
+    name: string;
+    isGoalkeeper: boolean;
+    isStriker: boolean;
+    isDefender: boolean;
+    isteam1: boolean;
+    isteam2: boolean;
+    role: string;
+    shirtNumber: number | null;
+}
+
+interface Team {
+    name: string;
+    players: Player[];
+    color: string;
+}
+
+interface TeamSetup {
+    teams: Team[];
+    playersInput: string;
+}
+
+interface PositionedPlayer {
+    top: string;
+    left: string;
+    player: Player;
+    playerIndex: number;
+}
+
 const FootballTeamPicker = () => {
     const [playersText, setPlayersText] = useState(() => {
         return localStorage.getItem('playersText') || '';
     });
-    const [teamSetups, setTeamSetups] = useState<any[]>([]);
+    const [teamSetups, setTeamSetups] = useState<TeamSetup[]>([]);
     const [errorMessage, setErrorMessage] = useState('');
     const [playerNumbers, setPlayerNumbers] = useState<{ [playerName: string]: number }>({});
     const [selectedLocation, setSelectedLocation] = useState(() => {
@@ -63,7 +92,7 @@ const FootballTeamPicker = () => {
 
     useEffect(() => {
         // Update places based on selected location
-        setPlaces((teamPlaces as any)[selectedLocation]?.places || teamPlaces.Generic.places);
+        setPlaces((teamPlaces as Record<string, { places: string[] }>)[selectedLocation]?.places || teamPlaces.Generic.places);
     }, [selectedLocation]);
 
     // Clear AI summary if a team setup changes
@@ -173,70 +202,20 @@ const FootballTeamPicker = () => {
         const selectedTeam1 = players.filter(player => player.isteam1);
         const selectedTeam2 = players.filter(player => player.isteam2);
 
-        const generatedTeams: any[] = [];
+        const generatedTeams: Team[] = [];
         const existingNames = new Set<string>();
-        const usedColors = new Set();
-
-        const isSimilarColor = (color1: string, color2: string) => {
-            const hexToRgb = (hex: string) => {
-                const bigint = parseInt(hex.slice(1), 16);
-                return {
-                    r: (bigint >> 16) & 255,
-                    g: (bigint >> 8) & 255,
-                    b: bigint & 255,
-                };
-            };
-
-            const rgbToHsl = ({ r, g, b }: { r: number; g: number; b: number }) => {
-                r /= 255;
-                g /= 255;
-                b /= 255;
-                const max = Math.max(r, g, b);
-                const min = Math.min(r, g, b);
-                let h = 0,
-                    s = 0,
-                    l = (max + min) / 2;
-
-                if (max !== min) {
-                    const d = max - min;
-                    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-                    switch (max) {
-                        case r:
-                            h = (g - b) / d + (g < b ? 6 : 0);
-                            break;
-                        case g:
-                            h = (b - r) / d + 2;
-                            break;
-                        case b:
-                            h = (r - g) / d + 4;
-                            break;
-                    }
-                    h /= 6;
-                }
-
-                return { h: h * 360, s, l };
-            };
-
-            const color1Hsl = rgbToHsl(hexToRgb(color1));
-            const color2Hsl = rgbToHsl(hexToRgb(color2));
-
-            return Math.abs(color1Hsl.h - color2Hsl.h) < 60; // Consider colors similar if their hue difference is less than 30
-        };
 
         for (let i = 0; i < numTeams; i++) {
             const teamName = generateTeamName(existingNames, places) as string; // Use selected location's places
             existingNames.add(teamName);
 
             const boldColors: string[] = ['#ff0000', '#0000ff', '#00ff00', '#ff00ff', '#00ffff', '#ff4500', '#8a2be2', '#ff1493', '#1e90ff'];
-            let color1: string;
-            color1 = boldColors[Math.floor(Math.random() * boldColors.length)];
-            usedColors.add(color1);
+            const color1: string = boldColors[Math.floor(Math.random() * boldColors.length)];
 
             let color2: string;
             do {
                 color2 = boldColors[Math.floor(Math.random() * boldColors.length)];
             } while (color1 === color2);
-            usedColors.add(color2);
 
             const team = {
                 name: teamName,
@@ -274,7 +253,7 @@ const FootballTeamPicker = () => {
         // for generated team, check if player index 0 is empty, if so reindex the players
         generatedTeams.forEach(team => {
             if (!team.players[0]) {
-                team.players = team.players.filter((player: any) => player);
+                team.players = team.players.filter((player): player is Player => Boolean(player));
             }
         });
 
@@ -282,7 +261,7 @@ const FootballTeamPicker = () => {
         const newPlayerNumbers: { [playerName: string]: number } = { ...playerNumbers };
 
         generatedTeams.forEach(team => {
-            team.players.forEach((player: any) => {
+            team.players.forEach((player: Player) => {
                 if (player.isGoalkeeper) {
                     player.shirtNumber = 1;
                     newPlayerNumbers[player.name] = 1;
@@ -325,11 +304,15 @@ const FootballTeamPicker = () => {
 
     };
 
-    const getPositionsForTeam = (team: any, isLeftSide: boolean, totalPlayers: number) => {
+    const getPositionsForTeam = (
+        team: Team,
+        isLeftSide: boolean,
+        totalPlayers: number,
+    ): PositionedPlayer[] => {
         const side = isLeftSide ? 'left' : 'right';
         const positions = positionsByTeamSizeAndSide[totalPlayers]?.[side] || [];
         // Map each player in order to a position slot
-        return team.players.map((player: any, idx: number) => ({
+        return team.players.map((player: Player, idx: number) => ({
             ...positions[idx],
             player,
             playerIndex: idx,
@@ -342,11 +325,11 @@ const FootballTeamPicker = () => {
 
     const handleColorChange = (setupIndex: number, teamIndex: number, color: string) => {
         setTeamSetups(prevSetups =>
-            prevSetups.map((setup: any, currentSetupIndex: number) => {
+            prevSetups.map((setup: TeamSetup, currentSetupIndex: number) => {
                 if (currentSetupIndex === setupIndex) {
                     return {
                         ...setup,
-                        teams: setup.teams.map((team: any, currentTeamIndex: number) => ({
+                        teams: setup.teams.map((team: Team, currentTeamIndex: number) => ({
                             ...team,
                             color: currentTeamIndex === teamIndex ? color : team.color,
                         })),
@@ -367,7 +350,7 @@ const FootballTeamPicker = () => {
             const newSetups = prevSetups.map((setup, sIdx) => {
                 if (sIdx !== first.setupIndex) return setup;
                 // Deep copy teams and players arrays for the affected setup
-                const newTeams = setup.teams.map((team: any) => ({
+                const newTeams = setup.teams.map((team: Team) => ({
                     ...team,
                     players: [...team.players],
                 }));
@@ -543,7 +526,7 @@ const FootballTeamPicker = () => {
                 } else {
                     setGeminiKeyError('Invalid Gemini API key or unexpected response.');
                 }
-            } catch (e) {
+            } catch {
                 setGeminiKeyError('Error validating Gemini API key.');
             }
         }
@@ -575,7 +558,7 @@ const FootballTeamPicker = () => {
             const data = await res.json();
             const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No summary generated.';
             setAISummaries(prev => ({ ...prev, [setupIndex]: applyWarrenTone(summary) }));
-        } catch (e) {
+        } catch {
             setAISummaries(prev => ({ ...prev, [setupIndex]: applyWarrenTone('Error generating summary.') }));
         }
     };
@@ -780,7 +763,7 @@ Billy #g"
                                         {setup.teams.length > 0 && setup.teams.length <= 2 && (
                                             <>
                                                 <div className="flex justify-center mb-2 gap-8">
-                                                    {setup.teams.map((team: any, teamIndex: number) => (
+                                                    {setup.teams.map((team: Team, teamIndex: number) => (
                                                         <div
                                                             key={`team-name-${teamIndex}`}
                                                             className="relative text-white px-4 py-1 rounded shadow-md font-bold flex-grow text-center"
@@ -823,7 +806,7 @@ Billy #g"
                                                     <div className="absolute top-1/2 right-0 w-8 h-24 sm:w-12 sm:h-32 border-2 border-white border-r-0 transform -translate-y-1/2"></div>
 
                                                     {/* Team 1 players */}
-                                                    {getPositionsForTeam(setup.teams[0], true, setup.teams[0].players.length).map((position: any) => (
+                                                      {getPositionsForTeam(setup.teams[0], true, setup.teams[0].players.length).map((position: PositionedPlayer) => (
                                                         <div
                                                             key={getPlayerId(setupIndex, position.player)}
                                                             className="absolute"
@@ -856,7 +839,7 @@ Billy #g"
                                                     ))}
 
                                                     {/* Team 2 players */}
-                                                    {getPositionsForTeam(setup.teams[1], false, setup.teams[1].players.length).map((position: any) => (
+                                                      {getPositionsForTeam(setup.teams[1], false, setup.teams[1].players.length).map((position: PositionedPlayer) => (
                                                         <div
                                                             key={getPlayerId(setupIndex, position.player)}
                                                             className="absolute"
@@ -894,7 +877,7 @@ Billy #g"
                                         {setup.teams.length > 2 && (
                                             <div className="mt-4">
                                                 <div className="flex justify-center mb-2 gap-8">
-                                                    {setup.teams.map((team: any, index: number) => (
+                                                    {setup.teams.map((team: Team, index: number) => (
                                                         <div
                                                             key={`team-name-${index}`}
                                                             className={`text-white px-4 py-1 rounded shadow-md font-bold flex-grow text-center`}
@@ -905,14 +888,14 @@ Billy #g"
                                                     ))}
                                                 </div>
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                    {setup.teams.map((team: any, teamIndex: number) => (
+                                                    {setup.teams.map((team: Team, teamIndex: number) => (
                                                         <div key={teamIndex} className="bg-green-700 border border-white rounded-lg overflow-hidden shadow-lg">
                                                             <div className={`bg-${teamIndex % 2 === 0 ? 'blue-600' : 'red-600'} p-2 text-center text-white border-b border-white`}>
                                                                 <h3 className="text-lg font-bold">{team.name}</h3>
                                                             </div>
                                                             <div className="p-2">
                                                                 <ul className="space-y-1">
-                                                                    {team.players.map((player: any, playerIndex: number) => (
+                                                                    {team.players.map((player: Player, playerIndex: number) => (
                                                                         <li
                                                                             key={getPlayerId(setupIndex, player)}
                                                                             onClick={() => handlePlayerClick(setupIndex, teamIndex, playerIndex)}
