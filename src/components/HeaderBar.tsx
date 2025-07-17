@@ -13,6 +13,8 @@ interface HeaderBarProps {
     onGeminiKeySave: () => void;
     aiInputRef: React.RefObject<HTMLInputElement>;
     geminiKeyError: string | null;
+    warrenMode: boolean;
+    onWarrenModeChange: (value: boolean) => void;
 }
 
 const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -26,6 +28,8 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
     onGeminiKeySave,
     aiInputRef,
     geminiKeyError,
+    warrenMode,
+    onWarrenModeChange,
 }) => {
     const [showConfig, setShowConfig] = useState(false);
 
@@ -114,6 +118,17 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                             {geminiKeyError && (
                                 <div className="text-red-600 text-sm mt-2">{geminiKeyError}</div>
                             )}
+                        </div>
+                        <div>
+                            <label className="font-bold flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={warrenMode}
+                                    onChange={(e) => onWarrenModeChange(e.target.checked)}
+                                />
+                                Warren Mode
+                            </label>
+                            <p className="text-xs mt-1">Adds spicy or lovely tone to messages.</p>
                         </div>
                     </div>
                 )}
