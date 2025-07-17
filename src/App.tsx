@@ -535,8 +535,19 @@ const FootballTeamPicker = () => {
     const handleGenerateSummary = async (setupIndex: number) => {
         if (!geminiKey) return;
         const setup = teamSetups[setupIndex];
-        const prompt = `Write a colourful, fun, and slightly cheeky pre-match hype summary for this football game (the match has not been played yet). Mention the teams, their names, and comment on the players and their roles. Be creative and playful, add some relevant emojis, and keep it under 100 words. Format your response in markdown.` +
-            `\n\n${setup.teams.map((team: Team, idx: number) => `Team ${idx + 1} (${team.name}):\n` + team.players.map((p: Player) => `- ${p.name} (${p.role})`).join('\n')).join('\n\n')}`;
+        const toneInstruction = warrenMode
+            ? ` Use a ${Math.random() < warrenAggression / 100 ? 'grumpy and angry' : 'cheerful and encouraging'} tone.`
+            : '';
+        const prompt =
+            `Write a colourful, fun, and slightly cheeky pre-match hype summary for this football game (the match has not been played yet). Mention the teams, their names, and comment on the players and their roles. Be creative and playful, add some relevant emojis, and keep it under 100 words. Format your response in markdown.` +
+            toneInstruction +
+            `\n\n${setup.teams
+                .map(
+                    (team: any, idx: number) =>
+                        `Team ${idx + 1} (${team.name}):\n` +
+                        team.players.map((p: any) => `- ${p.name} (${p.role})`).join('\n')
+                )
+                .join('\n\n')}`;
         setAISummaries(prev => ({ ...prev, [setupIndex]: 'Loading...' }));
         try {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=` + geminiKey, {
