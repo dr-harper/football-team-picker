@@ -595,10 +595,7 @@ const FootballTeamPicker = () => {
                 )}
 
                 {/* Title Section */}
-                <div className="text-center space-y-3 mb-6">
-                    <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg">
-                        Team Shuffle
-                    </h1>
+                <div className="text-center mb-6">
                     <p className="text-gray-200 text-lg sm:text-xl">
                         Pick your 5-a-side teams. <span className="text-yellow-300 font-semibold">Tip: tap two players to swap them.</span>
                     </p>
