@@ -15,6 +15,8 @@ interface HeaderBarProps {
     geminiKeyError: string | null;
     warrenMode: boolean;
     onWarrenModeChange: (value: boolean) => void;
+    warrenAggression: number;
+    onWarrenAggressionChange: (value: number) => void;
 }
 
 const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -30,6 +32,8 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
     geminiKeyError,
     warrenMode,
     onWarrenModeChange,
+    warrenAggression,
+    onWarrenAggressionChange,
 }) => {
     const [showConfig, setShowConfig] = useState(false);
 
@@ -129,6 +133,21 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                                 Warren Mode
                             </label>
                             <p className="text-xs mt-1">Adds spicy or lovely tone to messages.</p>
+                            {warrenMode && (
+                                <div className="mt-2">
+                                    <label className="block text-sm font-semibold mb-1">
+                                        Aggression: {warrenAggression}%
+                                    </label>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value={warrenAggression}
+                                        onChange={(e) => onWarrenAggressionChange(Number(e.target.value))}
+                                        className="w-full"
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

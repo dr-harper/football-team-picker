@@ -39,6 +39,10 @@ const FootballTeamPicker = () => {
     const [aiSummaries, setAISummaries] = useState<{ [setupIndex: number]: string }>({});
     const [geminiKeyError, setGeminiKeyError] = useState<string | null>(null);
     const [warrenMode, setWarrenMode] = useState(() => localStorage.getItem('warrenMode') === 'true');
+    const [warrenAggression, setWarrenAggression] = useState(() => {
+        const stored = localStorage.getItem('warrenAggression');
+        return stored ? Number(stored) : 20;
+    });
     const aiInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -52,6 +56,10 @@ const FootballTeamPicker = () => {
     useEffect(() => {
         localStorage.setItem('warrenMode', String(warrenMode));
     }, [warrenMode]);
+
+    useEffect(() => {
+        localStorage.setItem('warrenAggression', String(warrenAggression));
+    }, [warrenAggression]);
 
     useEffect(() => {
         // Update places based on selected location
@@ -77,7 +85,7 @@ const FootballTeamPicker = () => {
             ' Keep it up, legend!',
             ' Fucking great work, mate!',
         ];
-        if (Math.random() < 0.2) {
+        if (Math.random() < warrenAggression / 100) {
             return msg + ' ' + nasty[Math.floor(Math.random() * nasty.length)];
         }
         return msg + ' ' + lovely[Math.floor(Math.random() * lovely.length)];
@@ -579,6 +587,8 @@ const FootballTeamPicker = () => {
                 geminiKeyError={geminiKeyError}
                 warrenMode={warrenMode}
                 onWarrenModeChange={setWarrenMode}
+                warrenAggression={warrenAggression}
+                onWarrenAggressionChange={setWarrenAggression}
             />
             <div className="flex-grow p-4 sm:p-6">
                 {/* Notifications */}
