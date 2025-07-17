@@ -39,6 +39,10 @@ const FootballTeamPicker = () => {
     const [aiSummaries, setAISummaries] = useState<{ [setupIndex: number]: string }>({});
     const [geminiKeyError, setGeminiKeyError] = useState<string | null>(null);
     const [warrenMode, setWarrenMode] = useState(() => localStorage.getItem('warrenMode') === 'true');
+    const [warrenAggression, setWarrenAggression] = useState(() => {
+        const stored = localStorage.getItem('warrenAggression');
+        return stored ? Number(stored) : 20;
+    });
     const aiInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -52,6 +56,10 @@ const FootballTeamPicker = () => {
     useEffect(() => {
         localStorage.setItem('warrenMode', String(warrenMode));
     }, [warrenMode]);
+
+    useEffect(() => {
+        localStorage.setItem('warrenAggression', String(warrenAggression));
+    }, [warrenAggression]);
 
     useEffect(() => {
         // Update places based on selected location
@@ -77,7 +85,7 @@ const FootballTeamPicker = () => {
             ' Keep it up, legend!',
             ' Fucking great work, mate!',
         ];
-        if (Math.random() < 0.2) {
+        if (Math.random() < warrenAggression / 100) {
             return msg + ' ' + nasty[Math.floor(Math.random() * nasty.length)];
         }
         return msg + ' ' + lovely[Math.floor(Math.random() * lovely.length)];
@@ -169,59 +177,13 @@ const FootballTeamPicker = () => {
         const existingNames = new Set<string>();
         const usedColors = new Set();
 
-        const isSimilarColor = (color1: string, color2: string) => {
-            const hexToRgb = (hex: string) => {
-                const bigint = parseInt(hex.slice(1), 16);
-                return {
-                    r: (bigint >> 16) & 255,
-                    g: (bigint >> 8) & 255,
-                    b: bigint & 255,
-                };
-            };
-
-            const rgbToHsl = ({ r, g, b }: { r: number; g: number; b: number }) => {
-                r /= 255;
-                g /= 255;
-                b /= 255;
-                const max = Math.max(r, g, b);
-                const min = Math.min(r, g, b);
-                let h = 0,
-                    s = 0,
-                    l = (max + min) / 2;
-
-                if (max !== min) {
-                    const d = max - min;
-                    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-                    switch (max) {
-                        case r:
-                            h = (g - b) / d + (g < b ? 6 : 0);
-                            break;
-                        case g:
-                            h = (b - r) / d + 2;
-                            break;
-                        case b:
-                            h = (r - g) / d + 4;
-                            break;
-                    }
-                    h /= 6;
-                }
-
-                return { h: h * 360, s, l };
-            };
-
-            const color1Hsl = rgbToHsl(hexToRgb(color1));
-            const color2Hsl = rgbToHsl(hexToRgb(color2));
-
-            return Math.abs(color1Hsl.h - color2Hsl.h) < 60; // Consider colors similar if their hue difference is less than 30
-        };
 
         for (let i = 0; i < numTeams; i++) {
             const teamName = generateTeamName(existingNames, places) as string; // Use selected location's places
             existingNames.add(teamName);
 
             const boldColors: string[] = ['#ff0000', '#0000ff', '#00ff00', '#ff00ff', '#00ffff', '#ff4500', '#8a2be2', '#ff1493', '#1e90ff'];
-            let color1: string;
-            color1 = boldColors[Math.floor(Math.random() * boldColors.length)];
+            const color1: string = boldColors[Math.floor(Math.random() * boldColors.length)];
             usedColors.add(color1);
 
             let color2: string;
@@ -535,7 +497,7 @@ const FootballTeamPicker = () => {
                 } else {
                     setGeminiKeyError('Invalid Gemini API key or unexpected response.');
                 }
-            } catch (e) {
+            } catch {
                 setGeminiKeyError('Error validating Gemini API key.');
             }
         }
@@ -544,8 +506,21 @@ const FootballTeamPicker = () => {
     const handleGenerateSummary = async (setupIndex: number) => {
         if (!geminiKey) return;
         const setup = teamSetups[setupIndex];
-        const prompt = `Write a colourful, fun, and slightly cheeky pre-match hype summary for this football game (the match has not been played yet). Mention the teams, their names, and comment on the players and their roles. Be creative and playful, add some relevant emojis, and keep it under 100 words. Format your response in markdown.` +
-            `\n\n${setup.teams.map((team: any, idx: number) => `Team ${idx + 1} (${team.name}):\n` + team.players.map((p: any) => `- ${p.name} (${p.role})`).join('\n')).join('\n\n')}`;
+        const useNastyTone = warrenMode && Math.random() < warrenAggression / 100;
+        const toneInstruction = warrenMode
+            ? useNastyTone
+                ? ' Respond in a harsh and mocking tone.'
+                : ' Respond in a warm and encouraging tone.'
+            : '';
+        const prompt =
+            `Write a colourful, fun, and slightly cheeky pre-match hype summary for this football game (the match has not been played yet). Mention the teams, their names, and comment on the players and their roles. Be creative and playful, add some relevant emojis, and keep it under 100 words. Format your response in markdown.` +
+            toneInstruction +
+            `\n\n${setup.teams
+                .map((team: any, idx: number) =>
+                    `Team ${idx + 1} (${team.name}):\n` +
+                    team.players.map((p: any) => `- ${p.name} (${p.role})`).join('\n')
+                )
+                .join('\n\n')}`;
         setAISummaries(prev => ({ ...prev, [setupIndex]: 'Loading...' }));
         try {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=` + geminiKey, {
@@ -555,9 +530,9 @@ const FootballTeamPicker = () => {
             });
             const data = await res.json();
             const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No summary generated.';
-            setAISummaries(prev => ({ ...prev, [setupIndex]: applyWarrenTone(summary) }));
-        } catch (e) {
-            setAISummaries(prev => ({ ...prev, [setupIndex]: applyWarrenTone('Error generating summary.') }));
+            setAISummaries(prev => ({ ...prev, [setupIndex]: summary }));
+        } catch {
+            setAISummaries(prev => ({ ...prev, [setupIndex]: 'Error generating summary.' }));
         }
     };
 
@@ -579,6 +554,8 @@ const FootballTeamPicker = () => {
                 geminiKeyError={geminiKeyError}
                 warrenMode={warrenMode}
                 onWarrenModeChange={setWarrenMode}
+                warrenAggression={warrenAggression}
+                onWarrenAggressionChange={setWarrenAggression}
             />
             <div className="flex-grow p-4 sm:p-6">
                 {/* Notifications */}
@@ -684,9 +661,7 @@ Billy #g"
                                 {/* Conditional Info Box */}
                                 {teamSetups.length > 0 && showNoGoalkeeperInfo && (
                                     <div className="bg-yellow-600 text-white p-4 rounded-lg shadow-md mb-4 mt-4">
-                                        <p>
-                                            Teams were created without goalkeepers. To lock goalkeepers, add <span className="font-bold">#g</span> after their name in the player list.
-                                        </p>
+                                        <p dangerouslySetInnerHTML={{ __html: applyWarrenTone('Teams were created without goalkeepers. To lock goalkeepers, add <span class="font-bold">#g</span> after their name in the player list.') }} />
                                     </div>
                                 )}
 
