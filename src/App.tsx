@@ -38,6 +38,7 @@ const FootballTeamPicker = () => {
     const [aiModel, setAIModel] = useState(() => localStorage.getItem('aiModel') || 'gemini-2.0-flash');
     const [aiSummaries, setAISummaries] = useState<{ [setupIndex: number]: string }>({});
     const [geminiKeyError, setGeminiKeyError] = useState<string | null>(null);
+    const [warrenMode, setWarrenMode] = useState(() => localStorage.getItem('warrenMode') === 'true');
     const aiInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -49,6 +50,10 @@ const FootballTeamPicker = () => {
     }, [selectedLocation]);
 
     useEffect(() => {
+        localStorage.setItem('warrenMode', String(warrenMode));
+    }, [warrenMode]);
+
+    useEffect(() => {
         // Update places based on selected location
         setPlaces((teamPlaces as any)[selectedLocation]?.places || teamPlaces.Generic.places);
     }, [selectedLocation]);
@@ -57,6 +62,24 @@ const FootballTeamPicker = () => {
     useEffect(() => {
         setAISummaries({});
     }, [teamSetups]);
+
+    const applyWarrenTone = (msg: string) => {
+        if (!warrenMode) return msg;
+        const nasty = [
+            ' Sort it out, pal!',
+            ' Did your brain take a day off?',
+            ' Honestly, that\'s pathetic.'
+        ];
+        const lovely = [
+            ' You\'re doing great!',
+            ' Lovely stuff!',
+            ' Keep it up, legend!'
+        ];
+        if (Math.random() < 0.1) {
+            return msg + ' ' + nasty[Math.floor(Math.random() * nasty.length)];
+        }
+        return msg + ' ' + lovely[Math.floor(Math.random() * lovely.length)];
+    };
 
     const handleLocationChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         setSelectedLocation(event.target.value);
@@ -68,22 +91,22 @@ const FootballTeamPicker = () => {
         setPlaces(places);
         setIsLoadingLocation(false); // Stop loading animation
         if (location === 'Generic') {
-            setNotification("Sorry, we don't have any regional data for your location.Defaulting to Generic");
+            setNotification(applyWarrenTone("Sorry, we don't have any regional data for your location. Defaulting to Generic"));
         } else {
-            setNotification(`Location found: ${location}`); // Show notification
+            setNotification(applyWarrenTone(`Location found: ${location}`)); // Show notification
         }
     };
 
     const generateTeams = () => {
         if (!playersText.trim()) {
-            setErrorMessage('Please enter player names');
+            setErrorMessage(applyWarrenTone('Please enter player names'));
             return;
         }
 
         const playerLines = playersText.split('\n').filter(line => line.trim().length > 0);
 
         if (playerLines.length < 10) {
-            setErrorMessage('You need at least 10 players for two 5-a-side teams');
+            setErrorMessage(applyWarrenTone('You need at least 10 players for two 5-a-side teams'));
             return;
         }
 
@@ -114,11 +137,11 @@ const FootballTeamPicker = () => {
 
         const numTeams = Math.floor(2);
         if (goalkeepers.length < numTeams) {
-            setErrorMessage(`You need at least ${numTeams} goalkeepers`);
+            setErrorMessage(applyWarrenTone(`You need at least ${numTeams} goalkeepers`));
         }
 
         if (players.length > 16) {
-            setErrorMessage('You can only have a maximum of 16 players');
+            setErrorMessage(applyWarrenTone('You can only have a maximum of 16 players'));
             return;
         }
 
@@ -511,9 +534,9 @@ const FootballTeamPicker = () => {
             });
             const data = await res.json();
             const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No summary generated.';
-            setAISummaries(prev => ({ ...prev, [setupIndex]: summary }));
+            setAISummaries(prev => ({ ...prev, [setupIndex]: applyWarrenTone(summary) }));
         } catch (e) {
-            setAISummaries(prev => ({ ...prev, [setupIndex]: 'Error generating summary.' }));
+            setAISummaries(prev => ({ ...prev, [setupIndex]: applyWarrenTone('Error generating summary.') }));
         }
     };
 
@@ -533,6 +556,8 @@ const FootballTeamPicker = () => {
                 onGeminiKeySave={handleGeminiKeySave}
                 aiInputRef={aiInputRef}
                 geminiKeyError={geminiKeyError}
+                warrenMode={warrenMode}
+                onWarrenModeChange={setWarrenMode}
             />
             <div className="flex-grow p-4 sm:p-6">
                 {/* Notification */}
@@ -618,7 +643,7 @@ Billy #g"
                                             setTeamSetups([]);
                                             setErrorMessage('');
                                             setPlayerNumbers({});
-                                            setNotification(`All teams cleared`);
+                                            setNotification(applyWarrenTone(`All teams cleared`));
                                         }}
                                         className="bg-green-900 text-white py-2 px-4 rounded font-bold shadow-md transition border border-white hover:bg-green-800"
                                     >

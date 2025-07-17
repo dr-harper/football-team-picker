@@ -11,6 +11,7 @@ A React web app built to simplify picking 5-a-side football teams. The app ensur
 - Generate multiple team options for voting
 - Randomly generated team names, with local options for London and Hampshire (more regions can be added)
 - Export saved teams as an image to share with friends
+- Optional "Warren Mode" adds a chance for messages to be cheeky or lovely
 
 ### Local Development
 
