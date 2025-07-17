@@ -26,10 +26,10 @@ const FloatingFooter: React.FC<FloatingFooterProps> = ({ visible, onExport }) =>
                     <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M7.5 12l4.5 4.5m0 0l4.5-4.5m-4.5 4.5V3"
+                        d="M12 7.5l4.5 4.5m0 0l-4.5 4.5m4.5-4.5H3"
                     />
                 </svg>
-                Download Teams as Image
+                Export Teams as Image
             </Button>
         </div>
     );
