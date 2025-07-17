@@ -9,6 +9,7 @@ import { generateTeamName } from './utils/teamNameGenerator'; // Import the util
 import { getPlacesBasedOnLocation } from './utils/locationUtils'; // Import location utility
 import Notification from './components/Notification'; // Import Notification component
 import Footer from './components/Footer'; // Import Footer component
+import AppCustomization from "./components/AppCustomization";
 import { teamPlaces } from './constants/teamConstants';
 import { positionsByTeamSizeAndSide, placeholderPositions } from './constants/positionsConstants';
 import ReactMarkdown from 'react-markdown';
@@ -33,7 +34,7 @@ const FootballTeamPicker = () => {
         playerIndex: number;
     } | null>(null);
     const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('geminiKey') || '');
-    const [showAIDropdown, setShowAIDropdown] = useState(false);
+    const [aiModel, setAIModel] = useState(() => localStorage.getItem('aiModel') || 'gemini-2.0-flash');
     const [aiSummaries, setAISummaries] = useState<{ [setupIndex: number]: string }>({});
     const [geminiKeyError, setGeminiKeyError] = useState<string | null>(null);
     const aiInputRef = useRef<HTMLInputElement>(null);
@@ -476,7 +477,7 @@ const FootballTeamPicker = () => {
             setGeminiKeyError(null);
             // Validate Gemini key with a test request
             try {
-                const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + key, {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=` + key, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents: [{ parts: [{ text: 'Reply with OK' }] }] })
@@ -486,7 +487,6 @@ const FootballTeamPicker = () => {
                 if (reply === 'OK') {
                     setGeminiKey(key);
                     localStorage.setItem('geminiKey', key);
-                    setShowAIDropdown(false);
                 } else {
                     setGeminiKeyError('Invalid Gemini API key or unexpected response.');
                 }
@@ -503,7 +503,7 @@ const FootballTeamPicker = () => {
             `\n\n${setup.teams.map((team: any, idx: number) => `Team ${idx + 1} (${team.name}):\n` + team.players.map((p: any) => `- ${p.name} (${p.role})`).join('\n')).join('\n\n')}`;
         setAISummaries(prev => ({ ...prev, [setupIndex]: 'Loading...' }));
         try {
-            const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + geminiKey, {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=` + geminiKey, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
@@ -518,6 +518,21 @@ const FootballTeamPicker = () => {
 
     return (
         <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-green-700">
+            <AppCustomization
+                selectedLocation={selectedLocation}
+                onLocationChange={handleLocationChange}
+                onFindLocation={handleFindLocation}
+                isLoadingLocation={isLoadingLocation}
+                aiModel={aiModel}
+                onAIModelChange={(e) => {
+                    setAIModel(e.target.value);
+                    localStorage.setItem('aiModel', e.target.value);
+                }}
+                geminiKey={geminiKey}
+                onGeminiKeySave={handleGeminiKeySave}
+                aiInputRef={aiInputRef}
+                geminiKeyError={geminiKeyError}
+            />
             <div className="flex-grow p-4 sm:p-6">
                 {/* Notification */}
                 {notification && (
@@ -542,73 +557,7 @@ const FootballTeamPicker = () => {
                             Tip: Click one player, then another to swap their positions on the pitch!
                         </span>
                     </p>
-                    <div className="mt-4 flex justify-center items-center gap-4">
-                        <div>
-                            <label htmlFor="location-select" className="text-white font-semibold mr-2">
-                                Locale:
-                            </label>
-                            <select
-                                id="location-select"
-                                value={selectedLocation}
-                                onChange={handleLocationChange}
-                                className="p-2 rounded bg-green-700 text-white border border-green-500"
-                            >
-                                {Object.entries(teamPlaces).map(([key, value]) => (
-                                    <option key={key} value={key}>
-                                        {key}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <Button
-                            onClick={handleFindLocation}
-                            className="bg-blue-700 text-white py-2 px-4 rounded font-bold shadow-md hover:bg-blue-800 flex items-center gap-2"
-                            disabled={isLoadingLocation} // Disable button while loading
-                        >
-                            {isLoadingLocation ? (
-                                <svg
-                                    className="animate-spin h-5 w-5 text-white"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <circle
-                                        className="opacity-25"
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                        stroke="currentColor"
-                                        strokeWidth="4"
-                                    ></circle>
-                                    <path
-                                        className="opacity-75"
-                                        fill="currentColor"
-                                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                                    ></path>
-                                </svg>
-                            ) : (
-                                <>
-
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        strokeWidth={1.5}
-                                        stroke="currentColor"
-                                        className="w-5 h-5"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M12 2c3.866 0 7 3.134 7 7 0 5.25-7 13-7 13s-7-7.75-7-13c0-3.866 3.134-7 7-7z"
-                                        />
-                                        <circle cx="12" cy="9" r="2.25" />
-                                    </svg>
-                                    Find Location
-                                </>
-                            )}
-                        </Button>
-                    </div>
+                    
                 </div>
 
                 <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -973,29 +922,6 @@ Billy #g"
 
             {/* Footer */}
             <Footer />
-            {/* AI Key Dropdown */}
-            <div className="absolute right-4 top-4 z-20">
-                <div className="relative">
-                    <Button onClick={() => setShowAIDropdown(v => !v)} className="bg-yellow-400 text-green-900 font-bold px-3 py-1 rounded shadow flex items-center gap-2">
-                        Enable AI Mode
-                        {geminiKey ? <span title="Gemini key set" className="text-green-700">✔️</span> : <span title="No Gemini key" className="text-red-700">❌</span>}
-                    </Button>
-                    {showAIDropdown && (
-                        <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-300 rounded shadow-lg p-4 z-30">
-                            <div className="mb-2 font-bold text-green-900">Gemini API Key</div>
-                            <div className="mb-2 text-sm text-gray-700">
-                                Enabling AI Mode allows you to generate fun, pre-match summaries for your teams using Google Gemini. Your API key is stored securely in your browser and never sent anywhere except directly to Google.
-                            </div>
-                            <input ref={aiInputRef} type="password" defaultValue={geminiKey} className="w-full border p-2 rounded mb-2" placeholder="Paste your Gemini API key here" />
-                            <Button onClick={handleGeminiKeySave} className="bg-green-700 text-white w-full mb-2">Save Key</Button>
-                            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-700 underline text-sm">Get your Gemini API key from Google AI Studio</a>
-                            {geminiKeyError && (
-                                <div className="text-red-600 text-sm mt-2">{geminiKeyError}</div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
         </div>
     );
 };
