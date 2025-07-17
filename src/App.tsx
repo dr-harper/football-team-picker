@@ -110,7 +110,7 @@ const FootballTeamPicker = () => {
         const defenders = players.filter(player => player.isDefender);
         const outfieldPlayers = players.filter(player => !player.isGoalkeeper && !player.isStriker && !player.isDefender && !player.isteam1 && !player.isteam2);
 
-        const numTeams = Math.floor(players.length / 5);
+        const numTeams = Math.floor(2);
         if (goalkeepers.length < numTeams) {
             setErrorMessage(`You need at least ${numTeams} goalkeepers`);
         }
@@ -185,19 +185,13 @@ const FootballTeamPicker = () => {
 
             const boldColors: string[] = ['#ff0000', '#0000ff', '#00ff00', '#ff00ff', '#00ffff', '#ff4500', '#8a2be2', '#ff1493', '#1e90ff'];
             let color1: string;
-            do {
-                color1 = boldColors[Math.floor(Math.random() * boldColors.length)];
-            } while (Array.from(usedColors).some((usedColor) => isSimilarColor(usedColor as string, color1)));
+            color1 = boldColors[Math.floor(Math.random() * boldColors.length)];
             usedColors.add(color1);
 
             let color2: string;
             do {
                 color2 = boldColors[Math.floor(Math.random() * boldColors.length)];
-            } while (
-                color1 === color2 ||
-                Array.from(usedColors).some((usedColor) => isSimilarColor(usedColor as string, color2)) ||
-                isSimilarColor(color1, color2)
-            );
+            } while (color1 === color2);
             usedColors.add(color2);
 
             const team = {
@@ -695,7 +689,7 @@ Billy #g"
                                 {teamSetups.length > 0 && showNoGoalkeeperInfo && (
                                     <div className="bg-yellow-600 text-white p-4 rounded-lg shadow-md mb-4 mt-4">
                                         <p>
-                                            Teams were created without goalkeepers. To lock goalkeepers, add <span className="font-bold">#gk</span> after their name in the player list.
+                                            Teams were created without goalkeepers. To lock goalkeepers, add <span className="font-bold">#g</span> after their name in the player list.
                                         </p>
                                     </div>
                                 )}

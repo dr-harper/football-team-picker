@@ -58,23 +58,23 @@ export const positionsByTeamSizeAndSide: {
     8: {
         left: [
             { top: '50%', left: '10%' }, // Goalkeeper
-            { top: '25%', left: '20%' }, // Defender 1
-            { top: '75%', left: '20%' }, // Defender 2
-            { top: '40%', left: '30%' }, // Midfielder 1
-            { top: '60%', left: '30%' }, // Midfielder 2
-            { top: '20%', left: '45%' }, // Midfielder 3
-            { top: '80%', left: '45%' }, // Midfielder 4
-            { top: '50%', left: '50%' }, // Striker
+            { top: '20%', left: '15%' }, // Defender 1
+            { top: '80%', left: '15%' }, // Defender 2
+            { top: '35%', left: '27%' }, // Midfielder 1
+            { top: '65%', left: '27%' }, // Midfielder 2
+            { top: '20%', left: '42%' }, // Midfielder 3
+            { top: '80%', left: '42%' }, // Midfielder 4
+            { top: '50%', left: '42%' }, // Striker
         ],
         right: [
             { top: '50%', left: '90%' }, // Goalkeeper
-            { top: '25%', left: '80%' }, // Defender 1
-            { top: '75%', left: '80%' }, // Defender 2
-            { top: '40%', left: '70%' }, // Midfielder 1
-            { top: '60%', left: '70%' }, // Midfielder 2
-            { top: '20%', left: '55%' }, // Midfielder 3
-            { top: '80%', left: '55%' }, // Midfielder 4
-            { top: '50%', left: '50%' }, // Striker
+            { top: '20%', left: '85%' }, // Defender 1
+            { top: '80%', left: '85%' }, // Defender 2
+            { top: '35%', left: '73%' }, // Midfielder 1
+            { top: '65%', left: '73%' }, // Midfielder 2
+            { top: '20%', left: '58%' }, // Midfielder 3
+            { top: '80%', left: '58%' }, // Midfielder 4
+            { top: '50%', left: '58%' }, // Striker
         ],
     },
 };
