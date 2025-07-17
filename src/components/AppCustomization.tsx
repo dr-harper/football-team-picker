@@ -40,15 +40,15 @@ const AppCustomization: React.FC<AppCustomizationProps> = ({
     }, [darkMode]);
 
     return (
-        <div className="absolute right-4 top-4 z-20">
-            <div className="relative">
-                <Button onClick={() => setOpen(v => !v)} className="bg-yellow-400 text-green-900 font-bold px-3 py-1 rounded shadow flex items-center gap-2">
-                    App Customisation
-                </Button>
-                {open && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-300 rounded shadow-lg p-4 z-30 text-green-900 space-y-4">
+        <div className="relative">
+            <Button onClick={() => setOpen(v => !v)} className="bg-yellow-400 text-green-900 font-bold px-3 py-1 rounded shadow flex items-center gap-2">
+                App Customisation
+            </Button>
+            {open && (
+                <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-300 rounded shadow-lg p-4 z-30 text-green-900 space-y-4">
                         <div>
                             <label htmlFor="location-select" className="block font-bold mb-1">Locale</label>
+                            <p className="text-xs text-gray-600 mb-1">Choose your region to tailor team names.</p>
                             <select
                                 id="location-select"
                                 value={selectedLocation}
@@ -76,6 +76,7 @@ const AppCustomization: React.FC<AppCustomizationProps> = ({
                         </div>
                         <div>
                             <label htmlFor="model-select" className="block font-bold mb-1">AI Model</label>
+                            <p className="text-xs text-gray-600 mb-1">Select the Gemini model for AI summaries.</p>
                             <select id="model-select" value={aiModel} onChange={onAIModelChange} className="w-full border p-2 rounded mb-2">
                                 <option value="gemini-2.0-flash">Gemini Flash</option>
                                 <option value="gemini-pro">Gemini Pro</option>
@@ -93,7 +94,6 @@ const AppCustomization: React.FC<AppCustomizationProps> = ({
                     </div>
                 )}
             </div>
-        </div>
     );
 };
 

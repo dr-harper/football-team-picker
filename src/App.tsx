@@ -518,21 +518,23 @@ const FootballTeamPicker = () => {
 
     return (
         <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-green-700">
-            <AppCustomization
-                selectedLocation={selectedLocation}
-                onLocationChange={handleLocationChange}
-                onFindLocation={handleFindLocation}
-                isLoadingLocation={isLoadingLocation}
-                aiModel={aiModel}
-                onAIModelChange={(e) => {
-                    setAIModel(e.target.value);
-                    localStorage.setItem('aiModel', e.target.value);
-                }}
-                geminiKey={geminiKey}
-                onGeminiKeySave={handleGeminiKeySave}
-                aiInputRef={aiInputRef}
-                geminiKeyError={geminiKeyError}
-            />
+            <header className="flex justify-end p-4">
+                <AppCustomization
+                    selectedLocation={selectedLocation}
+                    onLocationChange={handleLocationChange}
+                    onFindLocation={handleFindLocation}
+                    isLoadingLocation={isLoadingLocation}
+                    aiModel={aiModel}
+                    onAIModelChange={(e) => {
+                        setAIModel(e.target.value);
+                        localStorage.setItem('aiModel', e.target.value);
+                    }}
+                    geminiKey={geminiKey}
+                    onGeminiKeySave={handleGeminiKeySave}
+                    aiInputRef={aiInputRef}
+                    geminiKeyError={geminiKeyError}
+                />
+            </header>
             <div className="flex-grow p-4 sm:p-6">
                 {/* Notification */}
                 {notification && (
