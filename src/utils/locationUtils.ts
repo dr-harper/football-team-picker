@@ -49,20 +49,3 @@ export const getPlacesBasedOnLocation = async (): Promise<{ location: string; pl
         return { location: 'Generic', places: teamPlaces.Generic.places }; // Default to Generic places if location fails
     }
 };
-
-const isWithinRadius = (lat1: number, lon1: number, lat2: number, lon2: number, radiusKm: number): boolean => {
-    const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
-
-    const earthRadiusKm = 6371;
-    const dLat = toRadians(lat2 - lat1);
-    const dLon = toRadians(lon2 - lon1);
-
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = earthRadiusKm * c;
-
-    return distance <= radiusKm;
-};
