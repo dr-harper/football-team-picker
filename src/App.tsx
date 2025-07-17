@@ -26,7 +26,7 @@ const FootballTeamPicker = () => {
         return localStorage.getItem('selectedLocation') || 'Generic'; // Load from localStorage or default to Hampshire
     });
     const [places, setPlaces] = useState<string[]>(teamPlaces.Generic.places); // Default to Hampshire places
-    const [notification, setNotification] = useState<string | null>(null); // State for notification message
+    const [notifications, setNotifications] = useState<{ id: number; message: string }[]>([]);
     const [showNoGoalkeeperInfo, setShowNoGoalkeeperInfo] = useState(false); // State to track if the info box should be shown
     const [isLoadingLocation, setIsLoadingLocation] = useState(false); // New state for loading animation
     const [selectedPlayer, setSelectedPlayer] = useState<{
@@ -73,12 +73,24 @@ const FootballTeamPicker = () => {
         const lovely = [
             ' You\'re doing great!',
             ' Lovely stuff!',
-            ' Keep it up, legend!'
+            ' Keep it up, legend!',
+            ' Sparkling work!',
+            ' You absolute star!',
+            " That's brilliant!"
         ];
-        if (Math.random() < 0.1) {
+        if (Math.random() < 0.2) {
             return msg + ' ' + nasty[Math.floor(Math.random() * nasty.length)];
         }
         return msg + ' ' + lovely[Math.floor(Math.random() * lovely.length)];
+    };
+
+    const addNotification = (msg: string) => {
+        const id = Date.now() + Math.random();
+        setNotifications(n => [...n, { id, message: msg }]);
+    };
+
+    const removeNotification = (id: number) => {
+        setNotifications(n => n.filter(note => note.id !== id));
     };
 
     const handleLocationChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -91,9 +103,9 @@ const FootballTeamPicker = () => {
         setPlaces(places);
         setIsLoadingLocation(false); // Stop loading animation
         if (location === 'Generic') {
-            setNotification(applyWarrenTone("Sorry, we don't have any regional data for your location. Defaulting to Generic"));
+            addNotification(applyWarrenTone("Sorry, we don't have any regional data for your location. Defaulting to Generic"));
         } else {
-            setNotification(applyWarrenTone(`Location found: ${location}`)); // Show notification
+            addNotification(applyWarrenTone(`Location found: ${location}`)); // Show notification
         }
     };
 
@@ -560,9 +572,13 @@ const FootballTeamPicker = () => {
                 onWarrenModeChange={setWarrenMode}
             />
             <div className="flex-grow p-4 sm:p-6">
-                {/* Notification */}
-                {notification && (
-                    <Notification message={notification} onClose={() => setNotification(null)} />
+                {/* Notifications */}
+                {notifications.length > 0 && (
+                    <div className="fixed bottom-24 right-4 flex flex-col items-end space-y-2 z-50">
+                        {notifications.map(n => (
+                            <Notification key={n.id} message={n.message} onClose={() => removeNotification(n.id)} />
+                        ))}
+                    </div>
                 )}
 
                 {/* Title Section */}
@@ -643,7 +659,7 @@ Billy #g"
                                             setTeamSetups([]);
                                             setErrorMessage('');
                                             setPlayerNumbers({});
-                                            setNotification(applyWarrenTone(`All teams cleared`));
+                                            addNotification(applyWarrenTone(`All teams cleared`));
                                         }}
                                         className="bg-green-900 text-white py-2 px-4 rounded font-bold shadow-md transition border border-white hover:bg-green-800"
                                     >
