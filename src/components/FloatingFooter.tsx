@@ -10,7 +10,7 @@ const FloatingFooter: React.FC<FloatingFooterProps> = ({ visible, onExport }) =>
     if (!visible) return null;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 bg-green-900 text-white py-3 flex justify-center z-50 shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 bg-green-900 text-white py-3 flex justify-end pr-4 z-50 shadow-lg">
             <Button
                 onClick={onExport}
                 className="bg-blue-700 text-white py-2 px-6 rounded font-bold shadow-md hover:bg-blue-800 flex items-center gap-2"
