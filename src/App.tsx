@@ -67,16 +67,15 @@ const FootballTeamPicker = () => {
         if (!warrenMode) return msg;
         const nasty = [
             ' Sort it out, pal!',
-            ' Did your brain take a day off?',
-            ' Honestly, that\'s pathetic.'
+            ' Honestly, that\'s pathetic.',
+            'Use your eyes, mate!',
+            'That\'s a fucking disgrace!',
         ];
         const lovely = [
             ' You\'re doing great!',
             ' Lovely stuff!',
             ' Keep it up, legend!',
-            ' Sparkling work!',
-            ' You absolute star!',
-            " That's brilliant!"
+            ' Fucking great work, mate!',
         ];
         if (Math.random() < 0.2) {
             return msg + ' ' + nasty[Math.floor(Math.random() * nasty.length)];
@@ -599,7 +598,7 @@ const FootballTeamPicker = () => {
                             Tip: Click one player, then another to swap their positions on the pitch!
                         </span>
                     </p>
-                    
+
                 </div>
 
                 <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
