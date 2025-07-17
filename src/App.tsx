@@ -363,9 +363,6 @@ const FootballTeamPicker = () => {
         }
     };
 
-    // Helper to get a unique key for a player
-    const getPlayerKey = (setupIndex: number, teamIndex: number, playerIndex: number) => `${setupIndex}-${teamIndex}-${playerIndex}`;
-
     // Unique identifier for a player within a setup used for motion layoutId and React keys
     const getPlayerId = (setupIndex: number, player: { name: string; shirtNumber: number | null }) =>
         `player-${setupIndex}-${player.name}-${player.shirtNumber}`;
@@ -781,7 +778,7 @@ Billy #g"
                                                                         selectedPlayer.teamIndex === 0 &&
                                                                         selectedPlayer.playerIndex === position.playerIndex
                                                                         ? 'ring-2 ring-yellow-400 rounded-full'
-                                                                        : selectedPlayer && !(selectedPlayer.setupIndex === setupIndex && selectedPlayer.teamIndex === 0 && selectedPlayer.playerIndex === position.playerIndex)
+                                                                        : selectedPlayer && selectedPlayer.setupIndex === setupIndex
                                                                             ? 'ring-2 ring-blue-400 ring-offset-2 rounded-full cursor-pointer'
                                                                             : ''
                                                                     }`}
@@ -814,7 +811,7 @@ Billy #g"
                                                                         selectedPlayer.teamIndex === 1 &&
                                                                         selectedPlayer.playerIndex === position.playerIndex
                                                                         ? 'ring-2 ring-yellow-400 rounded-full'
-                                                                        : selectedPlayer && !(selectedPlayer.setupIndex === setupIndex && selectedPlayer.teamIndex === 1 && selectedPlayer.playerIndex === position.playerIndex)
+                                                                        : selectedPlayer && selectedPlayer.setupIndex === setupIndex
                                                                             ? 'ring-2 ring-blue-400 ring-offset-2 rounded-full cursor-pointer'
                                                                             : ''
                                                                     }`}
@@ -861,9 +858,11 @@ Billy #g"
                                                                                 selectedPlayer.setupIndex === setupIndex &&
                                                                                 selectedPlayer.teamIndex === teamIndex &&
                                                                                 selectedPlayer.playerIndex === playerIndex
-                                                                                ? 'ring-2 ring-yellow-400'
-                                                                                : ''
-                                                                                }`}
+                                                                                    ? 'ring-2 ring-yellow-400'
+                                                                                    : selectedPlayer && selectedPlayer.setupIndex === setupIndex
+                                                                                        ? 'ring-2 ring-blue-400'
+                                                                                        : ''
+                                                                            }`}
                                                                         >
                                                                             {player.shirtNumber}. {player.name}{' '}
                                                                             {player.isGoalkeeper && (
