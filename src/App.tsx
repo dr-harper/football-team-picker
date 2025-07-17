@@ -319,11 +319,13 @@ const FootballTeamPicker = () => {
         first: { setupIndex: number; teamIndex: number; playerIndex: number },
         second: { setupIndex: number; teamIndex: number; playerIndex: number }
     ) => {
+        if (first.setupIndex !== second.setupIndex) return; // Guard against cross setup swaps
+
         setTeamSetups(prevSetups => {
             const newSetups = prevSetups.map((setup, sIdx) => {
                 if (sIdx !== first.setupIndex) return setup;
                 // Deep copy teams and players arrays for the affected setup
-                const newTeams = setup.teams.map((team: any, tIdx: number) => ({
+                const newTeams = setup.teams.map((team: any) => ({
                     ...team,
                     players: [...team.players],
                 }));
@@ -343,24 +345,27 @@ const FootballTeamPicker = () => {
         playerIndex: number
     ) => {
         const clicked = { setupIndex, teamIndex, playerIndex };
-        if (!selectedPlayer) {
+
+        // Start a new selection if none selected or switching setups
+        if (!selectedPlayer || selectedPlayer.setupIndex !== setupIndex) {
             setSelectedPlayer(clicked);
+            return;
+        }
+
+        if (
+            selectedPlayer.teamIndex === teamIndex &&
+            selectedPlayer.playerIndex === playerIndex
+        ) {
+            setSelectedPlayer(null);
         } else {
-            if (
-                selectedPlayer.setupIndex === setupIndex &&
-                selectedPlayer.teamIndex === teamIndex &&
-                selectedPlayer.playerIndex === playerIndex
-            ) {
-                setSelectedPlayer(null);
-            } else {
-                swapPlayers(selectedPlayer, clicked);
-                setSelectedPlayer(null);
-            }
+            swapPlayers(selectedPlayer, clicked);
+            setSelectedPlayer(null);
         }
     };
 
-    // Helper to get a unique key for a player
-    const getPlayerKey = (setupIndex: number, teamIndex: number, playerIndex: number) => `${setupIndex}-${teamIndex}-${playerIndex}`;
+    // Unique identifier for a player within a setup used for motion layoutId and React keys
+    const getPlayerId = (setupIndex: number, player: { name: string; shirtNumber: number | null }) =>
+        `player-${setupIndex}-${player.name}-${player.shirtNumber}`;
 
     const exportAllImages = async () => {
         const elements = teamSetups.map((_, index) => document.getElementById(`team-setup-${index}`));
@@ -758,12 +763,12 @@ Billy #g"
                                                     {/* Team 1 players */}
                                                     {getPositionsForTeam(setup.teams[0], true, setup.teams[0].players.length).map((position: any) => (
                                                         <div
-                                                            key={`team1-${position.player.name}-${position.player.shirtNumber}`}
+                                                            key={getPlayerId(setupIndex, position.player)}
                                                             className="absolute"
                                                             style={{ top: position.top, left: position.left, transform: 'translate(-50%, -50%)' }}
                                                         >
                                                             <motion.div
-                                                                layoutId={`player-${position.player.name}-${position.player.shirtNumber}`}
+                                                                layoutId={getPlayerId(setupIndex, position.player)}
                                                                 layout
                                                                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                                                                 onClick={() => handlePlayerClick(setupIndex, 0, position.playerIndex)}
@@ -773,7 +778,7 @@ Billy #g"
                                                                         selectedPlayer.teamIndex === 0 &&
                                                                         selectedPlayer.playerIndex === position.playerIndex
                                                                         ? 'ring-2 ring-yellow-400 rounded-full'
-                                                                        : selectedPlayer && !(selectedPlayer.setupIndex === setupIndex && selectedPlayer.teamIndex === 0 && selectedPlayer.playerIndex === position.playerIndex)
+                                                                        : selectedPlayer && selectedPlayer.setupIndex === setupIndex
                                                                             ? 'ring-2 ring-blue-400 ring-offset-2 rounded-full cursor-pointer'
                                                                             : ''
                                                                     }`}
@@ -791,12 +796,12 @@ Billy #g"
                                                     {/* Team 2 players */}
                                                     {getPositionsForTeam(setup.teams[1], false, setup.teams[1].players.length).map((position: any) => (
                                                         <div
-                                                            key={`team2-${position.player.name}-${position.player.shirtNumber}`}
+                                                            key={getPlayerId(setupIndex, position.player)}
                                                             className="absolute"
                                                             style={{ top: position.top, left: position.left, transform: 'translate(-50%, -50%)' }}
                                                         >
                                                             <motion.div
-                                                                layoutId={`player-${position.player.name}-${position.player.shirtNumber}`}
+                                                                layoutId={getPlayerId(setupIndex, position.player)}
                                                                 layout
                                                                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                                                                 onClick={() => handlePlayerClick(setupIndex, 1, position.playerIndex)}
@@ -806,7 +811,7 @@ Billy #g"
                                                                         selectedPlayer.teamIndex === 1 &&
                                                                         selectedPlayer.playerIndex === position.playerIndex
                                                                         ? 'ring-2 ring-yellow-400 rounded-full'
-                                                                        : selectedPlayer && !(selectedPlayer.setupIndex === setupIndex && selectedPlayer.teamIndex === 1 && selectedPlayer.playerIndex === position.playerIndex)
+                                                                        : selectedPlayer && selectedPlayer.setupIndex === setupIndex
                                                                             ? 'ring-2 ring-blue-400 ring-offset-2 rounded-full cursor-pointer'
                                                                             : ''
                                                                     }`}
@@ -847,15 +852,17 @@ Billy #g"
                                                                 <ul className="space-y-1">
                                                                     {team.players.map((player: any, playerIndex: number) => (
                                                                         <li
-                                                                            key={playerIndex}
+                                                                            key={getPlayerId(setupIndex, player)}
                                                                             onClick={() => handlePlayerClick(setupIndex, teamIndex, playerIndex)}
                                                                             className={`py-1 px-2 rounded-lg bg-green-600 text-white border border-green-500 cursor-pointer ${selectedPlayer &&
                                                                                 selectedPlayer.setupIndex === setupIndex &&
                                                                                 selectedPlayer.teamIndex === teamIndex &&
                                                                                 selectedPlayer.playerIndex === playerIndex
-                                                                                ? 'ring-2 ring-yellow-400'
-                                                                                : ''
-                                                                                }`}
+                                                                                    ? 'ring-2 ring-yellow-400'
+                                                                                    : selectedPlayer && selectedPlayer.setupIndex === setupIndex
+                                                                                        ? 'ring-2 ring-blue-400'
+                                                                                        : ''
+                                                                            }`}
                                                                         >
                                                                             {player.shirtNumber}. {player.name}{' '}
                                                                             {player.isGoalkeeper && (
