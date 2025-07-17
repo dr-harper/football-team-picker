@@ -38,7 +38,8 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
     const [showConfig, setShowConfig] = useState(false);
 
     return (
-        <header className="bg-green-900 text-white p-4 flex justify-end relative z-10">
+        <header className="bg-green-900 text-white p-4 flex justify-between items-center relative z-10">
+            <img src="/logo.png" alt="Team Shuffle Logo" className="w-8 h-8" />
             <div className="relative">
                 <Button
                     onClick={() => setShowConfig(v => !v)}

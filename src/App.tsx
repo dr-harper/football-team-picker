@@ -543,9 +543,9 @@ const FootballTeamPicker = () => {
             toneInstruction +
             `\n\n${setup.teams
                 .map(
-                    (team: any, idx: number) =>
+                    (team: Team, idx: number) =>
                         `Team ${idx + 1} (${team.name}):\n` +
-                        team.players.map((p: any) => `- ${p.name} (${p.role})`).join('\n')
+                        team.players.map((p: Player) => `- ${p.name} (${p.role})`).join('\n')
                 )
                 .join('\n\n')}`;
         setAISummaries(prev => ({ ...prev, [setupIndex]: 'Loading...' }));
@@ -596,23 +596,12 @@ const FootballTeamPicker = () => {
 
                 {/* Title Section */}
                 <div className="text-center space-y-3 mb-6">
-                    <div className="flex justify-center items-center gap-3">
-                        <img
-                            src="/logo.png" // Path to the logo in the public folder
-                            alt="Team Shuffle Logo"
-                            className="w-12 h-12 sm:w-16 sm:h-16"
-                        />
-                        <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg">
-                            Team Shuffle
-                        </h1>
-                    </div>
+                    <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg">
+                        Team Shuffle
+                    </h1>
                     <p className="text-gray-200 text-lg sm:text-xl">
-                        Pick your 5-a-side football teams<br />
-                        <span className="text-yellow-300 text-base sm:text-lg font-semibold block mt-2">
-                            Tip: Click one player, then another to swap their positions on the pitch!
-                        </span>
+                        Pick your 5-a-side teams. <span className="text-yellow-300 font-semibold">Tip: tap two players to swap them.</span>
                     </p>
-
                 </div>
 
                 <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
