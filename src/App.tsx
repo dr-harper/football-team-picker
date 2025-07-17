@@ -670,10 +670,6 @@ Billy #g"
                                         Reset
                                     </Button>
                                 </div>
-                                <div className="text-sm font-bold text-green-200">
-                                    Teams Generated: {teamSetups.length}
-                                </div>
-
                                 {errorMessage && (
                                     <div className="mt-3 bg-red-700 border border-red-500 text-white px-4 py-2 rounded">
                                         {errorMessage}
@@ -919,17 +915,19 @@ Billy #g"
                                                 </div>
                                             </div>
                                         )}
-                                        <div className="flex justify-end mt-2">
-                                            {!aiSummaries[setupIndex] && (
-                                                <Button
-                                                    onClick={() => handleGenerateSummary(setupIndex)}
-                                                    className="bg-yellow-400 text-green-900 font-bold px-3 py-1 rounded shadow flex items-center gap-2 generate-ai-summary"
-                                                    disabled={!geminiKey || aiSummaries[setupIndex] === 'Loading...'}
-                                                >
-                                                    {aiSummaries[setupIndex] === 'Loading...' ? 'Generating...' : 'Generate AI Match Summary'}
-                                                </Button>
-                                            )}
-                                        </div>
+                                        {geminiKey && (
+                                            <div className="flex justify-end mt-2">
+                                                {!aiSummaries[setupIndex] && (
+                                                    <Button
+                                                        onClick={() => handleGenerateSummary(setupIndex)}
+                                                        className="bg-yellow-400 text-green-900 font-bold px-3 py-1 rounded shadow flex items-center gap-2 generate-ai-summary"
+                                                        disabled={aiSummaries[setupIndex] === 'Loading...'}
+                                                    >
+                                                        {aiSummaries[setupIndex] === 'Loading...' ? 'Generating...' : 'Generate AI Match Summary'}
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        )}
                                         {aiSummaries[setupIndex] && (
                                             <div className="backdrop-blur bg-white/10 border border-white/20 rounded p-4 mt-2 text-white prose prose-sm max-w-none">
                                                 <ReactMarkdown>{aiSummaries[setupIndex]}</ReactMarkdown>
@@ -945,7 +943,7 @@ Billy #g"
 
             {/* Footer */}
             <Footer />
-            <FloatingFooter visible={teamSetups.length > 0} onExport={exportAllImages} />
+            <FloatingFooter visible={teamSetups.length > 0} onExport={exportAllImages} teamCount={teamSetups.length} />
         </div>
     );
 };
