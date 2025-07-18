@@ -583,10 +583,14 @@ const FootballTeamPicker = () => {
                 body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
             });
             const data = await res.json();
-            const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No summary generated.';
-            setAISummaries(prev => ({ ...prev, [setupIndex]: applyWarrenTone(summary) }));
+            const summary = data.candidates?.[0]?.content?.parts?.[0]?.text ||
+                'No summary generated.';
+            setAISummaries(prev => ({ ...prev, [setupIndex]: summary }));
         } catch {
-            setAISummaries(prev => ({ ...prev, [setupIndex]: applyWarrenTone('Error generating summary.') }));
+            setAISummaries(prev => ({
+                ...prev,
+                [setupIndex]: applyWarrenTone('Error generating summary.'),
+            }));
         }
     };
 
