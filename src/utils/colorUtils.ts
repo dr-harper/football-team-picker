@@ -25,3 +25,9 @@ export function colorDistance(c1: string, c2: string): number {
 export function areColorsTooSimilar(c1: string, c2: string, threshold = 100): boolean {
     return colorDistance(c1, c2) < threshold;
 }
+
+export function pickSecondColor(primary: string, palette: string[]): string {
+    const viable = palette.filter(c => c !== primary && !areColorsTooSimilar(c, primary));
+    const options = viable.length > 0 ? viable : palette.filter(c => c !== primary);
+    return options[Math.floor(Math.random() * options.length)];
+}

@@ -14,7 +14,7 @@ import HeaderBar from './components/HeaderBar';
 import { teamPlaces } from './constants/teamConstants';
 import { positionsByTeamSizeAndSide, placeholderPositions } from './constants/positionsConstants';
 import ReactMarkdown from 'react-markdown';
-import { areColorsTooSimilar } from './utils/colorUtils';
+import { pickSecondColor } from './utils/colorUtils';
 
 interface Player {
     name: string;
@@ -212,15 +212,7 @@ const FootballTeamPicker = () => {
 
             const boldColors: string[] = ['#ff0000', '#0000ff', '#00ff00', '#ff00ff', '#00ffff', '#ff4500', '#8a2be2', '#ff1493', '#1e90ff'];
             const color1: string = boldColors[Math.floor(Math.random() * boldColors.length)];
-
-            const availableColors = boldColors.filter(c => c !== color1 && !areColorsTooSimilar(c, color1));
-            let color2: string;
-            if (availableColors.length > 0) {
-                color2 = availableColors[Math.floor(Math.random() * availableColors.length)];
-            } else {
-                const fallbackColors = boldColors.filter(c => c !== color1);
-                color2 = fallbackColors[Math.floor(Math.random() * fallbackColors.length)];
-            }
+            const color2: string = pickSecondColor(color1, boldColors);
 
             const team = {
                 name: teamName,
