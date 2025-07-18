@@ -178,6 +178,9 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                         </div>
                         {!isStandalone && installPrompt && (
                             <div>
+                                <p className="text-xs mb-2">
+                                    Install for a nicer home screen icon.
+                                </p>
                                 <Button
                                     onClick={handleInstallClick}
                                     className="bg-blue-700 text-white w-full"

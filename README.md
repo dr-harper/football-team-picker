@@ -13,7 +13,7 @@ A React web app built to simplify picking 5-a-side football teams. The app ensur
 - Export saved teams as an image to share with friends
 - Optional "Warren Mode" spices up warnings and summaries. When enabled you can set an aggression slider (0-100%) to control how often the tone is nasty (defaults to 20%).
 - Installable PWA with offline support
-- Install button available in the configuration menu for quick installation
+- Install button available in the configuration menu; installing adds a nicer home screen icon
 
 ### Local Development
 
