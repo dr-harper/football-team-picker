@@ -116,5 +116,10 @@ export const teamSuffixes = [
     "Dynamoes", "Comets", "Blazers", "Chargers", "Hurricanes",
     "Vikings", "Eagles", "Lions", "Sharks", "Panthers",
     "FC", "Albion", "Hotshots", "Unathletic", "Spanners",
-    "Plumbers", "Pirates"
+    "Plumbers", "Pirates",
+    "Bulldogs", "Dragons", "Stallions", "Thunder", "Storm",
+    "Lightning", "Bears", "Hornets", "Hawks", "Knights",
+    "Raiders", "Giants", "Rockets", "Cheetahs", "Cyclones",
+    "Pythons", "Falcons", "Cougars", "Kings", "Royals",
+    "Senators", "Stars", "Tigers"
 ];
