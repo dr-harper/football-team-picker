@@ -33,7 +33,7 @@ const FloatingFooter: React.FC<FloatingFooterProps> = ({ visible, onExport, onSh
                         d="M12 7.5l4.5 4.5m0 0l-4.5 4.5m4.5-4.5H3"
                     />
                 </svg>
-                Export Teams as Image
+                Export Image
             </Button>
             <Button
                 onClick={onShare}
