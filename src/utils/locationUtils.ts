@@ -43,9 +43,6 @@ export const getPlacesBasedOnLocation = async (): Promise<{ location: string; pl
         }
 
         return { location: closestLocation, places: closestPlaces };
-
-        // Default to Generic places
-        return { location: 'Generic', places: teamPlaces.Generic.places };
     } catch (error) {
         console.error('Failed to get location:', error);
         return { location: 'Generic', places: teamPlaces.Generic.places }; // Default to Generic places if location fails
