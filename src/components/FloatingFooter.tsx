@@ -1,13 +1,15 @@
 import React from 'react';
 import { Button } from './ui/button';
+import { Share2 } from 'lucide-react';
 
 interface FloatingFooterProps {
     visible: boolean;
     onExport: () => void;
+    onShare: () => void;
     teamCount: number;
 }
 
-const FloatingFooter: React.FC<FloatingFooterProps> = ({ visible, onExport, teamCount }) => {
+const FloatingFooter: React.FC<FloatingFooterProps> = ({ visible, onExport, onShare, teamCount }) => {
     if (!visible) return null;
 
     return (
@@ -15,7 +17,7 @@ const FloatingFooter: React.FC<FloatingFooterProps> = ({ visible, onExport, team
             <div className="flex-grow pl-4 font-bold">Teams Generated: {teamCount}</div>
             <Button
                 onClick={onExport}
-                className="bg-blue-700 text-white py-2 px-6 rounded font-bold shadow-md hover:bg-blue-800 flex items-center gap-2"
+                className="bg-blue-700 text-white py-2 px-6 rounded font-bold shadow-md hover:bg-blue-800 flex items-center gap-2 mr-2"
             >
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -31,7 +33,14 @@ const FloatingFooter: React.FC<FloatingFooterProps> = ({ visible, onExport, team
                         d="M12 7.5l4.5 4.5m0 0l-4.5 4.5m4.5-4.5H3"
                     />
                 </svg>
-                Export Teams as Image
+                Export Image
+            </Button>
+            <Button
+                onClick={onShare}
+                className="bg-green-700 text-white py-2 px-6 rounded font-bold shadow-md hover:bg-green-800 flex items-center gap-2"
+            >
+                <Share2 className="w-5 h-5" />
+                Share
             </Button>
         </div>
     );

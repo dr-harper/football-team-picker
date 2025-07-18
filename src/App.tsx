@@ -389,35 +389,36 @@ const FootballTeamPicker = () => {
     };
 
     // Unique identifier for a player within a setup used for motion layoutId and React keys
+
     const getPlayerId = (setupIndex: number, player: { name: string; shirtNumber: number | null }) =>
         `player-${setupIndex}-${player.name}-${player.shirtNumber}`;
 
-    const exportAllImages = async () => {
+    const generateTeamsImage = async (): Promise<string | null> => {
         const elements = teamSetups.map((_, index) => document.getElementById(`team-setup-${index}`));
-        if (elements.some(element => !element)) return;
+        if (elements.some(element => !element)) return null;
 
-        // Temporarily hide delete buttons, color pickers, color circles, and AI Match Summary
+        // Temporarily hide interactive elements
         elements.forEach(element => {
             const deleteButtons = element?.querySelectorAll('.delete-button');
             const colorPickers = element?.querySelectorAll('.color-picker');
             const colorCircles = element?.querySelectorAll('.color-circle');
-            const aiSummaryButtons = element?.querySelectorAll('.generate-ai-summary'); // Adjusted selector
+            const aiSummaryButtons = element?.querySelectorAll('.generate-ai-summary');
             deleteButtons?.forEach(button => ((button as HTMLElement).style.display = 'none'));
             colorPickers?.forEach(picker => ((picker as HTMLElement).style.display = 'none'));
             colorCircles?.forEach(circle => ((circle as HTMLElement).style.display = 'none'));
-            aiSummaryButtons?.forEach(button => ((button as HTMLElement).style.display = 'none')); // Adjusted logic
+            aiSummaryButtons?.forEach(button => ((button as HTMLElement).style.display = 'none'));
         });
 
         try {
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
-            if (!context) return;
+            if (!context) return null;
 
             const images = await Promise.all(
                 elements.map(async (element) => {
                     if (!element) return null;
                     const dataUrl = await toPng(element, {
-                        backgroundColor: '#146434', // Set background color to match the app's background
+                        backgroundColor: '#146434',
                     });
                     const img = new Image();
                     img.src = dataUrl;
@@ -430,7 +431,7 @@ const FootballTeamPicker = () => {
             const maxWidth = Math.max(...images.map(img => img?.width || 0));
 
             canvas.width = maxWidth;
-            canvas.height = totalHeight + 40; // Space for footer
+            canvas.height = totalHeight + 40;
 
             let yOffset = 0;
             images.forEach(img => {
@@ -440,38 +441,64 @@ const FootballTeamPicker = () => {
                 }
             });
 
-            // Draw footer bar
             context.fillStyle = '#0A2507';
             context.fillRect(0, totalHeight, canvas.width, 40);
 
-            // Footer text
             context.fillStyle = 'white';
             context.font = 'bold 20px Arial';
             context.textAlign = 'center';
             context.textBaseline = 'middle';
             context.fillText('Made with teamshuffle.app', canvas.width / 2, totalHeight + 20);
 
-            const finalDataUrl = canvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.href = finalDataUrl;
-            const currentDate = new Date().toISOString().split('T')[0].replace(/-/g, '_');
-
-            link.download = `Football_teams_${currentDate}.png`;
-            link.click();
+            return canvas.toDataURL('image/png');
         } catch (error) {
-            console.error('Failed to export images:', error);
+            console.error('Failed to generate image:', error);
+            return null;
         } finally {
-            // Restore delete buttons, color pickers, color circles, and AI Match Summary
             elements.forEach(element => {
                 const deleteButtons = element?.querySelectorAll('.delete-button');
                 const colorPickers = element?.querySelectorAll('.color-picker');
                 const colorCircles = element?.querySelectorAll('.color-circle');
-                const aiSummaryButtons = element?.querySelectorAll('.generate-ai-summary'); // Adjusted selector
+                const aiSummaryButtons = element?.querySelectorAll('.generate-ai-summary');
                 deleteButtons?.forEach(button => ((button as HTMLElement).style.display = ''));
                 colorPickers?.forEach(picker => ((picker as HTMLElement).style.display = ''));
                 colorCircles?.forEach(circle => ((circle as HTMLElement).style.display = ''));
-                aiSummaryButtons?.forEach(button => ((button as HTMLElement).style.display = '')); // Adjusted logic
+                aiSummaryButtons?.forEach(button => ((button as HTMLElement).style.display = ''));
             });
+        }
+    };
+
+    const exportAllImages = async () => {
+        const dataUrl = await generateTeamsImage();
+        if (!dataUrl) return;
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        const currentDate = new Date().toISOString().split('T')[0].replace(/-/g, '_');
+        link.download = `Football_teams_${currentDate}.png`;
+        link.click();
+    };
+
+    const shareAllImages = async () => {
+        const dataUrl = await generateTeamsImage();
+        if (!dataUrl) return;
+        const currentDate = new Date().toISOString().split('T')[0].replace(/-/g, '_');
+        try {
+            const response = await fetch(dataUrl);
+            const blob = await response.blob();
+            const file = new File([blob], `Football_teams_${currentDate}.png`, { type: 'image/png' });
+            const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean; share?: (data: ShareData) => Promise<void>; };
+            if (nav.canShare && nav.canShare({ files: [file] })) {
+                await nav.share({
+                    files: [file],
+                    title: 'TeamShuffle Teams',
+                    text: 'Made with teamshuffle.app',
+                });
+            } else {
+                const shareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent('Check out the teams I made on teamshuffle.app')}`;
+                window.open(shareUrl, '_blank');
+            }
+        } catch (err) {
+            console.error('Sharing failed:', err);
         }
     };
 
@@ -543,9 +570,9 @@ const FootballTeamPicker = () => {
             toneInstruction +
             `\n\n${setup.teams
                 .map(
-                    (team: any, idx: number) =>
+                    (team: Team, idx: number) =>
                         `Team ${idx + 1} (${team.name}):\n` +
-                        team.players.map((p: any) => `- ${p.name} (${p.role})`).join('\n')
+                        team.players.map((p: Player) => `- ${p.name} (${p.role})`).join('\n')
                 )
                 .join('\n\n')}`;
         setAISummaries(prev => ({ ...prev, [setupIndex]: 'Loading...' }));
@@ -952,7 +979,12 @@ Billy #g"
 
             {/* Footer */}
             <Footer />
-            <FloatingFooter visible={teamSetups.length > 0} onExport={exportAllImages} teamCount={teamSetups.length} />
+            <FloatingFooter
+                visible={teamSetups.length > 0}
+                onExport={exportAllImages}
+                onShare={shareAllImages}
+                teamCount={teamSetups.length}
+            />
         </div>
     );
 };
