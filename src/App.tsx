@@ -13,25 +13,11 @@ import FloatingFooter from './components/FloatingFooter';
 import HeaderBar from './components/HeaderBar';
 import { teamPlaces } from './constants/teamConstants';
 import { positionsByTeamSizeAndSide, placeholderPositions } from './constants/positionsConstants';
+import type { Player, Team } from './types';
+import ARLineup from './components/ARLineup';
 import ReactMarkdown from 'react-markdown';
 import { pickSecondColor } from './utils/colorUtils';
 
-interface Player {
-    name: string;
-    isGoalkeeper: boolean;
-    isStriker: boolean;
-    isDefender: boolean;
-    isteam1: boolean;
-    isteam2: boolean;
-    role: string;
-    shirtNumber: number | null;
-}
-
-interface Team {
-    name: string;
-    players: Player[];
-    color: string;
-}
 
 interface TeamSetup {
     teams: Team[];
@@ -50,6 +36,7 @@ const FootballTeamPicker = () => {
         return localStorage.getItem('playersText') || '';
     });
     const [teamSetups, setTeamSetups] = useState<TeamSetup[]>([]);
+    const [arSetupIndex, setARSetupIndex] = useState<number | null>(null);
     const [errorMessage, setErrorMessage] = useState('');
     const [playerNumbers, setPlayerNumbers] = useState<{ [playerName: string]: number }>({});
     const [selectedLocation, setSelectedLocation] = useState(() => {
@@ -963,6 +950,12 @@ Billy #g"
                                                         {aiSummaries[setupIndex] === 'Loading...' ? 'Generating...' : 'Generate AI Match Summary'}
                                                     </Button>
                                                 )}
+                                                <Button
+                                                    onClick={() => setARSetupIndex(setupIndex)}
+                                                    className="bg-blue-600 text-white font-bold px-3 py-1 rounded shadow ml-2"
+                                                >
+                                                    View in AR
+                                                </Button>
                                             </div>
                                         )}
                                         {aiSummaries[setupIndex] && (
@@ -986,6 +979,12 @@ Billy #g"
                 onShare={shareAllImages}
                 teamCount={teamSetups.length}
             />
+            {arSetupIndex !== null && teamSetups[arSetupIndex] && (
+                <ARLineup
+                    teams={teamSetups[arSetupIndex].teams}
+                    onClose={() => setARSetupIndex(null)}
+                />
+            )}
         </div>
     );
 };
