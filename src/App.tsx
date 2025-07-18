@@ -14,6 +14,7 @@ import HeaderBar from './components/HeaderBar';
 import { teamPlaces } from './constants/teamConstants';
 import { positionsByTeamSizeAndSide, placeholderPositions } from './constants/positionsConstants';
 import ReactMarkdown from 'react-markdown';
+import { pickSecondColor } from './utils/colorUtils';
 
 interface Player {
     name: string;
@@ -211,11 +212,7 @@ const FootballTeamPicker = () => {
 
             const boldColors: string[] = ['#ff0000', '#0000ff', '#00ff00', '#ff00ff', '#00ffff', '#ff4500', '#8a2be2', '#ff1493', '#1e90ff'];
             const color1: string = boldColors[Math.floor(Math.random() * boldColors.length)];
-
-            let color2: string;
-            do {
-                color2 = boldColors[Math.floor(Math.random() * boldColors.length)];
-            } while (color1 === color2);
+            const color2: string = pickSecondColor(color1, boldColors);
 
             const team = {
                 name: teamName,
