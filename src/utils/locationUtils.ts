@@ -8,8 +8,10 @@ export const getPlacesBasedOnLocation = async (): Promise<{ location: string; pl
 
         const { latitude, longitude } = position.coords;
 
-        // Print the latitude and longitude
-        console.log(`Latitude: ${latitude}, Longitude: ${longitude}`);
+        // Print the latitude and longitude when developing
+        if (import.meta.env.DEV) {
+            console.log(`Latitude: ${latitude}, Longitude: ${longitude}`);
+        }
 
         let closestLocation = 'Generic';
         let closestPlaces = teamPlaces.Generic.places;
