@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { teamPlaces } from '../constants/teamConstants';
-import { Settings, Info, Bot, Check, X } from 'lucide-react';
+import { Settings, Bot, Check, X } from 'lucide-react';
 
 
 interface HeaderBarProps {
@@ -71,18 +71,6 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                         <X className="absolute -right-1 -bottom-1 w-3 h-3 bg-red-700 text-white rounded-full" />
                     )}
                 </button>
-                {aiEnabled && (
-                    <button
-                        onClick={() => {
-                            setShowConfig(true);
-                            setTimeout(() => aiInputRef.current?.focus(), 0);
-                        }}
-                        className="ml-2 text-white"
-                        aria-label="Gemini settings"
-                    >
-                        <Info className="w-4 h-4" />
-                    </button>
-                )}
             </div>
             {showConfig && (
                 <div
