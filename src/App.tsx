@@ -631,17 +631,7 @@ const FootballTeamPicker = () => {
                 )}
 
                 {/* Title Section */}
-                <div className="text-center space-y-3 mb-6">
-                    <div className="flex justify-center items-center gap-3">
-                        <img
-                            src="/logo.png" // Path to the logo in the public folder
-                            alt="Team Shuffle Logo"
-                            className="w-12 h-12 sm:w-16 sm:h-16"
-                        />
-                        <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg">
-                            Team Shuffle
-                        </h1>
-                    </div>
+                <div className="text-center space-y-3 mb-6 mt-4">
                     <p className="text-gray-200 text-lg sm:text-xl">
                         Pick your 5-a-side football teams<br />
                         <span className="text-yellow-300 text-base sm:text-lg font-semibold block mt-2">

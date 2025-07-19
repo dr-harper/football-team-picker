@@ -46,8 +46,12 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
     const aiEnabled = Boolean(geminiKey);
 
     return (
-        <header className="bg-green-900 text-white p-4 flex justify-end relative z-10 dark:bg-green-950">
-            <div className="relative flex items-center">
+        <header className="bg-green-900 text-white p-4 flex items-center justify-between relative z-10 dark:bg-green-950">
+            <div className="flex items-center gap-2">
+                <img src="/logo.png" alt="Team Shuffle Logo" className="w-8 h-8" />
+                <span className="font-bold text-xl">Team Shuffle</span>
+            </div>
+            <div className="relative flex items-center gap-2">
                 <Button
                     onClick={() => setShowConfig(true)}
                     variant="ghost"
@@ -61,7 +65,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                         setShowConfig(true);
                         setTimeout(() => aiInputRef.current?.focus(), 0);
                     }}
-                    className="ml-2 relative text-white"
+                    className="relative text-white"
                     aria-label="AI status"
                 >
                     <Bot className="w-5 h-5" />
