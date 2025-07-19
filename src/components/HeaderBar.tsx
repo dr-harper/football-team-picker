@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { teamPlaces } from '../constants/teamConstants';
+import { Settings, Info, X } from 'lucide-react';
 
 
 interface HeaderBarProps {
@@ -42,17 +43,29 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
 }) => {
     const [showConfig, setShowConfig] = useState(false);
 
+    const aiEnabled = Boolean(geminiKey);
+
     return (
         <header className="bg-green-900 text-white p-4 flex justify-end relative z-10 dark:bg-green-950">
-            <div className="relative">
+            <div className="relative flex items-center">
                 <Button
-                    onClick={() => setShowConfig(v => !v)}
-                    className="bg-blue-700 dark:bg-blue-600 text-white font-bold px-3 py-1 rounded shadow"
+                    onClick={() => setShowConfig(true)}
+                    className="p-2 rounded-full bg-blue-700 dark:bg-blue-600 text-white shadow"
+                    size="icon"
                 >
-                    Configuration
+                    <Settings className="w-5 h-5" />
                 </Button>
-                {showConfig && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg p-4 z-30 text-green-900 dark:text-green-100 space-y-4">
+                {aiEnabled && <Info className="w-4 h-4 text-yellow-300 ml-1" />}
+            </div>
+            {showConfig && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-30">
+                    <div className="relative w-80 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg p-4 text-green-900 dark:text-green-100 space-y-4">
+                        <button
+                            onClick={() => setShowConfig(false)}
+                            className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 dark:text-gray-300"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
                         <div>
                             <div className="font-bold mb-1">Locale</div>
                             <p className="text-xs mb-2">Used for team name suggestions.</p>
@@ -166,8 +179,8 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                             <p className="text-xs mt-1">Switches between light and dark themes.</p>
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </header>
     );
 };
