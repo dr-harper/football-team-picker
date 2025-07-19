@@ -22,6 +22,8 @@ interface HeaderBarProps {
     onWarrenModeChange: (value: boolean) => void;
     warrenAggression: number;
     onWarrenAggressionChange: (value: number) => void;
+    darkMode: boolean;
+    onDarkModeChange: (value: boolean) => void;
 }
 
 const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -39,6 +41,8 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
     onWarrenModeChange,
     warrenAggression,
     onWarrenAggressionChange,
+    darkMode,
+    onDarkModeChange,
 }) => {
     const [showConfig, setShowConfig] = useState(false);
     const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -65,16 +69,16 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
     };
 
     return (
-        <header className="bg-green-900 text-white p-4 flex justify-end relative z-10">
+        <header className="bg-green-900 text-white p-4 flex justify-end relative z-10 dark:bg-green-950">
             <div className="relative">
                 <Button
                     onClick={() => setShowConfig(v => !v)}
-                    className="bg-blue-700 text-white font-bold px-3 py-1 rounded shadow"
+                    className="bg-blue-700 dark:bg-blue-600 text-white font-bold px-3 py-1 rounded shadow"
                 >
                     Configuration
                 </Button>
                 {showConfig && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-300 rounded shadow-lg p-4 z-30 text-green-900 space-y-4">
+                    <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg p-4 z-30 text-green-900 dark:text-green-100 space-y-4">
                         <div>
                             <div className="font-bold mb-1">Locale</div>
                             <p className="text-xs mb-2">Used for team name suggestions.</p>
@@ -82,7 +86,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                                 id="location-select"
                                 value={selectedLocation}
                                 onChange={onLocationChange}
-                                className="w-full border p-2 rounded mb-2"
+                                className="w-full border p-2 rounded mb-2 dark:bg-gray-700 dark:text-white"
                             >
                                 {Object.entries(teamPlaces).map(([key]) => (
                                     <option key={key} value={key}>{key}</option>
@@ -90,7 +94,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                             </select>
                             <Button
                                 onClick={onFindLocation}
-                                className="bg-green-700 text-white w-full"
+                                className="bg-green-700 dark:bg-green-600 text-white w-full"
                                 disabled={isLoadingLocation}
                             >
                                 {isLoadingLocation ? (
@@ -116,7 +120,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                                 id="model-select"
                                 value={aiModel}
                                 onChange={onAIModelChange}
-                                className="w-full border p-2 rounded mb-2"
+                                className="w-full border p-2 rounded mb-2 dark:bg-gray-700 dark:text-white"
                             >
                                 <option value="gemini-2.0-flash">Gemini Flash</option>
                                 <option value="gemini-pro">Gemini Pro</option>
@@ -126,7 +130,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                                 ref={aiInputRef}
                                 type="password"
                                 defaultValue={geminiKey}
-                                className="w-full border p-2 rounded mb-2"
+                                className="w-full border p-2 rounded mb-2 dark:bg-gray-700 dark:text-white"
                                 placeholder="Paste your Gemini API key here"
                             />
                             <Button
@@ -134,7 +138,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                                     onGeminiKeySave();
                                     setShowConfig(false);
                                 }}
-                                className="bg-green-700 text-white w-full mb-2"
+                                className="bg-green-700 dark:bg-green-600 text-white w-full mb-2"
                             >
                                 Save Key
                             </Button>
@@ -176,6 +180,17 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                                 </div>
                             )}
                         </div>
+                        <div>
+                            <label className="font-bold flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={darkMode}
+                                    onChange={(e) => onDarkModeChange(e.target.checked)}
+                                />
+                                Dark Mode
+                            </label>
+                            <p className="text-xs mt-1">Switches between light and dark themes.</p>
+                        </div>
                         {!isStandalone && installPrompt && (
                             <div>
                                 <p className="text-xs mb-2">
@@ -183,7 +198,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                                 </p>
                                 <Button
                                     onClick={handleInstallClick}
-                                    className="bg-blue-700 text-white w-full"
+                                    className="bg-blue-700 dark:bg-blue-600 text-white w-full"
                                 >
                                     Install App
                                 </Button>
