@@ -16,11 +16,17 @@
   <meta property="og:type" content="website" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <script type="module" crossorigin src="/assets/index-C6DhM1-1.js"></script>
+  <script type="module" crossorigin src="/assets/index-CqaUarlS.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-C2Ds40n3.css">
 </head>
 
 <body>
+  <script>
+    const stored = localStorage.getItem('darkMode');
+    if (!stored || stored === 'true') {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
   <div id="root"></div>
 </body>
 
