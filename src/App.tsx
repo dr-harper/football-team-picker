@@ -598,7 +598,7 @@ const FootballTeamPicker = () => {
     };
 
     return (
-        <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-green-700">
+        <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
             <HeaderBar
                 selectedLocation={selectedLocation}
                 onLocationChange={handleLocationChange}
@@ -654,7 +654,7 @@ const FootballTeamPicker = () => {
                 <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Inputs Section */}
                     <div className="space-y-6">
-                        <div className="bg-green-700 p-4 shadow-lg text-white rounded-lg">
+                        <div className="bg-green-700 dark:bg-green-800 p-4 shadow-lg text-white rounded-lg">
                             <div className="mb-4">
                                 <h2 className="text-xl font-semibold mb-2 text-white">Enter Players</h2>
                                 <p className="text-sm text-green-100 mt-1">
@@ -674,7 +674,7 @@ David #s
 Mark #d
 Tom
 Billy #g"
-                                    className="p-3 border border-green-300 rounded w-full h-40 font-mono bg-green-600 text-white placeholder-green-200"
+                                    className="p-3 border border-green-300 rounded w-full h-40 font-mono bg-green-600 dark:bg-green-700 text-white placeholder-green-200"
                                 />
                                 <div className="flex justify-between items-center mb-2">
                                     <p className={`text-sm font-bold ${playersText.split('\n').filter(line => line.trim()).length < 10 ? 'text-red-500' : 'text-green-200'}`}>
@@ -689,7 +689,7 @@ Billy #g"
                                 <div className="flex gap-4 mt-4">
                                     <Button
                                         onClick={generateTeams}
-                                        className="bg-white text-green-800 py-2 px-6 rounded font-bold shadow-md transition flex-grow hover:bg-green-100"
+                                        className="bg-white dark:bg-gray-700 dark:text-green-100 text-green-800 py-2 px-6 rounded font-bold shadow-md transition flex-grow hover:bg-green-100 dark:hover:bg-gray-600"
                                     >
                                         Create Team
                                     </Button>
@@ -699,7 +699,7 @@ Billy #g"
                                                 generateTeams();
                                             }
                                         }}
-                                        className="bg-blue-700 text-white py-2 px-6 rounded font-bold shadow-md transition flex-grow hover:bg-blue-800"
+                                        className="bg-blue-700 dark:bg-blue-600 text-white py-2 px-6 rounded font-bold shadow-md transition flex-grow hover:bg-blue-800 dark:hover:bg-blue-700"
                                     >
                                         Create x3 Teams
                                     </Button>
@@ -710,7 +710,7 @@ Billy #g"
                                             setPlayerNumbers({});
                                             addNotification(applyWarrenTone(`All teams cleared`));
                                         }}
-                                        className="bg-green-900 text-white py-2 px-4 rounded font-bold shadow-md transition border border-white hover:bg-green-800"
+                                        className="bg-green-900 dark:bg-green-950 text-white py-2 px-4 rounded font-bold shadow-md transition border border-white hover:bg-green-800 dark:hover:bg-green-900"
                                     >
                                         Reset
                                     </Button>
@@ -745,7 +745,7 @@ Billy #g"
                     {/* Results Section */}
                     <div className="space-y-6">
                         {teamSetups.length === 0 ? (
-                            <div className="bg-green-700 p-4 shadow-lg text-white rounded-lg">
+                            <div className="bg-green-700 dark:bg-green-800 p-4 shadow-lg text-white rounded-lg">
                                 <div className="text-center mt-4">
                                     <p className="text-white-400 text-sm sm:text-base font-bold">
                                         No teams generated yet. Enter players and click "Generate Teams" to get started!
@@ -772,7 +772,7 @@ Billy #g"
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: 20 }}
                                         transition={{ duration: 0.3 }}
-                                        className="bg-green-700 p-4 shadow-lg text-white rounded-lg"
+                                        className="bg-green-700 dark:bg-green-800 p-4 shadow-lg text-white rounded-lg"
                                     >
                                         <div className="flex justify-between items-start mb-2">
                                             {teamSetups.length > 1 && (
@@ -974,7 +974,7 @@ Billy #g"
                                             </div>
                                         )}
                                         {aiSummaries[setupIndex] && (
-                                            <div className="backdrop-blur bg-white/10 border border-white/20 rounded p-4 mt-2 text-white prose prose-sm max-w-none">
+                                            <div className="backdrop-blur bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/30 rounded p-4 mt-2 text-white prose prose-sm max-w-none">
                                                 <ReactMarkdown>{aiSummaries[setupIndex]}</ReactMarkdown>
                                             </div>
                                         )}
