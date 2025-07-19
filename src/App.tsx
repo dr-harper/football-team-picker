@@ -73,7 +73,10 @@ const FootballTeamPicker = () => {
         const stored = localStorage.getItem('warrenAggression');
         return stored ? Number(stored) : 20;
     });
-    const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
+    const [darkMode, setDarkMode] = useState(() => {
+        const stored = localStorage.getItem('darkMode');
+        return stored ? stored === 'true' : true;
+    });
     const aiInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
