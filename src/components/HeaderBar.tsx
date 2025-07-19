@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { teamPlaces } from '../constants/teamConstants';
-import { Settings, Info, X } from 'lucide-react';
+import { Settings, Info, Bot, Check, X } from 'lucide-react';
 
 
 interface HeaderBarProps {
@@ -56,6 +56,21 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                 >
                     <Settings className="w-5 h-5" />
                 </Button>
+                <button
+                    onClick={() => {
+                        setShowConfig(true);
+                        setTimeout(() => aiInputRef.current?.focus(), 0);
+                    }}
+                    className="ml-2 relative text-white"
+                    aria-label="AI status"
+                >
+                    <Bot className="w-5 h-5" />
+                    {aiEnabled ? (
+                        <Check className="absolute -right-1 -bottom-1 w-3 h-3 bg-green-700 text-white rounded-full" />
+                    ) : (
+                        <X className="absolute -right-1 -bottom-1 w-3 h-3 bg-red-700 text-white rounded-full" />
+                    )}
+                </button>
                 {aiEnabled && (
                     <button
                         onClick={() => {
