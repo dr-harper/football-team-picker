@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { teamPlaces } from '../constants/teamConstants';
+import { Settings, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
@@ -72,13 +74,32 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
         <header className="bg-green-900 text-white p-4 flex justify-end relative z-10 dark:bg-green-950">
             <div className="relative">
                 <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => setShowConfig(v => !v)}
-                    className="bg-blue-700 dark:bg-blue-600 text-white font-bold px-3 py-1 rounded shadow"
+                    className="text-white"
                 >
-                    Configuration
+                    <Settings className="w-6 h-6" />
                 </Button>
-                {showConfig && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg p-4 z-30 text-green-900 dark:text-green-100 space-y-4">
+                <AnimatePresence>
+                    {showConfig && (
+                        <motion.div
+                            initial={{ y: '-100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '-100%' }}
+                            transition={{ duration: 0.3 }}
+                            className="fixed inset-0 bg-white dark:bg-gray-800 p-4 z-30 overflow-y-auto text-green-900 dark:text-green-100 space-y-4"
+                        >
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold">Configuration</h2>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setShowConfig(false)}
+                                >
+                                    <X className="w-5 h-5" />
+                                </Button>
+                            </div>
                         <div>
                             <div className="font-bold mb-1">Locale</div>
                             <p className="text-xs mb-2">Used for team name suggestions.</p>
@@ -204,8 +225,9 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                                 </Button>
                             </div>
                         )}
-                    </div>
+                    </motion.div>
                 )}
+                </AnimatePresence>
             </div>
         </header>
     );
