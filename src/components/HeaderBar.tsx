@@ -22,6 +22,8 @@ interface HeaderBarProps {
     onWarrenModeChange: (value: boolean) => void;
     warrenAggression: number;
     onWarrenAggressionChange: (value: number) => void;
+    darkMode: boolean;
+    onDarkModeChange: (value: boolean) => void;
 }
 
 const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -39,6 +41,8 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
     onWarrenModeChange,
     warrenAggression,
     onWarrenAggressionChange,
+    darkMode,
+    onDarkModeChange,
 }) => {
     const [showConfig, setShowConfig] = useState(false);
     const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -175,6 +179,17 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                                     />
                                 </div>
                             )}
+                        </div>
+                        <div>
+                            <label className="font-bold flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={darkMode}
+                                    onChange={(e) => onDarkModeChange(e.target.checked)}
+                                />
+                                Dark Mode
+                            </label>
+                            <p className="text-xs mt-1">Switches between light and dark themes.</p>
                         </div>
                         {!isStandalone && installPrompt && (
                             <div>

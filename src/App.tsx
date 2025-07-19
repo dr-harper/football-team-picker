@@ -73,6 +73,7 @@ const FootballTeamPicker = () => {
         const stored = localStorage.getItem('warrenAggression');
         return stored ? Number(stored) : 20;
     });
+    const [darkMode, setDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
     const aiInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -90,6 +91,11 @@ const FootballTeamPicker = () => {
     useEffect(() => {
         localStorage.setItem('warrenAggression', String(warrenAggression));
     }, [warrenAggression]);
+
+    useEffect(() => {
+        document.documentElement.classList.toggle('dark', darkMode);
+        localStorage.setItem('darkMode', String(darkMode));
+    }, [darkMode]);
 
     useEffect(() => {
         // Update places based on selected location
@@ -611,6 +617,8 @@ const FootballTeamPicker = () => {
                 onWarrenModeChange={setWarrenMode}
                 warrenAggression={warrenAggression}
                 onWarrenAggressionChange={setWarrenAggression}
+                darkMode={darkMode}
+                onDarkModeChange={setDarkMode}
             />
             <div className="flex-grow p-4 sm:p-6">
                 {/* Notifications */}
