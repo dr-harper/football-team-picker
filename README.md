@@ -12,7 +12,7 @@ A React web app built to simplify picking 5-a-side football teams. The app ensur
 - Randomly generated team names, with local options for London and Hampshire (more regions can be added)
 - Export saved teams as an image to share with friends
 - Optional "Warren Mode" spices up warnings and summaries. When enabled you can set an aggression slider (0-100%) to control how often the tone is nasty (defaults to 20%).
-- Toggleable dark mode for late-night team planning
+- Dark mode enabled by default with option to switch to light theme
 
 ### Local Development
 

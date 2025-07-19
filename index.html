@@ -19,6 +19,12 @@
 </head>
 
 <body>
+  <script>
+    const stored = localStorage.getItem('darkMode');
+    if (!stored || stored === 'true') {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>
