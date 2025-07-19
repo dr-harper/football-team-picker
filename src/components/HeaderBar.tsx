@@ -1,11 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { teamPlaces } from '../constants/teamConstants';
 
-interface BeforeInstallPromptEvent extends Event {
-    prompt: () => Promise<void>;
-    userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
-}
 
 interface HeaderBarProps {
     selectedLocation: string;
@@ -45,28 +41,6 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
     onDarkModeChange,
 }) => {
     const [showConfig, setShowConfig] = useState(false);
-    const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-    const [isStandalone, setIsStandalone] = useState(
-        window.matchMedia('(display-mode: standalone)').matches ||
-        (navigator as { standalone?: boolean }).standalone
-    );
-
-    useEffect(() => {
-        const handler = (e: Event) => {
-            e.preventDefault();
-            setInstallPrompt(e as BeforeInstallPromptEvent);
-        };
-        window.addEventListener('beforeinstallprompt', handler);
-        return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, []);
-
-    const handleInstallClick = async () => {
-        if (!installPrompt) return;
-        await installPrompt.prompt();
-        await installPrompt.userChoice;
-        setInstallPrompt(null);
-        setIsStandalone(true);
-    };
 
     return (
         <header className="bg-green-900 text-white p-4 flex justify-end relative z-10 dark:bg-green-950">
@@ -191,19 +165,6 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                             </label>
                             <p className="text-xs mt-1">Switches between light and dark themes.</p>
                         </div>
-                        {!isStandalone && installPrompt && (
-                            <div>
-                                <p className="text-xs mb-2">
-                                    Install for a nicer home screen icon.
-                                </p>
-                                <Button
-                                    onClick={handleInstallClick}
-                                    className="bg-blue-700 dark:bg-blue-600 text-white w-full"
-                                >
-                                    Install App
-                                </Button>
-                            </div>
-                        )}
                     </div>
                 )}
             </div>
