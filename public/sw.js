@@ -1,9 +1,11 @@
-const CACHE_NAME = 'teamshuffle-v1';
+const VERSION = __BUILD_VERSION__;
+const BASE_URL = self.registration.scope.replace(/\/$/, '');
+const CACHE_NAME = `teamshuffle-${VERSION}`;
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/logo.png',
-  '/manifest.json'
+  `${BASE_URL}/`,
+  `${BASE_URL}/index.html`,
+  `${BASE_URL}/logo.png`,
+  `${BASE_URL}/manifest.json`,
 ];
 
 self.addEventListener('install', event => {

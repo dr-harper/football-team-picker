@@ -23,6 +23,8 @@ jobs:
 
     - name: Build project
       run: npm run build
+      env:
+        BUILD_VERSION: ${{ github.sha }}
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
