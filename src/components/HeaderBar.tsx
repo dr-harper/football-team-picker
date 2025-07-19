@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { teamPlaces } from '../constants/teamConstants';
-import { Settings, Info, X } from 'lucide-react';
+import { Settings, Bot, Check, X } from 'lucide-react';
 
 
 interface HeaderBarProps {
@@ -50,12 +50,20 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
             <div className="relative flex items-center">
                 <Button
                     onClick={() => setShowConfig(true)}
-                    className="p-2 rounded-full bg-blue-700 dark:bg-blue-600 text-white shadow"
+                    variant="ghost"
                     size="icon"
+                    className="rounded-full text-white"
                 >
                     <Settings className="w-5 h-5" />
                 </Button>
-                {aiEnabled && <Info className="w-4 h-4 text-yellow-300 ml-1" />}
+                <div className="relative ml-2">
+                    <Bot className="w-4 h-4 text-white" />
+                    {aiEnabled ? (
+                        <Check className="absolute -bottom-1 -right-1 w-3 h-3 text-white" />
+                    ) : (
+                        <X className="absolute -bottom-1 -right-1 w-3 h-3 text-white" />
+                    )}
+                </div>
             </div>
             {showConfig && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-30">
