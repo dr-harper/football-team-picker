@@ -77,6 +77,7 @@ const FootballTeamPicker = () => {
         const stored = localStorage.getItem('darkMode');
         return stored ? stored === 'true' : true;
     });
+    const [locationPermission, setLocationPermission] = useState<PermissionState>('prompt');
     const aiInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -99,6 +100,18 @@ const FootballTeamPicker = () => {
         document.documentElement.classList.toggle('dark', darkMode);
         localStorage.setItem('darkMode', String(darkMode));
     }, [darkMode]);
+
+    useEffect(() => {
+        if (navigator.permissions?.query) {
+            navigator.permissions
+                .query({ name: 'geolocation' })
+                .then(result => {
+                    setLocationPermission(result.state);
+                    result.onchange = () => setLocationPermission(result.state);
+                })
+                .catch(() => {});
+        }
+    }, []);
 
     useEffect(() => {
         // Update places based on selected location
@@ -147,6 +160,14 @@ const FootballTeamPicker = () => {
         const { location, places } = await getPlacesBasedOnLocation();
         setSelectedLocation(location);
         setPlaces(places);
+        if (navigator.permissions?.query) {
+            try {
+                const result = await navigator.permissions.query({ name: 'geolocation' });
+                setLocationPermission(result.state);
+            } catch {
+                // ignore
+            }
+        }
         setIsLoadingLocation(false); // Stop loading animation
         if (location === 'Generic') {
             addNotification(applyWarrenTone("Sorry, we don't have any regional data for your location. Defaulting to Generic"));
@@ -607,6 +628,8 @@ const FootballTeamPicker = () => {
                 onLocationChange={handleLocationChange}
                 onFindLocation={handleFindLocation}
                 isLoadingLocation={isLoadingLocation}
+                locationPermission={locationPermission}
+                onLocationIconClick={handleFindLocation}
                 aiModel={aiModel}
                 onAIModelChange={(e) => {
                     setAIModel(e.target.value);
