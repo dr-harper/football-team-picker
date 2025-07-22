@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { teamPlaces } from '../constants/teamConstants';
-import { Settings, Bot, Check, X } from 'lucide-react';
+import { Settings, Bot, Check, X, MapPin } from 'lucide-react';
 
 
 interface HeaderBarProps {
@@ -9,6 +9,8 @@ interface HeaderBarProps {
     onLocationChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
     onFindLocation: () => void;
     isLoadingLocation: boolean;
+    locationPermission: PermissionState;
+    onLocationIconClick: () => void;
     aiModel: string;
     onAIModelChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
     geminiKey: string;
@@ -28,6 +30,8 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
     onLocationChange,
     onFindLocation,
     isLoadingLocation,
+    locationPermission,
+    onLocationIconClick,
     aiModel,
     onAIModelChange,
     geminiKey,
@@ -70,6 +74,18 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                 >
                     <Bot className="w-5 h-5" />
                     {aiEnabled ? (
+                        <Check className="absolute -right-1 -bottom-1 w-3 h-3 bg-green-700 text-white rounded-full" />
+                    ) : (
+                        <X className="absolute -right-1 -bottom-1 w-3 h-3 bg-red-700 text-white rounded-full" />
+                    )}
+                </button>
+                <button
+                    onClick={onLocationIconClick}
+                    className="relative text-white"
+                    aria-label="Location status"
+                >
+                    <MapPin className="w-5 h-5" />
+                    {locationPermission === 'granted' ? (
                         <Check className="absolute -right-1 -bottom-1 w-3 h-3 bg-green-700 text-white rounded-full" />
                     ) : (
                         <X className="absolute -right-1 -bottom-1 w-3 h-3 bg-red-700 text-white rounded-full" />
