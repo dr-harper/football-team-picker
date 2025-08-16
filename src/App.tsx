@@ -66,6 +66,9 @@ const FootballTeamPicker = () => {
     } | null>(null);
     const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('geminiKey') || '');
     const [aiModel, setAIModel] = useState(() => localStorage.getItem('aiModel') || 'gemini-2.0-flash');
+    const [aiCustomInstructions, setAICustomInstructions] = useState(() =>
+        localStorage.getItem('aiCustomInstructions') || ''
+    );
     const [aiSummaries, setAISummaries] = useState<{ [setupIndex: number]: string }>({});
     const [geminiKeyError, setGeminiKeyError] = useState<string | null>(null);
     const [warrenMode, setWarrenMode] = useState(() => localStorage.getItem('warrenMode') === 'true');
@@ -100,6 +103,10 @@ const FootballTeamPicker = () => {
         document.documentElement.classList.toggle('dark', darkMode);
         localStorage.setItem('darkMode', String(darkMode));
     }, [darkMode]);
+
+    useEffect(() => {
+        localStorage.setItem('aiCustomInstructions', aiCustomInstructions);
+    }, [aiCustomInstructions]);
 
     useEffect(() => {
         if (navigator.permissions?.query) {
@@ -592,9 +599,11 @@ const FootballTeamPicker = () => {
         const toneInstruction = warrenMode
             ? ` Use a ${Math.random() < warrenAggression / 100 ? 'grumpy and angry' : 'cheerful and encouraging'} tone.`
             : '';
+        const customInstruction = aiCustomInstructions ? ` ${aiCustomInstructions}` : '';
         const prompt =
             `Write a colourful, fun, and slightly cheeky pre-match hype summary for this football game (the match has not been played yet). Mention the teams, their names, and comment on the players and their roles. Be creative and playful, add some relevant emojis, and keep it under 100 words. Format your response in markdown.` +
             toneInstruction +
+            customInstruction +
             `\n\n${setup.teams
                 .map(
                     (team: Team, idx: number) =>
@@ -639,6 +648,8 @@ const FootballTeamPicker = () => {
                 onGeminiKeySave={handleGeminiKeySave}
                 aiInputRef={aiInputRef}
                 geminiKeyError={geminiKeyError}
+                aiCustomInstructions={aiCustomInstructions}
+                onCustomInstructionsChange={setAICustomInstructions}
                 warrenMode={warrenMode}
                 onWarrenModeChange={setWarrenMode}
                 warrenAggression={warrenAggression}

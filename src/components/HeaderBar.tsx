@@ -17,6 +17,8 @@ interface HeaderBarProps {
     onGeminiKeySave: () => void;
     aiInputRef: React.RefObject<HTMLInputElement>;
     geminiKeyError: string | null;
+    aiCustomInstructions: string;
+    onCustomInstructionsChange: (value: string) => void;
     warrenMode: boolean;
     onWarrenModeChange: (value: boolean) => void;
     warrenAggression: number;
@@ -38,6 +40,8 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
     onGeminiKeySave,
     aiInputRef,
     geminiKeyError,
+    aiCustomInstructions,
+    onCustomInstructionsChange,
     warrenMode,
     onWarrenModeChange,
     warrenAggression,
@@ -181,6 +185,13 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                             {geminiKeyError && (
                                 <div className="text-red-600 text-sm mt-2">{geminiKeyError}</div>
                             )}
+                            <label className="block font-semibold mb-1">Custom Instructions</label>
+                            <textarea
+                                value={aiCustomInstructions}
+                                onChange={(e) => onCustomInstructionsChange(e.target.value)}
+                                className="w-full h-24 border p-2 rounded mb-2 dark:bg-gray-700 dark:text-white"
+                                placeholder="Any extra instructions for the AI"
+                            />
                         </div>
                         <div>
                             <label className="font-bold flex items-center gap-2">
