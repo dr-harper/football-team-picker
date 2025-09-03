@@ -691,18 +691,30 @@ const FootballTeamPicker = () => {
 
                                 </p>
 
-                                <Textarea
-                                    value={playersText}
-                                    onChange={(e) => setPlayersText(e.target.value)}
-                                    placeholder="Enter one player per line. Add optional tags:
+                                <div className="relative">
+                                    <Textarea
+                                        value={playersText}
+                                        onChange={(e) => setPlayersText(e.target.value)}
+                                        placeholder="Enter one player per line. Add optional tags:
 John  #g
-Henry 
+Henry
 David #s
 Mark #d
 Tom
 Billy #g"
-                                    className="p-3 border border-green-300 rounded w-full h-40 font-mono bg-green-600 dark:bg-green-700 text-white placeholder-green-200"
-                                />
+                                        className="p-3 border border-green-300 rounded w-full h-40 font-mono bg-green-600 dark:bg-green-700 text-white placeholder-green-200"
+                                    />
+                                    {playersText && (
+                                        <Button
+                                            onClick={() => setPlayersText('')}
+                                            variant="secondary"
+                                            size="sm"
+                                            className="absolute top-2 right-2 text-xs px-2 py-1"
+                                        >
+                                            Clear
+                                        </Button>
+                                    )}
+                                </div>
                                 <div className="flex justify-between items-center mb-2">
                                     <p className={`text-sm font-bold ${playersText.split('\n').filter(line => line.trim()).length < 10 ? 'text-red-500' : 'text-green-200'}`}>
                                         Players: {playersText.split('\n').filter(line => line.trim()).length} / 16
