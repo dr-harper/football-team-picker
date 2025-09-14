@@ -577,7 +577,7 @@ const FootballTeamPicker = () => {
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=` + key, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: 'Reply with OK' }] }] })
+                    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Reply with OK' }] }] })
                 });
                 const data = await res.json();
                 const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
@@ -616,7 +616,7 @@ const FootballTeamPicker = () => {
             const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=` + geminiKey, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }] })
             });
             const data = await res.json();
             const summary = data.candidates?.[0]?.content?.parts?.[0]?.text ||
