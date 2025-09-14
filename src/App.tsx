@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from './components/ui/button';
 import { Textarea } from './components/ui/textarea';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -82,6 +82,9 @@ const FootballTeamPicker = () => {
     });
     const [locationPermission, setLocationPermission] = useState<PermissionState>('prompt');
     const aiInputRef = useRef<HTMLInputElement>(null);
+    const [teamsGenerated, setTeamsGenerated] = useState(() => Number(localStorage.getItem('teamsGenerated') || '0'));
+    const [teamsExported, setTeamsExported] = useState(() => Number(localStorage.getItem('teamsExported') || '0'));
+    const hasTrackedUsage = useRef(false);
 
     useEffect(() => {
         localStorage.setItem('playersText', playersText);
@@ -130,39 +133,55 @@ const FootballTeamPicker = () => {
         setAISummaries({});
     }, [teamSetups]);
 
-    const applyWarrenTone = (msg: string) => {
-        if (!warrenMode) return msg;
-        const nasty = [
-            ' Sort it out, pal!',
-            ' Honestly, that\'s pathetic.',
-            'Use your eyes, mate!',
-            'That\'s a fucking disgrace!',
-        ];
-        const lovely = [
-            ' You\'re doing great!',
-            ' Lovely stuff!',
-            ' Keep it up, legend!',
-            ' Fucking great work, mate!',
-        ];
-        if (Math.random() < warrenAggression / 100) {
-            return msg + ' ' + nasty[Math.floor(Math.random() * nasty.length)];
-        }
-        return msg + ' ' + lovely[Math.floor(Math.random() * lovely.length)];
-    };
-
-    const addNotification = (msg: string) => {
+    const addNotification = useCallback((msg: string) => {
         const id = Date.now() + Math.random();
         setNotifications(n => [...n, { id, message: msg }]);
-    };
+    }, []);
 
     const removeNotification = (id: number) => {
         setNotifications(n => n.filter(note => note.id !== id));
     };
 
+    const applyWarrenTone = useCallback(
+        (msg: string) => {
+            if (!warrenMode) return msg;
+            const nasty = [
+                ' Sort it out, pal!',
+                ' Honestly, that\'s pathetic.',
+                'Use your eyes, mate!',
+                'That\'s a fucking disgrace!',
+            ];
+            const lovely = [
+                ' You\'re doing great!',
+                ' Lovely stuff!',
+                ' Keep it up, legend!',
+                ' Fucking great work, mate!',
+            ];
+            if (Math.random() < warrenAggression / 100) {
+                return msg + ' ' + nasty[Math.floor(Math.random() * nasty.length)];
+            }
+            return msg + ' ' + lovely[Math.floor(Math.random() * lovely.length)];
+        },
+        [warrenMode, warrenAggression],
+    );
+
+    useEffect(() => {
+        if (hasTrackedUsage.current) return;
+        hasTrackedUsage.current = true;
+        const usageCount = Number(localStorage.getItem('usageCount') || '0') + 1;
+        localStorage.setItem('usageCount', String(usageCount));
+        const usedAI = localStorage.getItem('usedAI') === 'true';
+        const usedLocation = localStorage.getItem('usedLocation') === 'true';
+        if (usageCount === 5 && !usedAI && !usedLocation) {
+            addNotification(applyWarrenTone('Try the AI match summary or location-based team suggestions!'));
+        }
+    }, [addNotification, applyWarrenTone]);
+
     const handleLocationChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         setSelectedLocation(event.target.value);
     };
     const handleFindLocation = async () => {
+        localStorage.setItem('usedLocation', 'true');
         setIsLoadingLocation(true); // Start loading animation
         const { location, places } = await getPlacesBasedOnLocation();
         setSelectedLocation(location);
@@ -319,6 +338,9 @@ const FootballTeamPicker = () => {
 
         setPlayerNumbers(newPlayerNumbers);
         setTeamSetups(prevSetups => [...prevSetups, { teams: generatedTeams, playersInput: playersText }]);
+        const newGenerated = teamsGenerated + 1;
+        setTeamsGenerated(newGenerated);
+        localStorage.setItem('teamsGenerated', String(newGenerated));
         setErrorMessage('');
 
         // Show the info box if no goalkeepers are selected
@@ -510,6 +532,9 @@ const FootballTeamPicker = () => {
         const currentDate = new Date().toISOString().split('T')[0].replace(/-/g, '_');
         link.download = `Football_teams_${currentDate}.png`;
         link.click();
+        const newExported = teamsExported + 1;
+        setTeamsExported(newExported);
+        localStorage.setItem('teamsExported', String(newExported));
     };
 
     const shareAllImages = async () => {
@@ -595,6 +620,7 @@ const FootballTeamPicker = () => {
 
     const handleGenerateSummary = async (setupIndex: number) => {
         if (!geminiKey) return;
+        localStorage.setItem('usedAI', 'true');
         const setup = teamSetups[setupIndex];
         const toneInstruction = warrenMode
             ? ` Use a ${Math.random() < warrenAggression / 100 ? 'grumpy and angry' : 'cheerful and encouraging'} tone.`
@@ -656,6 +682,8 @@ const FootballTeamPicker = () => {
                 onWarrenAggressionChange={setWarrenAggression}
                 darkMode={darkMode}
                 onDarkModeChange={setDarkMode}
+                teamsGenerated={teamsGenerated}
+                teamsExported={teamsExported}
             />
             <div className="flex-grow p-4 sm:p-6">
                 {/* Notifications */}
