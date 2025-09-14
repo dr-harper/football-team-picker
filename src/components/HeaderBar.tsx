@@ -25,6 +25,8 @@ interface HeaderBarProps {
     onWarrenAggressionChange: (value: number) => void;
     darkMode: boolean;
     onDarkModeChange: (value: boolean) => void;
+    teamsGenerated: number;
+    teamsExported: number;
 }
 
 const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -48,6 +50,8 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
     onWarrenAggressionChange,
     darkMode,
     onDarkModeChange,
+    teamsGenerated,
+    teamsExported,
 }) => {
     const [showConfig, setShowConfig] = useState(false);
 
@@ -229,6 +233,12 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                                 Dark Mode
                             </label>
                             <p className="text-xs mt-1">Switches between light and dark themes.</p>
+                        </div>
+                        <div>
+                            <div className="font-bold mb-1">Usage</div>
+                            <p className="text-xs mb-2">Stored locally on this browser.</p>
+                            <div className="text-sm">Teams generated: {teamsGenerated}</div>
+                            <div className="text-sm">Teams exported: {teamsExported}</div>
                         </div>
                     </div>
                 </div>
