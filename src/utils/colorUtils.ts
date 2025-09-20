@@ -31,3 +31,4 @@ export function pickSecondColor(primary: string, palette: string[]): string {
     const options = viable.length > 0 ? viable : palette.filter(c => c !== primary);
     return options[Math.floor(Math.random() * options.length)];
 }
+

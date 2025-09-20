@@ -243,18 +243,35 @@ const FootballTeamPicker = () => {
         const generatedTeams: Team[] = [];
         const existingNames = new Set<string>();
 
+        const boldColors: string[] = ['#ff0000', '#0000ff', '#00ff00', '#ff00ff', '#00ffff', '#ff4500', '#8a2be2', '#ff1493', '#1e90ff'];
+        const primaryColor = boldColors[Math.floor(Math.random() * boldColors.length)];
+        const secondaryColor = numTeams > 1 ? (pickSecondColor(primaryColor, boldColors) || primaryColor) : primaryColor;
+        const availableColors = boldColors.filter(color => color !== primaryColor && color !== secondaryColor);
+
         for (let i = 0; i < numTeams; i++) {
             const teamName = generateTeamName(existingNames, places) as string; // Use selected location's places
             existingNames.add(teamName);
 
-            const boldColors: string[] = ['#ff0000', '#0000ff', '#00ff00', '#ff00ff', '#00ffff', '#ff4500', '#8a2be2', '#ff1493', '#1e90ff'];
-            const color1: string = boldColors[Math.floor(Math.random() * boldColors.length)];
-            const color2: string = pickSecondColor(color1, boldColors);
+            let color: string;
+            if (i === 0) {
+                color = primaryColor;
+            }
+            else if (i === 1) {
+                color = secondaryColor;
+            }
+            else if (availableColors.length > 0) {
+                const index = Math.floor(Math.random() * availableColors.length);
+                color = availableColors.splice(index, 1)[0];
+            }
+            else {
+                const unusedColor = boldColors.find(c => !generatedTeams.some(team => team.color === c));
+                color = unusedColor ?? boldColors[i % boldColors.length];
+            }
 
             const team = {
                 name: teamName,
                 players: [shuffledGoalkeepers[i]],
-                color: i % 2 === 0 ? color1 : color2,
+                color,
             };
             generatedTeams.push(team);
         }
