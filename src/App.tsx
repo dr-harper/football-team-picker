@@ -243,18 +243,18 @@ const FootballTeamPicker = () => {
         const generatedTeams: Team[] = [];
         const existingNames = new Set<string>();
 
+        const boldColors: string[] = ['#ff0000', '#0000ff', '#00ff00', '#ff00ff', '#00ffff', '#ff4500', '#8a2be2', '#ff1493', '#1e90ff'];
+        const primaryColor = boldColors[Math.floor(Math.random() * boldColors.length)];
+        const secondaryColor = numTeams > 1 ? pickSecondColor(primaryColor, boldColors) : primaryColor;
+
         for (let i = 0; i < numTeams; i++) {
             const teamName = generateTeamName(existingNames, places) as string; // Use selected location's places
             existingNames.add(teamName);
 
-            const boldColors: string[] = ['#ff0000', '#0000ff', '#00ff00', '#ff00ff', '#00ffff', '#ff4500', '#8a2be2', '#ff1493', '#1e90ff'];
-            const color1: string = boldColors[Math.floor(Math.random() * boldColors.length)];
-            const color2: string = pickSecondColor(color1, boldColors);
-
             const team = {
                 name: teamName,
                 players: [shuffledGoalkeepers[i]],
-                color: i % 2 === 0 ? color1 : color2,
+                color: i === 0 ? primaryColor : secondaryColor,
             };
             generatedTeams.push(team);
         }

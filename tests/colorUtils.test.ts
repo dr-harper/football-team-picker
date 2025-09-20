@@ -32,3 +32,4 @@ test('pickSecondColor falls back when all colors similar', () => {
     assert.equal(result, '#ff0001');
   });
 });
+
