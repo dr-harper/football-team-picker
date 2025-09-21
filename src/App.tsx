@@ -205,7 +205,7 @@ const FootballTeamPicker = () => {
             const isStriker = normalizedTags.includes('s');
             const isDefender = normalizedTags.includes('d');
             const isteam1 = normalizedTags.some(tag => ['t1', 'team1', '1'].includes(tag));
-            const isteam2 = normalizedTags.some(tag => ['t2', 'team2', '2'].includes(tag));
+            const isteam2 = !isteam1 && normalizedTags.some(tag => ['t2', 'team2', '2'].includes(tag));
 
             return {
                 name,
