@@ -197,12 +197,15 @@ const FootballTeamPicker = () => {
         }
 
         const players = playerLines.map(line => {
-            const [name, ...tags] = line.split('#').map(item => item.trim());
-            const isGoalkeeper = tags.some(tag => tag.toLowerCase() === 'g');
-            const isStriker = tags.some(tag => tag.toLowerCase() === 's');
-            const isDefender = tags.some(tag => tag.toLowerCase() === 'd');
-            const isteam1 = tags.some(tag => tag.toLowerCase() === 't1');
-            const isteam2 = tags.some(tag => tag.toLowerCase() === 't2');
+            const [name, ...rawTags] = line.split('#').map(item => item.trim());
+            const normalizedTags = rawTags
+                .filter(Boolean)
+                .map(tag => tag.toLowerCase().replace(/\s+/g, ''));
+            const isGoalkeeper = normalizedTags.includes('g');
+            const isStriker = normalizedTags.includes('s');
+            const isDefender = normalizedTags.includes('d');
+            const isteam1 = normalizedTags.some(tag => ['t1', 'team1', '1'].includes(tag));
+            const isteam2 = normalizedTags.some(tag => ['t2', 'team2', '2'].includes(tag));
 
             return {
                 name,
