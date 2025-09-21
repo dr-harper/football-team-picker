@@ -4,6 +4,7 @@ import { Textarea } from './components/ui/textarea';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
 import { toPng } from 'html-to-image'; // Import the library
+import PlayerEntryForm from './components/PlayerEntryForm';
 import PlayerIcon from './components/PlayerIcon'; // Import PlayerIcon from the new file
 import { generateTeamName } from './utils/teamNameGenerator'; // Import the utility function
 import { getPlacesBasedOnLocation } from './utils/locationUtils'; // Import location utility
@@ -685,23 +686,26 @@ const FootballTeamPicker = () => {
                             <div className="mb-4">
                                 <h2 className="text-xl font-semibold mb-2 text-white">Enter Players</h2>
                                 <p className="text-sm text-green-100 mt-1">
+                                    Use the quick form below or edit the list manually.<br />
                                     Format: One player per line. Use tags to assign roles and ensure equal distribution.<br />
-                                    <span className="font-bold">#g</span> = Goalkeeper, <span className="font-bold">#s</span> = Striker, <span className="font-bold">#d</span> = Defender, <span className="font-bold">#1</span> = Team 1, <span className="font-bold">#2</span> = Team 2.<br />
+                                    <span className="font-bold">#g</span> = Goalkeeper, <span className="font-bold">#s</span> = Striker, <span className="font-bold">#d</span> = Defender, <span className="font-bold">#t1</span> = Team 1, <span className="font-bold">#t2</span> = Team 2.<br />
 
 
                                 </p>
+
+                                <PlayerEntryForm playersText={playersText} onPlayersTextChange={setPlayersText} />
 
                                 <div className="relative">
                                     <Textarea
                                         value={playersText}
                                         onChange={(e) => setPlayersText(e.target.value)}
                                         placeholder="Enter one player per line. Add optional tags:
-John  #g
-Henry
+John #g #t1
+Henry #t2
 David #s
-Mark #d
+Mark #d #t1
 Tom
-Billy #g"
+Billy #g #t2"
                                         className="p-3 border border-green-300 rounded w-full h-40 font-mono bg-green-600 dark:bg-green-700 text-white placeholder-green-200"
                                     />
                                     {playersText && (
