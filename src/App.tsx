@@ -224,7 +224,7 @@ const FootballTeamPicker = () => {
         const defenders = players.filter(player => player.isDefender);
         const outfieldPlayers = players.filter(player => !player.isGoalkeeper && !player.isStriker && !player.isDefender && !player.isteam1 && !player.isteam2);
 
-        const numTeams = Math.floor(2);
+        const numTeams = 2;
         if (goalkeepers.length < numTeams) {
             setErrorMessage(applyWarrenTone(`You need at least ${numTeams} goalkeepers`));
         }
