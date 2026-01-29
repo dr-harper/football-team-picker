@@ -3,7 +3,6 @@ import { teamPlaces } from '../constants/teamConstants';
 import { getPlacesBasedOnLocation } from '../utils/locationUtils';
 import { geminiEndpoint } from '../constants/aiPrompts';
 import { WARREN_NASTY_PHRASES, WARREN_LOVELY_PHRASES } from '../constants/aiPrompts';
-import { createThrottle } from '../utils/rateLimiter';
 import { GEOLOCATION_THROTTLE_MS, GEMINI_VALIDATION_THROTTLE_MS } from '../constants/gameConstants';
 
 interface SettingsContextValue {
@@ -36,6 +35,10 @@ interface SettingsContextValue {
     darkMode: boolean;
     setDarkMode: (mode: boolean) => void;
 
+    // Notifications
+    notifications: { id: number; message: string }[];
+    removeNotification: (id: number) => void;
+
     // Helpers
     applyWarrenTone: (msg: string) => string;
     addNotification: (msg: string) => void;
@@ -51,9 +54,9 @@ export const useSettings = (): SettingsContextValue => {
 
 export const SettingsProvider: React.FC<{
     children: React.ReactNode;
-    notifications: { id: number; message: string }[];
-    setNotifications: React.Dispatch<React.SetStateAction<{ id: number; message: string }[]>>;
-}> = ({ children, notifications: _notifications, setNotifications }) => {
+}> = ({ children }) => {
+    // Notifications
+    const [notifications, setNotifications] = useState<{ id: number; message: string }[]>([]);
     // Location state
     const [selectedLocation, setSelectedLocation] = useState(() =>
         localStorage.getItem('selectedLocation') || 'Generic'
@@ -119,6 +122,10 @@ export const SettingsProvider: React.FC<{
             return msg + ' ' + WARREN_NASTY_PHRASES[Math.floor(Math.random() * WARREN_NASTY_PHRASES.length)];
         }
         return msg + ' ' + WARREN_LOVELY_PHRASES[Math.floor(Math.random() * WARREN_LOVELY_PHRASES.length)];
+    };
+
+    const removeNotification = (id: number) => {
+        setNotifications(n => n.filter(note => note.id !== id));
     };
 
     const addNotification = (msg: string) => {
@@ -200,7 +207,6 @@ export const SettingsProvider: React.FC<{
                 setGeminiKeyError('Error validating Gemini API key.');
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [aiModel]);
 
     const value: SettingsContextValue = {
@@ -225,6 +231,8 @@ export const SettingsProvider: React.FC<{
         setWarrenAggression,
         darkMode,
         setDarkMode,
+        notifications,
+        removeNotification,
         applyWarrenTone,
         addNotification,
     };

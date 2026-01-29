@@ -2,7 +2,7 @@
 export const MAX_NAME_LENGTH = 30;
 
 /** Pattern for valid characters in a player name (letters, spaces, hyphens, apostrophes) */
-const VALID_NAME_PATTERN = /^[a-zA-ZÀ-ÿ\s'\-]+$/;
+const VALID_NAME_PATTERN = /^[a-zA-ZÀ-ÿ\s'-]+$/;
 
 /** Recognised player tags (case-insensitive, without the # prefix) */
 const VALID_TAGS = new Set(['g', 's', 'd', '1', '2', 't1', 't2', 'team1', 'team2']);

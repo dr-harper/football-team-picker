@@ -22,6 +22,8 @@ const FootballTeamPickerInner = () => {
         aiCustomInstructions,
         warrenMode,
         warrenAggression,
+        notifications,
+        removeNotification,
         applyWarrenTone,
         addNotification,
     } = useSettings();
@@ -32,7 +34,6 @@ const FootballTeamPickerInner = () => {
     const [teamSetups, setTeamSetups] = useState<TeamSetup[]>([]);
     const [errorMessage, setErrorMessage] = useState('');
     const [playerNumbers, setPlayerNumbers] = useState<{ [playerName: string]: number }>({});
-    const [notifications, setNotifications] = useState<{ id: number; message: string }[]>([]);
     const [showNoGoalkeeperInfo, setShowNoGoalkeeperInfo] = useState(false);
     const [selectedPlayer, setSelectedPlayer] = useState<{
         setupIndex: number;
@@ -45,10 +46,6 @@ const FootballTeamPickerInner = () => {
 
     useEffect(() => { localStorage.setItem('playersText', playersText); }, [playersText]);
     useEffect(() => { setAISummaries({}); }, [teamSetups]);
-
-    const removeNotification = (id: number) => {
-        setNotifications(n => n.filter(note => note.id !== id));
-    };
 
     const generateTeams = () => {
         const result = generateTeamsFromText(playersText, places, playerNumbers);
@@ -249,10 +246,8 @@ const FootballTeamPickerInner = () => {
 };
 
 const FootballTeamPicker = () => {
-    const [notifications, setNotifications] = useState<{ id: number; message: string }[]>([]);
-
     return (
-        <SettingsProvider notifications={notifications} setNotifications={setNotifications}>
+        <SettingsProvider>
             <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
                 <FootballTeamPickerInner />
             </div>
