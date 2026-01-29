@@ -5,6 +5,8 @@ import { Button } from './ui/button';
 import PitchRenderer from './PitchRenderer';
 import ReactMarkdown from 'react-markdown';
 import { Team, Player, TeamSetup } from '../types';
+import { useTheme } from '../themes';
+import { cn } from '../lib/utils';
 
 interface SelectedPlayer {
     setupIndex: number;
@@ -41,28 +43,31 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = ({
     aiSummary,
     onGenerateSummary,
 }) => {
+    const t = useTheme();
+    const rotation = setupIndex % 2 === 0 ? 0.3 : -0.3;
+
     return (
         <motion.div
             key={setupIndex}
             id={`team-setup-${setupIndex}`}
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: -30, rotate: -3 }}
+            animate={{ opacity: 1, y: 0, rotate: rotation }}
             exit={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.3 }}
-            className="bg-green-700 dark:bg-green-800 p-4 shadow-lg text-white rounded-lg"
+            transition={{ type: 'spring', stiffness: 150, damping: 15 }}
+            className={cn(t.card.base, t.fonts.body)}
         >
             <div className="flex justify-between items-start mb-2">
                 {totalSetups > 1 ? (
-                    <h2 className="text-xl font-bold text-white">Option {setupIndex + 1}</h2>
+                    <h2 className={t.text.heading}>Option {setupIndex + 1}</h2>
                 ) : (
-                    <h2 className="text-xl font-bold text-white"></h2>
+                    <h2 className={t.text.heading}></h2>
                 )}
                 <div className="flex gap-2">
                     <Button
                         variant="destructive"
                         size="sm"
                         onClick={() => onDelete(setupIndex)}
-                        className="bg-red-700 hover:bg-red-800 text-white delete-button"
+                        className={t.buttons.destructive}
                     >
                         <Trash2 className="w-4 h-4" />
                     </Button>
@@ -75,14 +80,14 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = ({
                         {setup.teams.map((team: Team, teamIndex: number) => (
                             <div
                                 key={`team-name-${teamIndex}`}
-                                className="relative text-white px-4 py-1 rounded shadow-md font-bold flex-grow text-center"
-                                style={{ width: '50%', backgroundColor: '#2f4f2f' }}
+                                className={cn(t.teamName.bar, 'relative flex-grow text-center')}
+                                style={{ width: '50%' }}
                             >
                                 {team.name}
                                 <div className="absolute top-1/2 right-2 transform -translate-y-1/2 flex items-center gap-2">
                                     <label htmlFor={`color-picker-${setupIndex}-${teamIndex}`} className="cursor-pointer">
                                         <div
-                                            className="w-5 h-5 rounded-full border border-white color-circle"
+                                            className={cn('w-5 h-5 rounded-full color-circle', t.teamName.colourBorder)}
                                             style={{ backgroundColor: team.color }}
                                         ></div>
                                     </label>
@@ -112,7 +117,7 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = ({
                         {setup.teams.map((team: Team, index: number) => (
                             <div
                                 key={`team-name-${index}`}
-                                className="text-white px-4 py-1 rounded shadow-md font-bold flex-grow text-center"
+                                className={cn(t.teamName.bar, 'flex-grow text-center')}
                                 style={{ width: '50%' }}
                             >
                                 {team.name}
@@ -121,9 +126,9 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = ({
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {setup.teams.map((team: Team, teamIndex: number) => (
-                            <div key={teamIndex} className="bg-green-700 border border-white rounded-lg overflow-hidden shadow-lg">
-                                <div className={`bg-${teamIndex % 2 === 0 ? 'blue-600' : 'red-600'} p-2 text-center text-white border-b border-white`}>
-                                    <h3 className="text-lg font-bold">{team.name}</h3>
+                            <div key={teamIndex} className={t.playerList.card}>
+                                <div className={t.playerList.header}>
+                                    <h3 className={cn('text-lg', t.fonts.heading)}>{team.name}</h3>
                                 </div>
                                 <div className="p-2">
                                     <ul className="space-y-1">
@@ -131,7 +136,8 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = ({
                                             <li
                                                 key={getPlayerId(setupIndex, player)}
                                                 onClick={() => onPlayerClick(setupIndex, teamIndex, playerIndex)}
-                                                className={`py-1 px-2 rounded-lg bg-green-600 text-white border border-green-500 cursor-pointer ${
+                                                className={cn(
+                                                    t.playerList.item,
                                                     selectedPlayer &&
                                                     selectedPlayer.setupIndex === setupIndex &&
                                                     selectedPlayer.teamIndex === teamIndex &&
@@ -140,11 +146,11 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = ({
                                                         : selectedPlayer && selectedPlayer.setupIndex === setupIndex
                                                             ? 'ring-2 ring-blue-400'
                                                             : ''
-                                                }`}
+                                                )}
                                             >
                                                 {player.shirtNumber}. {player.name}{' '}
                                                 {player.isGoalkeeper && (
-                                                    <span className="bg-yellow-400 text-green-900 text-xs px-2 py-1 rounded ml-2 font-bold">
+                                                    <span className={t.playerList.gkBadge}>
                                                         GK
                                                     </span>
                                                 )}
@@ -163,7 +169,7 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = ({
                     {!aiSummary && (
                         <Button
                             onClick={() => onGenerateSummary(setupIndex)}
-                            className="bg-yellow-400 text-green-900 font-bold px-3 py-1 rounded shadow flex items-center gap-2 generate-ai-summary"
+                            className={t.aiSummary.button}
                             disabled={aiSummary === 'Loading...'}
                         >
                             {aiSummary === 'Loading...' ? 'Generating...' : 'Generate AI Match Summary'}
@@ -172,7 +178,7 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = ({
                 </div>
             )}
             {aiSummary && (
-                <div className="backdrop-blur bg-white/10 dark:bg-white/5 border border-white/20 dark:border-white/30 rounded p-4 mt-2 text-white prose prose-sm max-w-none">
+                <div className={t.aiSummary.container}>
                     <ReactMarkdown>{aiSummary}</ReactMarkdown>
                 </div>
             )}

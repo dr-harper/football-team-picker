@@ -7,12 +7,47 @@ import HeaderBar from './components/HeaderBar';
 import PlayerInput from './components/PlayerInput';
 import PlaceholderPitch from './components/PlaceholderPitch';
 import TeamSetupCard from './components/TeamSetupCard';
+import WelcomeModal from './components/WelcomeModal';
 import { generateTeamsFromText } from './utils/teamGenerator';
 import { exportImage, shareImage } from './utils/imageExport';
 import { Team, TeamSetup } from './types';
 import { geminiEndpoint, MATCH_SUMMARY_PROMPT } from './constants/aiPrompts';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import { AI_SUMMARY_THROTTLE_MS } from './constants/gameConstants';
+import { useTheme } from './themes';
+
+const TeaFlask: React.FC<{ steamKey: number }> = ({ steamKey }) => (
+    <div className="fixed bottom-4 left-4 z-40 opacity-60 hover:opacity-100 transition-opacity">
+        <div className="relative">
+            {/* Steam particles */}
+            <div key={steamKey}>
+                {[0, 1, 2].map((i) => (
+                    <div
+                        key={i}
+                        className="absolute animate-steam"
+                        style={{
+                            left: `${10 + i * 4}px`,
+                            top: '-8px',
+                            width: '4px',
+                            height: '4px',
+                            borderRadius: '50%',
+                            backgroundColor: 'rgba(255,255,255,0.6)',
+                            animationDelay: `${i * 0.3}s`,
+                        }}
+                    />
+                ))}
+            </div>
+            {/* Flask SVG */}
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="10" y="2" width="12" height="4" rx="1" fill="#8B4513" />
+                <rect x="11" y="3" width="10" height="2" rx="0.5" fill="#A0522D" />
+                <rect x="8" y="6" width="16" height="24" rx="3" fill="#2F855A" />
+                <rect x="10" y="6" width="12" height="24" rx="2" fill="#38A169" />
+                <rect x="8" y="14" width="16" height="3" rx="0.5" fill="#276749" />
+            </svg>
+        </div>
+    </div>
+);
 
 const FootballTeamPickerInner = () => {
     const {
@@ -27,6 +62,8 @@ const FootballTeamPickerInner = () => {
         applyWarrenTone,
         addNotification,
     } = useSettings();
+
+    const t = useTheme();
 
     const [playersText, setPlayersText] = useState(() => {
         return localStorage.getItem('playersText') || '';
@@ -160,20 +197,25 @@ const FootballTeamPickerInner = () => {
 
     return (
         <>
+            <WelcomeModal />
             <HeaderBar />
             <div className="flex-grow p-4 sm:p-6">
-                {notifications.length > 0 && (
-                    <div className="fixed bottom-24 right-4 flex flex-col items-end space-y-2 z-50">
-                        {notifications.map(n => (
-                            <Notification key={n.id} message={n.message} onClose={() => removeNotification(n.id)} />
-                        ))}
-                    </div>
-                )}
+                <AnimatePresence>
+                    {notifications.length > 0 && (
+                        <div className="fixed bottom-24 right-4 flex flex-col items-end space-y-2 z-50">
+                            <AnimatePresence>
+                                {notifications.map(n => (
+                                    <Notification key={n.id} message={n.message} onClose={() => removeNotification(n.id)} />
+                                ))}
+                            </AnimatePresence>
+                        </div>
+                    )}
+                </AnimatePresence>
 
                 <div className="text-center space-y-3 mb-6 mt-4">
-                    <p className="text-gray-200 text-lg sm:text-xl">
+                    <p className={t.text.body}>
                         Pick your 5-a-side football teams<br />
-                        <span className="text-yellow-300 text-base sm:text-lg font-semibold block mt-2">
+                        <span className={t.text.tip}>
                             Tip: Click one player, then another to swap their positions on the pitch!
                         </span>
                     </p>
@@ -225,7 +267,7 @@ const FootballTeamPickerInner = () => {
                 isExporting={isExporting}
                 onExport={async () => {
                     setIsExporting(true);
-                    const result = await exportImage(teamSetups.length);
+                    const result = await exportImage(teamSetups.length, t.export);
                     setIsExporting(false);
                     if (!result.success) {
                         addNotification(applyWarrenTone(result.error || 'Export failed'));
@@ -233,7 +275,7 @@ const FootballTeamPickerInner = () => {
                 }}
                 onShare={async () => {
                     setIsExporting(true);
-                    const result = await shareImage(teamSetups.length);
+                    const result = await shareImage(teamSetups.length, t.export);
                     setIsExporting(false);
                     if (!result.success) {
                         addNotification(applyWarrenTone(result.error || 'Sharing failed'));
@@ -241,6 +283,7 @@ const FootballTeamPickerInner = () => {
                 }}
                 teamCount={teamSetups.length}
             />
+            {t.decorations.showTeaFlask && <TeaFlask steamKey={teamSetups.length} />}
         </>
     );
 };
@@ -248,10 +291,44 @@ const FootballTeamPickerInner = () => {
 const FootballTeamPicker = () => {
     return (
         <SettingsProvider>
-            <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
+            <ThemedApp />
+        </SettingsProvider>
+    );
+};
+
+const ThemedApp = () => {
+    const t = useTheme();
+
+    return (
+        <div className={`min-h-screen flex flex-col relative overflow-x-hidden ${t.app.backgroundClass} ${t.app.bodyFont}`}>
+            {/* Drifting clouds — conditional */}
+            {t.decorations.showClouds && (
+                <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
+                    <div
+                        className="absolute top-[8%] animate-drift-clouds"
+                        style={{ animationDelay: '0s' }}
+                    >
+                        <div className="w-48 h-16 bg-white/30 rounded-full blur-md" />
+                    </div>
+                    <div
+                        className="absolute top-[15%] animate-drift-clouds-slow"
+                        style={{ animationDelay: '-20s' }}
+                    >
+                        <div className="w-64 h-20 bg-white/20 rounded-full blur-lg" />
+                    </div>
+                    <div
+                        className="absolute top-[5%] animate-drift-clouds-fast"
+                        style={{ animationDelay: '-35s' }}
+                    >
+                        <div className="w-36 h-12 bg-white/25 rounded-full blur-md" />
+                    </div>
+                </div>
+            )}
+
+            <div className="relative z-10 flex flex-col min-h-screen">
                 <FootballTeamPickerInner />
             </div>
-        </SettingsProvider>
+        </div>
     );
 };
 

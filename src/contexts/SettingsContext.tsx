@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { teamPlaces } from '../constants/teamConstants';
 import { getPlacesBasedOnLocation } from '../utils/locationUtils';
 import { geminiEndpoint } from '../constants/aiPrompts';
 import { WARREN_NASTY_PHRASES, WARREN_LOVELY_PHRASES } from '../constants/aiPrompts';
 import { GEOLOCATION_THROTTLE_MS, GEMINI_VALIDATION_THROTTLE_MS } from '../constants/gameConstants';
+import { themes, DEFAULT_THEME } from '../themes';
+import type { ThemeName, ThemeConfig } from '../themes';
 
 interface SettingsContextValue {
     // Location
@@ -31,9 +33,10 @@ interface SettingsContextValue {
     warrenAggression: number;
     setWarrenAggression: (aggression: number) => void;
 
-    // Dark Mode
-    darkMode: boolean;
-    setDarkMode: (mode: boolean) => void;
+    // Theme
+    themeName: ThemeName;
+    setThemeName: (name: ThemeName) => void;
+    theme: ThemeConfig;
 
     // Notifications
     notifications: { id: number; message: string }[];
@@ -51,6 +54,10 @@ export const useSettings = (): SettingsContextValue => {
     if (!ctx) throw new Error('useSettings must be used within a SettingsProvider');
     return ctx;
 };
+
+function isValidThemeName(value: string | null): value is ThemeName {
+    return value === 'classic' || value === 'glass' || value === 'sundayLeague';
+}
 
 export const SettingsProvider: React.FC<{
     children: React.ReactNode;
@@ -88,20 +95,18 @@ export const SettingsProvider: React.FC<{
         return stored ? Number(stored) : 20;
     });
 
-    // Dark Mode
-    const [darkMode, setDarkModeState] = useState(() => {
-        const stored = localStorage.getItem('darkMode');
-        return stored ? stored === 'true' : true;
+    // Theme
+    const [themeName, setThemeNameState] = useState<ThemeName>(() => {
+        const stored = localStorage.getItem('theme');
+        return isValidThemeName(stored) ? stored : DEFAULT_THEME;
     });
+    const theme = useMemo(() => themes[themeName], [themeName]);
 
     // --- localStorage persistence ---
     useEffect(() => { localStorage.setItem('selectedLocation', selectedLocation); }, [selectedLocation]);
     useEffect(() => { localStorage.setItem('warrenMode', String(warrenMode)); }, [warrenMode]);
     useEffect(() => { localStorage.setItem('warrenAggression', String(warrenAggression)); }, [warrenAggression]);
-    useEffect(() => {
-        document.documentElement.classList.toggle('dark', darkMode);
-        localStorage.setItem('darkMode', String(darkMode));
-    }, [darkMode]);
+    useEffect(() => { localStorage.setItem('theme', themeName); }, [themeName]);
     useEffect(() => { localStorage.setItem('aiCustomInstructions', aiCustomInstructions); }, [aiCustomInstructions]);
 
     useEffect(() => {
@@ -152,7 +157,7 @@ export const SettingsProvider: React.FC<{
 
     const setWarrenMode = (mode: boolean) => setWarrenModeState(mode);
     const setWarrenAggression = (aggression: number) => setWarrenAggressionState(aggression);
-    const setDarkMode = (mode: boolean) => setDarkModeState(mode);
+    const setThemeName = (name: ThemeName) => setThemeNameState(name);
 
     // --- Throttle guards ---
     const locationThrottleRef = useRef(0);
@@ -235,8 +240,9 @@ export const SettingsProvider: React.FC<{
         setWarrenMode,
         warrenAggression,
         setWarrenAggression,
-        darkMode,
-        setDarkMode,
+        themeName,
+        setThemeName,
+        theme,
         notifications,
         removeNotification,
         applyWarrenTone,

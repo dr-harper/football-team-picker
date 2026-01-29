@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { NOTIFICATION_TIMEOUT_MS } from '../constants/gameConstants';
+import { useTheme } from '../themes';
 
 interface NotificationProps {
     message: string;
@@ -7,15 +9,23 @@ interface NotificationProps {
 }
 
 const Notification: React.FC<NotificationProps> = ({ message, onClose }) => {
+    const t = useTheme();
+
     useEffect(() => {
         const timer = setTimeout(onClose, NOTIFICATION_TIMEOUT_MS);
         return () => clearTimeout(timer);
     }, [onClose]);
 
     return (
-        <div className="bg-purple-600 dark:bg-purple-700 text-white px-4 py-2 rounded shadow-lg">
+        <motion.div
+            initial={{ opacity: 0, x: 100, rotate: 5 }}
+            animate={{ opacity: 1, x: 0, rotate: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            className={t.notification}
+        >
             {message}
-        </div>
+        </motion.div>
     );
 };
 

@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] — 29th January 2026
+
+### Features:
+- **Configurable theme system**: Three switchable visual themes — Classic (dark emerald glassmorphism), Glass (deep slate/indigo frosted panels), and Sunday League (the original sky-to-grass clipboard aesthetic)
+- **Theme selector**: Dropdown in the settings modal to switch between themes, with selection persisted to localStorage
+- **Theme-driven export**: Image export adapts background, watermark colours, and font to the active theme
+
+### Refactored:
+- Replaced `darkMode` boolean with `themeName` / `ThemeConfig` in `SettingsContext`
+- Extracted all hardcoded Tailwind classes from 12 components into typed theme objects (`ThemeConfig` interface)
+- Settings modal rendered via React portal to escape header stacking context
+- Scrollable settings overlay (`overflow-y-auto`) for smaller viewports
+- `imageExport.ts` accepts parameterised export config instead of hardcoded hex values
+
 ## [Unreleased]
 
 ### Removed

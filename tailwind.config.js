@@ -17,6 +17,11 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        marker: ['"Permanent Marker"', 'cursive'],
+        nunito: ['Nunito', 'sans-serif'],
+        caveat: ['Caveat', 'cursive'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -51,6 +56,11 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        cream: '#FEFCE8',
+        forest: '#1E3A1E',
+        tan: '#D4A574',
+        'park-green': '#4A7C2E',
+        parchment: '#FFFDF5',
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -66,10 +76,22 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "drift-clouds": {
+          from: { transform: "translateX(100vw)" },
+          to: { transform: "translateX(-300px)" },
+        },
+        "steam": {
+          "0%": { opacity: "0.6", transform: "translateY(0) scale(1)" },
+          "100%": { opacity: "0", transform: "translateY(-15px) scale(1.5)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "drift-clouds": "drift-clouds 60s linear infinite",
+        "drift-clouds-slow": "drift-clouds 80s linear infinite",
+        "drift-clouds-fast": "drift-clouds 45s linear infinite",
+        "steam": "steam 2s ease-out infinite",
       },
     },
   },

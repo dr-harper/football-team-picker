@@ -1,16 +1,18 @@
 import React from 'react';
 import { cn } from '../lib/utils';
+import { useTheme } from '../themes';
 
 interface PlayerIconProps {
     color?: string;
     number?: number | null;
     name?: string;
     isGoalkeeper?: boolean;
-    isPlaceholder?: boolean; // New prop to indicate placeholder mode
+    isPlaceholder?: boolean;
 }
 
 const PlayerIcon: React.FC<PlayerIconProps> = ({ color, number, name, isGoalkeeper, isPlaceholder }) => {
-    const fillColor = isPlaceholder ? '#6b7280' : isGoalkeeper ? '#facc15' : color || '#ffffff'; // Grey for placeholders
+    const t = useTheme();
+    const fillColor = isPlaceholder ? '#6b7280' : isGoalkeeper ? '#facc15' : color || '#ffffff';
     const displayNumber = isPlaceholder ? '?' : number !== null ? number : '-';
     const displayName = isPlaceholder ? '' : name;
 
@@ -22,7 +24,7 @@ const PlayerIcon: React.FC<PlayerIconProps> = ({ color, number, name, isGoalkeep
         )} style={{ width: '100%', height: '100%' }}>
             <svg
                 fill={fillColor}
-                stroke="#000000"
+                stroke={t.playerIcon.stroke}
                 strokeWidth="5"
                 width="100%"
                 height="100%"
@@ -49,7 +51,7 @@ const PlayerIcon: React.FC<PlayerIconProps> = ({ color, number, name, isGoalkeep
             <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold text-white pointer-events-none" style={{ textShadow: '0px 0px 1px black, 0px 0px 3px black' }}>
                 {displayNumber}
             </div>
-            <div className="absolute top-3/4 left-1/2 transform -translate-x-1/2 text-lg text-center bg-black bg-opacity-60 px-1 py-0.5 rounded pointer-events-none">
+            <div className={cn('absolute top-3/4 left-1/2 transform -translate-x-1/2 text-lg text-center px-1 py-0.5 rounded pointer-events-none', t.playerIcon.nameBg)}>
                 {displayName}
             </div>
         </div>

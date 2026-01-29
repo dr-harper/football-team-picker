@@ -1,6 +1,8 @@
 import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from './ui/button';
 import { Share2 } from 'lucide-react';
+import { useTheme } from '../themes';
 
 interface FloatingFooterProps {
     visible: boolean;
@@ -23,45 +25,55 @@ const Spinner: React.FC = () => (
 );
 
 const FloatingFooter: React.FC<FloatingFooterProps> = ({ visible, onExport, onShare, teamCount, isExporting = false }) => {
-    if (!visible) return null;
+    const t = useTheme();
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 bg-green-900 dark:bg-green-950 text-white py-3 flex items-center justify-end pr-4 z-50 shadow-lg">
-            <div className="flex-grow pl-4 font-bold">Teams Generated: {teamCount}</div>
-            <Button
-                onClick={onExport}
-                disabled={isExporting}
-                className="bg-blue-700 dark:bg-blue-600 text-white py-2 px-6 rounded font-bold shadow-md hover:bg-blue-800 dark:hover:bg-blue-700 flex items-center gap-2 mr-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                {isExporting ? (
-                    <Spinner />
-                ) : (
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                        className="w-5 h-5"
+        <AnimatePresence>
+            {visible && (
+                <motion.div
+                    initial={{ y: '100%' }}
+                    animate={{ y: 0 }}
+                    exit={{ y: '100%' }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    className={t.floatingFooter.container}
+                >
+                    <div className={t.floatingFooter.label}>Teams Generated: {teamCount}</div>
+                    <Button
+                        onClick={onExport}
+                        disabled={isExporting}
+                        className={t.floatingFooter.exportBtn}
                     >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M12 7.5l4.5 4.5m0 0l-4.5 4.5m4.5-4.5H3"
-                        />
-                    </svg>
-                )}
-                {isExporting ? 'Exporting...' : 'Export Image'}
-            </Button>
-            <Button
-                onClick={onShare}
-                disabled={isExporting}
-                className="bg-green-700 dark:bg-green-600 text-white py-2 px-6 rounded font-bold shadow-md hover:bg-green-800 dark:hover:bg-green-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                <Share2 className="w-5 h-5" />
-                Share
-            </Button>
-        </div>
+                        {isExporting ? (
+                            <Spinner />
+                        ) : (
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M12 7.5l4.5 4.5m0 0l-4.5 4.5m4.5-4.5H3"
+                                />
+                            </svg>
+                        )}
+                        {isExporting ? 'Exporting...' : 'Export Image'}
+                    </Button>
+                    <Button
+                        onClick={onShare}
+                        disabled={isExporting}
+                        className={t.floatingFooter.shareBtn}
+                    >
+                        <Share2 className="w-5 h-5" />
+                        Share
+                    </Button>
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 };
 

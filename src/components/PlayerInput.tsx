@@ -3,6 +3,8 @@ import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { MIN_PLAYERS, MAX_PLAYERS, NUM_TEAMS } from '../constants/gameConstants';
 import { validatePlayerInput } from '../utils/validation';
+import { useTheme } from '../themes';
+import { cn } from '../lib/utils';
 
 interface PlayerInputProps {
     playersText: string;
@@ -25,16 +27,23 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
     showNoGoalkeeperInfo,
     hasTeams,
 }) => {
+    const t = useTheme();
     const playerCount = playersText.split('\n').filter(line => line.trim()).length;
     const goalkeeperCount = playersText.split('\n').filter(line => line.includes('#g')).length;
     const validationErrors = useMemo(() => validatePlayerInput(playersText), [playersText]);
     const hasValidationErrors = validationErrors.length > 0;
 
     return (
-        <div className="bg-green-700 dark:bg-green-800 p-4 shadow-lg text-white rounded-lg">
+        <div className={cn(
+            t.card.base,
+            t.card.rotate,
+            t.decorations.ruledPaper && 'ruled-paper',
+            t.decorations.marginLine && 'margin-line',
+            'relative'
+        )}>
             <div className="mb-4">
-                <h2 className="text-xl font-semibold mb-2 text-white">Enter Players</h2>
-                <p className="text-sm text-green-100 mt-1">
+                <h2 className={cn(t.text.heading, 'mb-2')}>Enter Players</h2>
+                <p className={cn(t.text.muted, 'mt-1')}>
                     Format: One player per line. Use tags to assign roles and ensure equal distribution.<br />
                     <span className="font-bold">#g</span> = Goalkeeper, <span className="font-bold">#s</span> = Striker, <span className="font-bold">#d</span> = Defender, <span className="font-bold">#1</span> = Team 1, <span className="font-bold">#2</span> = Team 2.<br />
                 </p>
@@ -44,14 +53,14 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                         value={playersText}
                         onChange={(e) => onPlayersTextChange(e.target.value)}
                         placeholder={`Enter one player per line. Add optional tags:\nJohn  #g\nHenry\nDavid #s\nMark #d\nTom\nBilly #g`}
-                        className="p-3 border border-green-300 rounded w-full h-40 font-mono bg-green-600 dark:bg-green-700 text-white placeholder-green-200"
+                        className={t.inputs.textarea}
                     />
                     {playersText && (
                         <Button
                             onClick={() => onPlayersTextChange('')}
                             variant="secondary"
                             size="sm"
-                            className="absolute top-2 right-2 text-xs px-2 py-1"
+                            className={cn('absolute top-2 right-2', t.buttons.clear)}
                         >
                             Clear
                         </Button>
@@ -61,7 +70,7 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                 {hasValidationErrors && (
                     <div className="mt-2 space-y-1">
                         {validationErrors.map((err, i) => (
-                            <p key={i} className="text-sm text-orange-300">
+                            <p key={i} className={t.banners.validation}>
                                 Line {err.line}: {err.message}
                             </p>
                         ))}
@@ -69,10 +78,10 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                 )}
 
                 <div className="flex justify-between items-center mb-2">
-                    <p className={`text-sm font-bold ${playerCount < MIN_PLAYERS ? 'text-red-500' : 'text-green-200'}`}>
+                    <p className={cn('text-sm font-bold', playerCount < MIN_PLAYERS ? t.counters.invalid : t.counters.valid)}>
                         Players: {playerCount} / {MAX_PLAYERS}
                     </p>
-                    <p className={`text-sm font-bold ${goalkeeperCount < NUM_TEAMS ? 'text-orange-500' : 'text-green-200'}`}>
+                    <p className={cn('text-sm font-bold', goalkeeperCount < NUM_TEAMS ? t.counters.gkWarn : t.counters.valid)}>
                         Goalkeepers: {goalkeeperCount}/{NUM_TEAMS}
                     </p>
                 </div>
@@ -81,32 +90,32 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                     <Button
                         onClick={onGenerate}
                         disabled={hasValidationErrors}
-                        className="bg-white dark:bg-gray-700 dark:text-green-100 text-green-800 py-2 px-6 rounded font-bold shadow-md transition flex-grow hover:bg-green-100 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={t.buttons.primary}
                     >
                         Create Team
                     </Button>
                     <Button
                         onClick={onGenerateMultiple}
                         disabled={hasValidationErrors}
-                        className="bg-blue-700 dark:bg-blue-600 text-white py-2 px-6 rounded font-bold shadow-md transition flex-grow hover:bg-blue-800 dark:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={t.buttons.secondary}
                     >
                         Create x3 Teams
                     </Button>
                     <Button
                         onClick={onReset}
-                        className="bg-green-900 dark:bg-green-950 text-white py-2 px-4 rounded font-bold shadow-md transition border border-white hover:bg-green-800 dark:hover:bg-green-900"
+                        className={t.buttons.ghost}
                     >
                         Reset
                     </Button>
                 </div>
                 {errorMessage && (
-                    <div className="mt-3 bg-red-700 border border-red-500 text-white px-4 py-2 rounded">
+                    <div className={t.banners.error}>
                         {errorMessage}
                     </div>
                 )}
 
                 {hasTeams && showNoGoalkeeperInfo && (
-                    <div className="bg-yellow-600 text-white p-4 rounded-lg shadow-md mb-4 mt-4">
+                    <div className={t.banners.warning}>
                         <p>
                             Teams were created without goalkeepers. To lock goalkeepers, add <span className="font-bold">#g</span> after their name in the player list.
                         </p>
