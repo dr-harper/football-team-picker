@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import Notification from './components/Notification';
 import Footer from './components/Footer';
@@ -12,6 +12,7 @@ import { exportImage, shareImage } from './utils/imageExport';
 import { Team, TeamSetup } from './types';
 import { geminiEndpoint, MATCH_SUMMARY_PROMPT } from './constants/aiPrompts';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
+import { AI_SUMMARY_THROTTLE_MS } from './constants/gameConstants';
 
 const FootballTeamPickerInner = () => {
     const {
@@ -40,6 +41,7 @@ const FootballTeamPickerInner = () => {
     } | null>(null);
     const [aiSummaries, setAISummaries] = useState<{ [setupIndex: number]: string }>({});
     const [isExporting, setIsExporting] = useState(false);
+    const aiSummaryThrottleRef = useRef(0);
 
     useEffect(() => { localStorage.setItem('playersText', playersText); }, [playersText]);
     useEffect(() => { setAISummaries({}); }, [teamSetups]);
@@ -115,6 +117,9 @@ const FootballTeamPickerInner = () => {
 
     const handleGenerateSummary = async (setupIndex: number) => {
         if (!geminiKey) return;
+        const now = Date.now();
+        if (now - aiSummaryThrottleRef.current < AI_SUMMARY_THROTTLE_MS) return;
+        aiSummaryThrottleRef.current = now;
         const setup = teamSetups[setupIndex];
         const toneInstruction = warrenMode
             ? ` Use a ${Math.random() < warrenAggression / 100 ? 'grumpy and angry' : 'cheerful and encouraging'} tone.`

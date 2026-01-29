@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { teamPlaces } from '../constants/teamConstants';
 import { getPlacesBasedOnLocation } from '../utils/locationUtils';
 import { geminiEndpoint } from '../constants/aiPrompts';
 import { WARREN_NASTY_PHRASES, WARREN_LOVELY_PHRASES } from '../constants/aiPrompts';
+import { createThrottle } from '../utils/rateLimiter';
+import { GEOLOCATION_THROTTLE_MS, GEMINI_VALIDATION_THROTTLE_MS } from '../constants/gameConstants';
 
 interface SettingsContextValue {
     // Location
@@ -138,12 +140,20 @@ export const SettingsProvider: React.FC<{
     const setWarrenAggression = (aggression: number) => setWarrenAggressionState(aggression);
     const setDarkMode = (mode: boolean) => setDarkModeState(mode);
 
+    // --- Throttle guards ---
+    const locationThrottleRef = useRef(0);
+    const geminiThrottleRef = useRef(0);
+
     // --- Handlers ---
     const handleLocationChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         setSelectedLocation(event.target.value);
     };
 
-    const handleFindLocation = async () => {
+    const handleFindLocation = useCallback(async () => {
+        const now = Date.now();
+        if (now - locationThrottleRef.current < GEOLOCATION_THROTTLE_MS) return;
+        locationThrottleRef.current = now;
+
         setIsLoadingLocation(true);
         const { location, places } = await getPlacesBasedOnLocation();
         setSelectedLocation(location);
@@ -162,9 +172,13 @@ export const SettingsProvider: React.FC<{
         } else {
             addNotification(applyWarrenTone(`Location found: ${location}`));
         }
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    const handleGeminiKeySave = async () => {
+    const handleGeminiKeySave = useCallback(async () => {
+        const now = Date.now();
+        if (now - geminiThrottleRef.current < GEMINI_VALIDATION_THROTTLE_MS) return;
+        geminiThrottleRef.current = now;
         if (aiInputRef.current) {
             const key = aiInputRef.current.value;
             setGeminiKeyError(null);
@@ -186,7 +200,8 @@ export const SettingsProvider: React.FC<{
                 setGeminiKeyError('Error validating Gemini API key.');
             }
         }
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [aiModel]);
 
     const value: SettingsContextValue = {
         selectedLocation,
