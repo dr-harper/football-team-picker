@@ -2,6 +2,7 @@ import { Player, Team } from '../types';
 import { MIN_PLAYERS, MAX_PLAYERS, NUM_TEAMS, SHIRT_NUMBER_MIN, SHIRT_NUMBER_MAX, BOLD_COLOURS } from '../constants/gameConstants';
 import { pickSecondColor } from './colorUtils';
 import { generateTeamName } from './teamNameGenerator';
+import { sanitisePlayerName } from './validation';
 
 export interface GenerateTeamsResult {
     teams: Team[];
@@ -13,7 +14,8 @@ export interface GenerateTeamsResult {
 /** Parse raw text lines into Player objects */
 export function parsePlayers(lines: string[]): Player[] {
     return lines.map(line => {
-        const [name, ...rawTags] = line.split('#').map(item => item.trim());
+        const [rawName, ...rawTags] = line.split('#').map(item => item.trim());
+        const name = sanitisePlayerName(rawName);
         const normalizedTags = rawTags
             .filter(Boolean)
             .map(tag => tag.toLowerCase().replace(/\s+/g, ''));

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { MIN_PLAYERS, MAX_PLAYERS, NUM_TEAMS } from '../constants/gameConstants';
+import { validatePlayerInput } from '../utils/validation';
 
 interface PlayerInputProps {
     playersText: string;
@@ -26,6 +27,8 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
 }) => {
     const playerCount = playersText.split('\n').filter(line => line.trim()).length;
     const goalkeeperCount = playersText.split('\n').filter(line => line.includes('#g')).length;
+    const validationErrors = useMemo(() => validatePlayerInput(playersText), [playersText]);
+    const hasValidationErrors = validationErrors.length > 0;
 
     return (
         <div className="bg-green-700 dark:bg-green-800 p-4 shadow-lg text-white rounded-lg">
@@ -54,6 +57,17 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                         </Button>
                     )}
                 </div>
+
+                {hasValidationErrors && (
+                    <div className="mt-2 space-y-1">
+                        {validationErrors.map((err, i) => (
+                            <p key={i} className="text-sm text-orange-300">
+                                Line {err.line}: {err.message}
+                            </p>
+                        ))}
+                    </div>
+                )}
+
                 <div className="flex justify-between items-center mb-2">
                     <p className={`text-sm font-bold ${playerCount < MIN_PLAYERS ? 'text-red-500' : 'text-green-200'}`}>
                         Players: {playerCount} / {MAX_PLAYERS}
@@ -66,13 +80,15 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                 <div className="flex gap-4 mt-4">
                     <Button
                         onClick={onGenerate}
-                        className="bg-white dark:bg-gray-700 dark:text-green-100 text-green-800 py-2 px-6 rounded font-bold shadow-md transition flex-grow hover:bg-green-100 dark:hover:bg-gray-600"
+                        disabled={hasValidationErrors}
+                        className="bg-white dark:bg-gray-700 dark:text-green-100 text-green-800 py-2 px-6 rounded font-bold shadow-md transition flex-grow hover:bg-green-100 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Create Team
                     </Button>
                     <Button
                         onClick={onGenerateMultiple}
-                        className="bg-blue-700 dark:bg-blue-600 text-white py-2 px-6 rounded font-bold shadow-md transition flex-grow hover:bg-blue-800 dark:hover:bg-blue-700"
+                        disabled={hasValidationErrors}
+                        className="bg-blue-700 dark:bg-blue-600 text-white py-2 px-6 rounded font-bold shadow-md transition flex-grow hover:bg-blue-800 dark:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Create x3 Teams
                     </Button>
