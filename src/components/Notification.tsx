@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { NOTIFICATION_TIMEOUT_MS } from '../constants/gameConstants';
 
 interface NotificationProps {
     message: string;
@@ -7,7 +8,7 @@ interface NotificationProps {
 
 const Notification: React.FC<NotificationProps> = ({ message, onClose }) => {
     useEffect(() => {
-        const timer = setTimeout(onClose, 5000); // Automatically close after 5 seconds
+        const timer = setTimeout(onClose, NOTIFICATION_TIMEOUT_MS);
         return () => clearTimeout(timer);
     }, [onClose]);
 

@@ -16,6 +16,8 @@ import { positionsByTeamSizeAndSide, placeholderPositions } from './constants/po
 import ReactMarkdown from 'react-markdown';
 import { pickSecondColor } from './utils/colorUtils';
 import { Player, Team, TeamSetup, PositionedPlayer } from './types';
+import { MIN_PLAYERS, MAX_PLAYERS, NUM_TEAMS, SHIRT_NUMBER_MIN, SHIRT_NUMBER_MAX, BOLD_COLOURS, NOTIFICATION_TIMEOUT_MS } from './constants/gameConstants';
+import { geminiEndpoint, MATCH_SUMMARY_PROMPT, WARREN_NASTY_PHRASES, WARREN_LOVELY_PHRASES } from './constants/aiPrompts';
 
 const FootballTeamPicker = () => {
     const [playersText, setPlayersText] = useState(() => {
@@ -104,22 +106,10 @@ const FootballTeamPicker = () => {
 
     const applyWarrenTone = (msg: string) => {
         if (!warrenMode) return msg;
-        const nasty = [
-            ' Sort it out, pal!',
-            ' Honestly, that\'s pathetic.',
-            'Use your eyes, mate!',
-            'That\'s a fucking disgrace!',
-        ];
-        const lovely = [
-            ' You\'re doing great!',
-            ' Lovely stuff!',
-            ' Keep it up, legend!',
-            ' Fucking great work, mate!',
-        ];
         if (Math.random() < warrenAggression / 100) {
-            return msg + ' ' + nasty[Math.floor(Math.random() * nasty.length)];
+            return msg + ' ' + WARREN_NASTY_PHRASES[Math.floor(Math.random() * WARREN_NASTY_PHRASES.length)];
         }
-        return msg + ' ' + lovely[Math.floor(Math.random() * lovely.length)];
+        return msg + ' ' + WARREN_LOVELY_PHRASES[Math.floor(Math.random() * WARREN_LOVELY_PHRASES.length)];
     };
 
     const addNotification = (msg: string) => {
@@ -163,8 +153,8 @@ const FootballTeamPicker = () => {
 
         const playerLines = playersText.split('\n').filter(line => line.trim().length > 0);
 
-        if (playerLines.length < 10) {
-            setErrorMessage(applyWarrenTone('You need at least 10 players for two 5-a-side teams'));
+        if (playerLines.length < MIN_PLAYERS) {
+            setErrorMessage(applyWarrenTone(`You need at least ${MIN_PLAYERS} players for two 5-a-side teams`));
             return;
         }
 
@@ -196,13 +186,12 @@ const FootballTeamPicker = () => {
         const defenders = players.filter(player => player.isDefender);
         const outfieldPlayers = players.filter(player => !player.isGoalkeeper && !player.isStriker && !player.isDefender && !player.isteam1 && !player.isteam2);
 
-        const numTeams = 2;
-        if (goalkeepers.length < numTeams) {
-            setErrorMessage(applyWarrenTone(`You need at least ${numTeams} goalkeepers`));
+        if (goalkeepers.length < NUM_TEAMS) {
+            setErrorMessage(applyWarrenTone(`You need at least ${NUM_TEAMS} goalkeepers`));
         }
 
-        if (players.length > 16) {
-            setErrorMessage(applyWarrenTone('You can only have a maximum of 16 players'));
+        if (players.length > MAX_PLAYERS) {
+            setErrorMessage(applyWarrenTone(`You can only have a maximum of ${MAX_PLAYERS} players`));
             return;
         }
 
@@ -218,11 +207,10 @@ const FootballTeamPicker = () => {
         const generatedTeams: Team[] = [];
         const existingNames = new Set<string>();
 
-        const boldColors: string[] = ['#ff0000', '#0000ff', '#00ff00', '#ff00ff', '#00ffff', '#ff4500', '#8a2be2', '#ff1493', '#1e90ff'];
-        const primaryColor = boldColors[Math.floor(Math.random() * boldColors.length)];
-        const secondaryColor = numTeams > 1 ? pickSecondColor(primaryColor, boldColors) : primaryColor;
+        const primaryColor = BOLD_COLOURS[Math.floor(Math.random() * BOLD_COLOURS.length)];
+        const secondaryColor = NUM_TEAMS > 1 ? pickSecondColor(primaryColor, BOLD_COLOURS) : primaryColor;
 
-        for (let i = 0; i < numTeams; i++) {
+        for (let i = 0; i < NUM_TEAMS; i++) {
             const teamName = generateTeamName(existingNames, places) as string; // Use selected location's places
             existingNames.add(teamName);
 
@@ -246,17 +234,17 @@ const FootballTeamPicker = () => {
 
         shuffledDefenders.forEach(player => {
             generatedTeams[teamIndex].players.push(player);
-            teamIndex = (teamIndex + 1) % numTeams;
+            teamIndex = (teamIndex + 1) % NUM_TEAMS;
         });
 
         shuffledOutfield.forEach(player => {
             generatedTeams[teamIndex].players.push(player);
-            teamIndex = (teamIndex + 1) % numTeams;
+            teamIndex = (teamIndex + 1) % NUM_TEAMS;
         });
 
         shuffledStrikers.forEach(player => {
             generatedTeams[teamIndex].players.push(player);
-            teamIndex = (teamIndex + 1) % numTeams;
+            teamIndex = (teamIndex + 1) % NUM_TEAMS;
         });
 
         // for generated team, check if player index 0 is empty, if so reindex the players
@@ -266,7 +254,7 @@ const FootballTeamPicker = () => {
             }
         });
 
-        const availableNumbers = Array.from({ length: 20 }, (_, i) => i + 2);
+        const availableNumbers = Array.from({ length: SHIRT_NUMBER_MAX - SHIRT_NUMBER_MIN }, (_, i) => i + SHIRT_NUMBER_MIN);
         const newPlayerNumbers: { [playerName: string]: number } = { ...playerNumbers };
 
         generatedTeams.forEach(team => {
@@ -549,7 +537,7 @@ const FootballTeamPicker = () => {
             setGeminiKeyError(null);
             // Validate Gemini key with a test request
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=` + key, {
+                const res = await fetch(geminiEndpoint(aiModel, key), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Reply with OK' }] }] })
@@ -576,7 +564,7 @@ const FootballTeamPicker = () => {
             : '';
         const customInstruction = aiCustomInstructions ? ` ${aiCustomInstructions}` : '';
         const prompt =
-            `Write a colourful, fun, and slightly cheeky pre-match hype summary for this football game (the match has not been played yet). Mention the teams, their names, and comment on the players and their roles. Be creative and playful, add some relevant emojis, and keep it under 100 words. Format your response in markdown.` +
+            MATCH_SUMMARY_PROMPT +
             toneInstruction +
             customInstruction +
             `\n\n${setup.teams
@@ -588,7 +576,7 @@ const FootballTeamPicker = () => {
                 .join('\n\n')}`;
         setAISummaries(prev => ({ ...prev, [setupIndex]: 'Loading...' }));
         try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiModel}:generateContent?key=` + geminiKey, {
+            const res = await fetch(geminiEndpoint(aiModel, geminiKey), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }] })
@@ -691,8 +679,8 @@ Billy #g"
                                     )}
                                 </div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <p className={`text-sm font-bold ${playersText.split('\n').filter(line => line.trim()).length < 10 ? 'text-red-500' : 'text-green-200'}`}>
-                                        Players: {playersText.split('\n').filter(line => line.trim()).length} / 16
+                                    <p className={`text-sm font-bold ${playersText.split('\n').filter(line => line.trim()).length < MIN_PLAYERS ? 'text-red-500' : 'text-green-200'}`}>
+                                        Players: {playersText.split('\n').filter(line => line.trim()).length} / {MAX_PLAYERS}
                                     </p>
 
                                     <p className={`text-sm font-bold ${playersText.split('\n').filter(line => line.includes('#g')).length < 2 ? 'text-orange-500' : 'text-green-200'}`}>
