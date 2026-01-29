@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import Notification from './components/Notification';
 import Footer from './components/Footer';
@@ -7,122 +7,44 @@ import HeaderBar from './components/HeaderBar';
 import PlayerInput from './components/PlayerInput';
 import PlaceholderPitch from './components/PlaceholderPitch';
 import TeamSetupCard from './components/TeamSetupCard';
-import { teamPlaces } from './constants/teamConstants';
-import { getPlacesBasedOnLocation } from './utils/locationUtils';
 import { generateTeamsFromText } from './utils/teamGenerator';
 import { exportImage, shareImage } from './utils/imageExport';
 import { Team, TeamSetup } from './types';
-import { WARREN_NASTY_PHRASES, WARREN_LOVELY_PHRASES, geminiEndpoint, MATCH_SUMMARY_PROMPT } from './constants/aiPrompts';
+import { geminiEndpoint, MATCH_SUMMARY_PROMPT } from './constants/aiPrompts';
+import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 
-const FootballTeamPicker = () => {
+const FootballTeamPickerInner = () => {
+    const {
+        places,
+        geminiKey,
+        aiModel,
+        aiCustomInstructions,
+        warrenMode,
+        warrenAggression,
+        applyWarrenTone,
+        addNotification,
+    } = useSettings();
+
     const [playersText, setPlayersText] = useState(() => {
         return localStorage.getItem('playersText') || '';
     });
     const [teamSetups, setTeamSetups] = useState<TeamSetup[]>([]);
     const [errorMessage, setErrorMessage] = useState('');
     const [playerNumbers, setPlayerNumbers] = useState<{ [playerName: string]: number }>({});
-    const [selectedLocation, setSelectedLocation] = useState(() => {
-        return localStorage.getItem('selectedLocation') || 'Generic';
-    });
-    const [places, setPlaces] = useState<string[]>(teamPlaces.Generic.places);
     const [notifications, setNotifications] = useState<{ id: number; message: string }[]>([]);
     const [showNoGoalkeeperInfo, setShowNoGoalkeeperInfo] = useState(false);
-    const [isLoadingLocation, setIsLoadingLocation] = useState(false);
     const [selectedPlayer, setSelectedPlayer] = useState<{
         setupIndex: number;
         teamIndex: number;
         playerIndex: number;
     } | null>(null);
-    const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('geminiKey') || '');
-    const [aiModel, setAIModel] = useState(() => localStorage.getItem('aiModel') || 'gemini-2.0-flash');
-    const [aiCustomInstructions, setAICustomInstructions] = useState(() =>
-        localStorage.getItem('aiCustomInstructions') || ''
-    );
     const [aiSummaries, setAISummaries] = useState<{ [setupIndex: number]: string }>({});
-    const [geminiKeyError, setGeminiKeyError] = useState<string | null>(null);
-    const [warrenMode, setWarrenMode] = useState(() => localStorage.getItem('warrenMode') === 'true');
-    const [warrenAggression, setWarrenAggression] = useState(() => {
-        const stored = localStorage.getItem('warrenAggression');
-        return stored ? Number(stored) : 20;
-    });
-    const [darkMode, setDarkMode] = useState(() => {
-        const stored = localStorage.getItem('darkMode');
-        return stored ? stored === 'true' : true;
-    });
-    const [locationPermission, setLocationPermission] = useState<PermissionState>('prompt');
-    const aiInputRef = useRef<HTMLInputElement>(null);
 
-    // --- localStorage persistence effects ---
     useEffect(() => { localStorage.setItem('playersText', playersText); }, [playersText]);
-    useEffect(() => { localStorage.setItem('selectedLocation', selectedLocation); }, [selectedLocation]);
-    useEffect(() => { localStorage.setItem('warrenMode', String(warrenMode)); }, [warrenMode]);
-    useEffect(() => { localStorage.setItem('warrenAggression', String(warrenAggression)); }, [warrenAggression]);
-    useEffect(() => {
-        document.documentElement.classList.toggle('dark', darkMode);
-        localStorage.setItem('darkMode', String(darkMode));
-    }, [darkMode]);
-    useEffect(() => { localStorage.setItem('aiCustomInstructions', aiCustomInstructions); }, [aiCustomInstructions]);
-
-    useEffect(() => {
-        if (navigator.permissions?.query) {
-            navigator.permissions
-                .query({ name: 'geolocation' })
-                .then(result => {
-                    setLocationPermission(result.state);
-                    result.onchange = () => setLocationPermission(result.state);
-                })
-                .catch(() => {});
-        }
-    }, []);
-
-    useEffect(() => {
-        setPlaces((teamPlaces as Record<string, { places: string[] }>)[selectedLocation]?.places || teamPlaces.Generic.places);
-    }, [selectedLocation]);
-
     useEffect(() => { setAISummaries({}); }, [teamSetups]);
-
-    // --- Helpers ---
-    const applyWarrenTone = (msg: string) => {
-        if (!warrenMode) return msg;
-        if (Math.random() < warrenAggression / 100) {
-            return msg + ' ' + WARREN_NASTY_PHRASES[Math.floor(Math.random() * WARREN_NASTY_PHRASES.length)];
-        }
-        return msg + ' ' + WARREN_LOVELY_PHRASES[Math.floor(Math.random() * WARREN_LOVELY_PHRASES.length)];
-    };
-
-    const addNotification = (msg: string) => {
-        const id = Date.now() + Math.random();
-        setNotifications(n => [...n, { id, message: msg }]);
-    };
 
     const removeNotification = (id: number) => {
         setNotifications(n => n.filter(note => note.id !== id));
-    };
-
-    // --- Event handlers ---
-    const handleLocationChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-        setSelectedLocation(event.target.value);
-    };
-
-    const handleFindLocation = async () => {
-        setIsLoadingLocation(true);
-        const { location, places } = await getPlacesBasedOnLocation();
-        setSelectedLocation(location);
-        setPlaces(places);
-        if (navigator.permissions?.query) {
-            try {
-                const result = await navigator.permissions.query({ name: 'geolocation' });
-                setLocationPermission(result.state);
-            } catch {
-                // ignore
-            }
-        }
-        setIsLoadingLocation(false);
-        if (location === 'Generic') {
-            addNotification(applyWarrenTone("Sorry, we don't have any regional data for your location. Defaulting to Generic"));
-        } else {
-            addNotification(applyWarrenTone(`Location found: ${location}`));
-        }
     };
 
     const generateTeams = () => {
@@ -190,30 +112,6 @@ const FootballTeamPicker = () => {
         }
     };
 
-    const handleGeminiKeySave = async () => {
-        if (aiInputRef.current) {
-            const key = aiInputRef.current.value;
-            setGeminiKeyError(null);
-            try {
-                const res = await fetch(geminiEndpoint(aiModel, key), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Reply with OK' }] }] })
-                });
-                const data = await res.json();
-                const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-                if (reply === 'OK') {
-                    setGeminiKey(key);
-                    localStorage.setItem('geminiKey', key);
-                } else {
-                    setGeminiKeyError('Invalid Gemini API key or unexpected response.');
-                }
-            } catch {
-                setGeminiKeyError('Error validating Gemini API key.');
-            }
-        }
-    };
-
     const handleGenerateSummary = async (setupIndex: number) => {
         if (!geminiKey) return;
         const setup = teamSetups[setupIndex];
@@ -257,34 +155,9 @@ const FootballTeamPicker = () => {
         addNotification(applyWarrenTone('All teams cleared'));
     };
 
-    // --- Render ---
     return (
-        <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
-            <HeaderBar
-                selectedLocation={selectedLocation}
-                onLocationChange={handleLocationChange}
-                onFindLocation={handleFindLocation}
-                isLoadingLocation={isLoadingLocation}
-                locationPermission={locationPermission}
-                onLocationIconClick={handleFindLocation}
-                aiModel={aiModel}
-                onAIModelChange={(e) => {
-                    setAIModel(e.target.value);
-                    localStorage.setItem('aiModel', e.target.value);
-                }}
-                geminiKey={geminiKey}
-                onGeminiKeySave={handleGeminiKeySave}
-                aiInputRef={aiInputRef}
-                geminiKeyError={geminiKeyError}
-                aiCustomInstructions={aiCustomInstructions}
-                onCustomInstructionsChange={setAICustomInstructions}
-                warrenMode={warrenMode}
-                onWarrenModeChange={setWarrenMode}
-                warrenAggression={warrenAggression}
-                onWarrenAggressionChange={setWarrenAggression}
-                darkMode={darkMode}
-                onDarkModeChange={setDarkMode}
-            />
+        <>
+            <HeaderBar />
             <div className="flex-grow p-4 sm:p-6">
                 {notifications.length > 0 && (
                     <div className="fixed bottom-24 right-4 flex flex-col items-end space-y-2 z-50">
@@ -350,7 +223,19 @@ const FootballTeamPicker = () => {
                 onShare={() => shareImage(teamSetups.length)}
                 teamCount={teamSetups.length}
             />
-        </div>
+        </>
+    );
+};
+
+const FootballTeamPicker = () => {
+    const [notifications, setNotifications] = useState<{ id: number; message: string }[]>([]);
+
+    return (
+        <SettingsProvider notifications={notifications} setNotifications={setNotifications}>
+            <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
+                <FootballTeamPickerInner />
+            </div>
+        </SettingsProvider>
     );
 };
 

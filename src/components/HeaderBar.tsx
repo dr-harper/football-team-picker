@@ -2,53 +2,31 @@ import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { teamPlaces } from '../constants/teamConstants';
 import { Settings, Bot, Check, X, MapPin } from 'lucide-react';
+import { useSettings } from '../contexts/SettingsContext';
 
+const HeaderBar: React.FC = () => {
+    const {
+        selectedLocation,
+        handleLocationChange,
+        handleFindLocation,
+        isLoadingLocation,
+        locationPermission,
+        aiModel,
+        setAIModel,
+        geminiKey,
+        handleGeminiKeySave,
+        aiInputRef,
+        geminiKeyError,
+        aiCustomInstructions,
+        setAICustomInstructions,
+        warrenMode,
+        setWarrenMode,
+        warrenAggression,
+        setWarrenAggression,
+        darkMode,
+        setDarkMode,
+    } = useSettings();
 
-interface HeaderBarProps {
-    selectedLocation: string;
-    onLocationChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-    onFindLocation: () => void;
-    isLoadingLocation: boolean;
-    locationPermission: PermissionState;
-    onLocationIconClick: () => void;
-    aiModel: string;
-    onAIModelChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-    geminiKey: string;
-    onGeminiKeySave: () => void;
-    aiInputRef: React.RefObject<HTMLInputElement>;
-    geminiKeyError: string | null;
-    aiCustomInstructions: string;
-    onCustomInstructionsChange: (value: string) => void;
-    warrenMode: boolean;
-    onWarrenModeChange: (value: boolean) => void;
-    warrenAggression: number;
-    onWarrenAggressionChange: (value: number) => void;
-    darkMode: boolean;
-    onDarkModeChange: (value: boolean) => void;
-}
-
-const HeaderBar: React.FC<HeaderBarProps> = ({
-    selectedLocation,
-    onLocationChange,
-    onFindLocation,
-    isLoadingLocation,
-    locationPermission,
-    onLocationIconClick,
-    aiModel,
-    onAIModelChange,
-    geminiKey,
-    onGeminiKeySave,
-    aiInputRef,
-    geminiKeyError,
-    aiCustomInstructions,
-    onCustomInstructionsChange,
-    warrenMode,
-    onWarrenModeChange,
-    warrenAggression,
-    onWarrenAggressionChange,
-    darkMode,
-    onDarkModeChange,
-}) => {
     const [showConfig, setShowConfig] = useState(false);
 
     const aiEnabled = Boolean(geminiKey);
@@ -84,7 +62,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                     )}
                 </button>
                 <button
-                    onClick={onLocationIconClick}
+                    onClick={handleFindLocation}
                     className="relative text-white"
                     aria-label="Location status"
                 >
@@ -117,7 +95,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                             <select
                                 id="location-select"
                                 value={selectedLocation}
-                                onChange={onLocationChange}
+                                onChange={handleLocationChange}
                                 className="w-full border p-2 rounded mb-2 dark:bg-gray-700 dark:text-white"
                             >
                                 {Object.entries(teamPlaces).map(([key]) => (
@@ -125,7 +103,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                                 ))}
                             </select>
                             <Button
-                                onClick={onFindLocation}
+                                onClick={handleFindLocation}
                                 className="bg-green-700 dark:bg-green-600 text-white w-full"
                                 disabled={isLoadingLocation}
                             >
@@ -151,7 +129,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                             <select
                                 id="model-select"
                                 value={aiModel}
-                                onChange={onAIModelChange}
+                                onChange={(e) => setAIModel(e.target.value)}
                                 className="w-full border p-2 rounded mb-2 dark:bg-gray-700 dark:text-white"
                             >
                                 <option value="gemini-2.0-flash">Gemini Flash</option>
@@ -167,7 +145,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                             />
                             <Button
                                 onClick={() => {
-                                    onGeminiKeySave();
+                                    handleGeminiKeySave();
                                     setShowConfig(false);
                                 }}
                                 className="bg-green-700 dark:bg-green-600 text-white w-full mb-2"
@@ -188,7 +166,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                             <label className="block font-semibold mb-1">Custom Instructions</label>
                             <textarea
                                 value={aiCustomInstructions}
-                                onChange={(e) => onCustomInstructionsChange(e.target.value)}
+                                onChange={(e) => setAICustomInstructions(e.target.value)}
                                 className="w-full h-24 border p-2 rounded mb-2 dark:bg-gray-700 dark:text-white"
                                 placeholder="Any extra instructions for the AI"
                             />
@@ -198,7 +176,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                                 <input
                                     type="checkbox"
                                     checked={warrenMode}
-                                    onChange={(e) => onWarrenModeChange(e.target.checked)}
+                                    onChange={(e) => setWarrenMode(e.target.checked)}
                                 />
                                 Warren Mode
                             </label>
@@ -213,7 +191,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                                         min="0"
                                         max="100"
                                         value={warrenAggression}
-                                        onChange={(e) => onWarrenAggressionChange(Number(e.target.value))}
+                                        onChange={(e) => setWarrenAggression(Number(e.target.value))}
                                         className="w-full"
                                     />
                                 </div>
@@ -224,7 +202,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                                 <input
                                     type="checkbox"
                                     checked={darkMode}
-                                    onChange={(e) => onDarkModeChange(e.target.checked)}
+                                    onChange={(e) => setDarkMode(e.target.checked)}
                                 />
                                 Dark Mode
                             </label>
