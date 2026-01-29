@@ -15,35 +15,7 @@ import { teamPlaces } from './constants/teamConstants';
 import { positionsByTeamSizeAndSide, placeholderPositions } from './constants/positionsConstants';
 import ReactMarkdown from 'react-markdown';
 import { pickSecondColor } from './utils/colorUtils';
-
-interface Player {
-    name: string;
-    isGoalkeeper: boolean;
-    isStriker: boolean;
-    isDefender: boolean;
-    isteam1: boolean;
-    isteam2: boolean;
-    role: string;
-    shirtNumber: number | null;
-}
-
-interface Team {
-    name: string;
-    players: Player[];
-    color: string;
-}
-
-interface TeamSetup {
-    teams: Team[];
-    playersInput: string;
-}
-
-interface PositionedPlayer {
-    top: string;
-    left: string;
-    player: Player;
-    playerIndex: number;
-}
+import { Player, Team, TeamSetup, PositionedPlayer } from './types';
 
 const FootballTeamPicker = () => {
     const [playersText, setPlayersText] = useState(() => {
