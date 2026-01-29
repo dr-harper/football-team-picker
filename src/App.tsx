@@ -39,6 +39,7 @@ const FootballTeamPickerInner = () => {
         playerIndex: number;
     } | null>(null);
     const [aiSummaries, setAISummaries] = useState<{ [setupIndex: number]: string }>({});
+    const [isExporting, setIsExporting] = useState(false);
 
     useEffect(() => { localStorage.setItem('playersText', playersText); }, [playersText]);
     useEffect(() => { setAISummaries({}); }, [teamSetups]);
@@ -219,8 +220,23 @@ const FootballTeamPickerInner = () => {
             <Footer />
             <FloatingFooter
                 visible={teamSetups.length > 0}
-                onExport={() => exportImage(teamSetups.length)}
-                onShare={() => shareImage(teamSetups.length)}
+                isExporting={isExporting}
+                onExport={async () => {
+                    setIsExporting(true);
+                    const result = await exportImage(teamSetups.length);
+                    setIsExporting(false);
+                    if (!result.success) {
+                        addNotification(applyWarrenTone(result.error || 'Export failed'));
+                    }
+                }}
+                onShare={async () => {
+                    setIsExporting(true);
+                    const result = await shareImage(teamSetups.length);
+                    setIsExporting(false);
+                    if (!result.success) {
+                        addNotification(applyWarrenTone(result.error || 'Sharing failed'));
+                    }
+                }}
                 teamCount={teamSetups.length}
             />
         </>

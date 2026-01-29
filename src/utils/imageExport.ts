@@ -2,6 +2,11 @@ import { toPng } from 'html-to-image';
 
 const HIDDEN_SELECTORS = ['.delete-button', '.color-picker', '.color-circle', '.generate-ai-summary'];
 
+export interface ExportResult {
+    success: boolean;
+    error?: string;
+}
+
 function setElementsVisibility(elements: (HTMLElement | null)[], display: string) {
     elements.forEach(element => {
         HIDDEN_SELECTORS.forEach(selector => {
@@ -74,20 +79,26 @@ function dateStamp(): string {
 }
 
 /** Download the generated image as a PNG file */
-export async function exportImage(setupCount: number): Promise<void> {
-    const dataUrl = await generateTeamsImage(setupCount);
-    if (!dataUrl) return;
-    const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = `Football_teams_${dateStamp()}.png`;
-    link.click();
+export async function exportImage(setupCount: number): Promise<ExportResult> {
+    try {
+        const dataUrl = await generateTeamsImage(setupCount);
+        if (!dataUrl) return { success: false, error: 'Failed to generate image' };
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `Football_teams_${dateStamp()}.png`;
+        link.click();
+        return { success: true };
+    } catch (err) {
+        console.error('Export failed:', err);
+        return { success: false, error: 'Failed to export image' };
+    }
 }
 
 /** Share the generated image via the native share API or WhatsApp fallback */
-export async function shareImage(setupCount: number): Promise<void> {
-    const dataUrl = await generateTeamsImage(setupCount);
-    if (!dataUrl) return;
+export async function shareImage(setupCount: number): Promise<ExportResult> {
     try {
+        const dataUrl = await generateTeamsImage(setupCount);
+        if (!dataUrl) return { success: false, error: 'Failed to generate image for sharing' };
         const response = await fetch(dataUrl);
         const blob = await response.blob();
         const file = new File([blob], `Football_teams_${dateStamp()}.png`, { type: 'image/png' });
@@ -102,7 +113,9 @@ export async function shareImage(setupCount: number): Promise<void> {
             const shareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent('Check out the teams I made on teamshuffle.app')}`;
             window.open(shareUrl, '_blank');
         }
+        return { success: true };
     } catch (err) {
         console.error('Sharing failed:', err);
+        return { success: false, error: 'Failed to share image' };
     }
 }
