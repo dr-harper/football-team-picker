@@ -67,7 +67,14 @@ export const SettingsProvider: React.FC<{
 
     // AI state
     const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('geminiKey') || '');
-    const [aiModel, setAIModelState] = useState(() => localStorage.getItem('aiModel') || 'gemini-2.0-flash');
+    const [aiModel, setAIModelState] = useState(() => {
+        const stored = localStorage.getItem('aiModel');
+        // Migrate deprecated model names
+        if (!stored || stored === 'gemini-2.0-flash' || stored === 'gemini-pro') {
+            return 'gemini-2.5-flash-lite';
+        }
+        return stored;
+    });
     const [aiCustomInstructions, setAICustomInstructionsState] = useState(() =>
         localStorage.getItem('aiCustomInstructions') || ''
     );

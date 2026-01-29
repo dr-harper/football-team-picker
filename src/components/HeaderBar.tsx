@@ -132,8 +132,8 @@ const HeaderBar: React.FC = () => {
                                 onChange={(e) => setAIModel(e.target.value)}
                                 className="w-full border p-2 rounded mb-2 dark:bg-gray-700 dark:text-white"
                             >
-                                <option value="gemini-2.0-flash">Gemini Flash</option>
-                                <option value="gemini-pro">Gemini Pro</option>
+                                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
                             </select>
                             <label className="block font-semibold mb-1">Gemini API Key</label>
                             <input
