@@ -13,6 +13,69 @@ A React web app built to simplify picking 5-a-side football teams. The app ensur
 - Export saved teams as an image to share with friends
 - Optional "Warren Mode" spices up warnings and summaries. When enabled you can set an aggression slider (0-100%) to control how often the tone is nasty (defaults to 20%).
 - Dark mode enabled by default with option to switch to light theme
+- Input validation with inline error messages
+- Rate-limited API calls to prevent accidental spam
+
+### Player Tags
+
+Use tags after a player's name (prefixed with `#`) to assign roles:
+
+| Tag | Meaning |
+|-----|---------|
+| `#g` | Goalkeeper |
+| `#s` | Striker |
+| `#d` | Defender |
+| `#1` or `#t1` or `#team1` | Force assign to Team 1 |
+| `#2` or `#t2` or `#team2` | Force assign to Team 2 |
+
+**Example:**
+```
+Alice #g
+Bob #g
+Carol #d
+Dave #s
+Eve #1
+Frank #2
+Grace
+Heidi
+Ivan
+Judy
+```
+
+### Architecture
+
+```
+src/
+├── App.tsx                     # Root component — state, layout, composition
+├── types.ts                    # Shared TypeScript interfaces
+├── components/
+│   ├── HeaderBar.tsx           # Settings modal (uses SettingsContext)
+│   ├── PlayerInput.tsx         # Player textarea, validation, buttons
+│   ├── PitchRenderer.tsx       # SVG pitch with positioned players
+│   ├── TeamSetupCard.tsx       # Team card (colour pickers, AI summary)
+│   ├── PlaceholderPitch.tsx    # Empty-state pitch display
+│   ├── FloatingFooter.tsx      # Export/share buttons with loading state
+│   ├── Notification.tsx        # Toast notifications
+│   ├── Footer.tsx              # App footer
+│   └── PlayerIcon.tsx          # Player SVG icon
+├── contexts/
+│   └── SettingsContext.tsx      # Location, AI, Warren, dark mode state
+├── constants/
+│   ├── gameConstants.ts        # Player limits, colours, timeouts
+│   ├── aiPrompts.ts            # Gemini API config, prompt templates
+│   ├── teamConstants.ts        # UK locations and team suffixes
+│   └── positionsConstants.ts   # Pitch position layouts by team size
+├── utils/
+│   ├── teamGenerator.ts        # Player parsing, team distribution
+│   ├── imageExport.ts          # PNG export and share logic
+│   ├── validation.ts           # Input validation and sanitisation
+│   ├── rateLimiter.ts          # Throttle utility
+│   ├── colorUtils.ts           # Colour distance and contrast
+│   ├── locationUtils.ts        # Geolocation and place detection
+│   └── teamNameGenerator.ts    # Random team name generation
+└── lib/
+    └── utils.ts                # Class name merging utility
+```
 
 ### Local Development
 
@@ -32,7 +95,29 @@ Get started hacking on **TeamShuffle** in just a few steps:
    npm run preview
    ```
 
-#### Linting
+### Testing
+
+The project uses [Vitest](https://vitest.dev/) for unit tests.
+
+```bash
+# Run all tests once
+npm test
+
+# Watch mode (re-runs on file changes)
+npm run test:watch
+
+# With coverage report
+npm run test:coverage
+```
+
+Test files live in the `tests/` directory alongside the source they cover:
+- `colorUtils.test.ts` — colour utility functions
+- `teamGenerator.test.ts` — player parsing, team balancing, shirt numbers
+- `teamNameGenerator.test.ts` — name generation and uniqueness
+- `validation.test.ts` — input validation and sanitisation
+- `rateLimiter.test.ts` — throttle utility behaviour
+
+### Linting
 
 Keep your code tidy with:
 
@@ -51,5 +136,3 @@ Contributions are welcome! Feel free to fork the repository and submit a pull re
 ### License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
-
-

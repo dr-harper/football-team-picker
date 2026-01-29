@@ -1,4 +1,5 @@
 import { teamSuffixes } from '../constants/teamConstants';
+import { TEAM_NAME_MAX_ATTEMPTS } from '../constants/gameConstants';
 
 export const generateTeamName = (existingNames: Set<string>, places: string[]) => {
     let teamName;
@@ -12,18 +13,18 @@ export const generateTeamName = (existingNames: Set<string>, places: string[]) =
 
         if (usedPlaces.has(place) || usedSuffixes.has(suffix)) {
             attempts++;
-            continue; // Skip if the place or suffix is already used
+            continue;
         }
 
         teamName = `${place} ${suffix}`;
         if (!existingNames.has(teamName)) {
-            usedPlaces.add(place); // Mark the place as used
-            usedSuffixes.add(suffix); // Mark the suffix as used
+            usedPlaces.add(place);
+            usedSuffixes.add(suffix);
             break;
         }
 
         attempts++;
-    } while (attempts < 20); // Ensure uniqueness with a fallback
+    } while (attempts < TEAM_NAME_MAX_ATTEMPTS);
 
     return teamName;
 };

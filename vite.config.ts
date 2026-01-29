@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
@@ -16,5 +17,10 @@ export default defineConfig({
     __BUILD_VERSION__: JSON.stringify(
       process.env.BUILD_VERSION || Math.floor(Date.now() / 1000).toString()
     ),
+  },
+  test: {
+    globals: true,
+    environment: "node",
+    include: ["tests/**/*.test.ts"],
   },
 });
