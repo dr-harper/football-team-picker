@@ -122,23 +122,23 @@ export const SettingsProvider: React.FC<{
         }
     }, []);
 
-    // --- Helpers ---
-    const applyWarrenTone = (msg: string) => {
+    // --- Helpers (memoised to avoid unnecessary consumer re-renders) ---
+    const applyWarrenTone = useCallback((msg: string) => {
         if (!warrenMode) return msg;
         if (Math.random() < warrenAggression / 100) {
             return msg + ' ' + WARREN_NASTY_PHRASES[Math.floor(Math.random() * WARREN_NASTY_PHRASES.length)];
         }
         return msg + ' ' + WARREN_LOVELY_PHRASES[Math.floor(Math.random() * WARREN_LOVELY_PHRASES.length)];
-    };
+    }, [warrenMode, warrenAggression]);
 
-    const removeNotification = (id: number) => {
+    const removeNotification = useCallback((id: number) => {
         setNotifications(n => n.filter(note => note.id !== id));
-    };
+    }, []);
 
-    const addNotification = (msg: string) => {
+    const addNotification = useCallback((msg: string) => {
         const id = Date.now() + Math.random();
         setNotifications(n => [...n, { id, message: msg }]);
-    };
+    }, []);
 
     // --- Setters with persistence ---
     const setAIModel = (model: string) => {
@@ -186,8 +186,7 @@ export const SettingsProvider: React.FC<{
         } else {
             addNotification(applyWarrenTone(`Location found: ${location}`));
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [addNotification, applyWarrenTone]);
 
     const handleGeminiKeySave = useCallback(async () => {
         const now = Date.now();

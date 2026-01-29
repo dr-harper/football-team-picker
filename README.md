@@ -133,6 +133,6 @@ The app is available at [TeamShuffle](https://teamshuffle.app).
 
 Contributions are welcome! Feel free to fork the repository and submit a pull request.
 
-### Licence
+### License
 
-This project is licensed under the MIT Licence. See the LICENCE file for details.
+This project is licensed under the MIT License. See the LICENSE file for details.
