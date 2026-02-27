@@ -31,7 +31,7 @@ jobs:
           --gen2 \
           --project="${{ secrets.GCP_PROJECT_ID }}" \
           --region="${{ secrets.GCP_REGION }}" \
-          --runtime=nodejs18 \
+          --runtime=nodejs20 \
           --trigger-http \
           --allow-unauthenticated \
           --source=functions \
