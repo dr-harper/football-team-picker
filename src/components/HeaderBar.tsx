@@ -80,7 +80,7 @@ const HeaderBar: React.FC = () => {
                     onClick={() => setShowConfig(false)}
                 >
                     <div
-                        className="relative w-80 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg p-4 text-green-900 dark:text-green-100 space-y-4"
+                        className="relative w-80 sm:w-96 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg p-4 text-green-900 dark:text-green-100 space-y-4 max-h-[90vh] overflow-y-auto"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button
