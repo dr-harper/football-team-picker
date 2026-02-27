@@ -26,6 +26,7 @@ jobs:
       env:
         BASE_PATH: /pr/${{ github.event.number }}/
         BUILD_VERSION: ${{ github.sha }}
+        VITE_AI_PROXY_URL: ${{ secrets.AI_PROXY_URL }}
 
     - name: Deploy preview
       id: deploy
