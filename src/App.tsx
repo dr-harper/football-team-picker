@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import Notification from './components/Notification';
 import Footer from './components/Footer';
@@ -40,27 +40,29 @@ const FootballTeamPickerInner = () => {
         teamIndex: number;
         playerIndex: number;
     } | null>(null);
-    const [aiSummaries, setAISummaries] = useState<{ [setupIndex: number]: string }>({});
+    const [aiSummaries, setAISummaries] = useState<{ [setupId: string]: string }>({});
     const [isExporting, setIsExporting] = useState(false);
     const aiSummaryThrottleRef = useRef(0);
+    const nextSetupIdRef = useRef(0);
 
     useEffect(() => { localStorage.setItem('playersText', playersText); }, [playersText]);
     useEffect(() => { setAISummaries({}); }, [teamSetups]);
 
-    const generateTeams = () => {
+    const generateTeams = useCallback(() => {
         const result = generateTeamsFromText(playersText, places, playerNumbers);
         if (result.error) {
             setErrorMessage(applyWarrenTone(result.error));
             return;
         }
         setPlayerNumbers(result.playerNumbers);
-        setTeamSetups(prev => [...prev, { teams: result.teams, playersInput: playersText }]);
+        const id = String(nextSetupIdRef.current++);
+        setTeamSetups(prev => [...prev, { id, teams: result.teams, playersInput: playersText }]);
         setErrorMessage('');
         setShowNoGoalkeeperInfo(result.noGoalkeepers);
-    };
+    }, [playersText, places, playerNumbers, applyWarrenTone]);
 
-    const deleteTeamSetup = (indexToDelete: number) => {
-        setTeamSetups(prev => prev.filter((_, index) => index !== indexToDelete));
+    const deleteTeamSetup = (setupId: string) => {
+        setTeamSetups(prev => prev.filter(setup => setup.id !== setupId));
     };
 
     const handleColorChange = (setupIndex: number, teamIndex: number, color: string) => {
@@ -112,12 +114,13 @@ const FootballTeamPickerInner = () => {
         }
     };
 
-    const handleGenerateSummary = async (setupIndex: number) => {
+    const handleGenerateSummary = async (setupId: string) => {
         if (!geminiKey) return;
         const now = Date.now();
         if (now - aiSummaryThrottleRef.current < AI_SUMMARY_THROTTLE_MS) return;
         aiSummaryThrottleRef.current = now;
-        const setup = teamSetups[setupIndex];
+        const setup = teamSetups.find(s => s.id === setupId);
+        if (!setup) return;
         const toneInstruction = warrenMode
             ? ` Use a ${Math.random() < warrenAggression / 100 ? 'grumpy and angry' : 'cheerful and encouraging'} tone.`
             : '';
@@ -133,7 +136,7 @@ const FootballTeamPickerInner = () => {
                         team.players.map(p => `- ${p.name} (${p.role})`).join('\n')
                 )
                 .join('\n\n')}`;
-        setAISummaries(prev => ({ ...prev, [setupIndex]: 'Loading...' }));
+        setAISummaries(prev => ({ ...prev, [setupId]: 'Loading...' }));
         try {
             const res = await fetch(geminiEndpoint(aiModel, geminiKey), {
                 method: 'POST',
@@ -142,11 +145,11 @@ const FootballTeamPickerInner = () => {
             });
             const data = await res.json();
             const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No summary generated.';
-            setAISummaries(prev => ({ ...prev, [setupIndex]: summary }));
+            setAISummaries(prev => ({ ...prev, [setupId]: summary }));
         } catch {
             setAISummaries(prev => ({
                 ...prev,
-                [setupIndex]: applyWarrenTone('Error generating summary.'),
+                [setupId]: applyWarrenTone('Error generating summary.'),
             }));
         }
     };
@@ -163,7 +166,7 @@ const FootballTeamPickerInner = () => {
             <HeaderBar />
             <div className="flex-grow p-4 sm:p-6">
                 {notifications.length > 0 && (
-                    <div className="fixed bottom-24 right-4 flex flex-col items-end space-y-2 z-50">
+                    <div aria-live="polite" className="fixed bottom-24 right-4 flex flex-col items-end space-y-2 z-50">
                         {notifications.map(n => (
                             <Notification key={n.id} message={n.message} onClose={() => removeNotification(n.id)} />
                         ))}
@@ -200,17 +203,17 @@ const FootballTeamPickerInner = () => {
                             <AnimatePresence>
                                 {teamSetups.map((setup, setupIndex) => (
                                     <TeamSetupCard
-                                        key={setupIndex}
+                                        key={setup.id}
                                         setup={setup}
                                         setupIndex={setupIndex}
                                         totalSetups={teamSetups.length}
                                         selectedPlayer={selectedPlayer}
                                         onPlayerClick={handlePlayerClick}
-                                        onDelete={deleteTeamSetup}
+                                        onDelete={() => deleteTeamSetup(setup.id)}
                                         onColorChange={handleColorChange}
                                         geminiKey={geminiKey}
-                                        aiSummary={aiSummaries[setupIndex]}
-                                        onGenerateSummary={handleGenerateSummary}
+                                        aiSummary={aiSummaries[setup.id]}
+                                        onGenerateSummary={() => handleGenerateSummary(setup.id)}
                                     />
                                 ))}
                             </AnimatePresence>

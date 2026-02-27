@@ -16,6 +16,7 @@ export interface Team {
 }
 
 export interface TeamSetup {
+    id: string;
     teams: Team[];
     playersInput: string;
 }

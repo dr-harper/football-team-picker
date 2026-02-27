@@ -70,4 +70,17 @@ describe('validatePlayerInput', () => {
         const errors = validatePlayerInput('Alice\n\n#g');
         expect(errors[0].line).toBe(3);
     });
+
+    it('detects duplicate player names (case-insensitive)', () => {
+        const errors = validatePlayerInput('Alice #g\nBob\nalice #s');
+        expect(errors).toHaveLength(1);
+        expect(errors[0].line).toBe(3);
+        expect(errors[0].message).toContain('Duplicate');
+        expect(errors[0].message).toContain('line 1');
+    });
+
+    it('does not flag different names as duplicates', () => {
+        const errors = validatePlayerInput('Alice\nBob\nCarol');
+        expect(errors).toHaveLength(0);
+    });
 });

@@ -22,6 +22,8 @@ export function validatePlayerInput(text: string): ValidationError[] {
     const errors: ValidationError[] = [];
     const lines = text.split('\n');
 
+    const seenNames = new Map<string, number>();
+
     lines.forEach((rawLine, index) => {
         const line = rawLine.trim();
         if (!line) return; // skip blank lines
@@ -40,6 +42,14 @@ export function validatePlayerInput(text: string): ValidationError[] {
 
         if (!VALID_NAME_PATTERN.test(name)) {
             errors.push({ line: index + 1, message: 'Name contains invalid characters' });
+        }
+
+        const nameLower = name.toLowerCase();
+        const firstLine = seenNames.get(nameLower);
+        if (firstLine !== undefined) {
+            errors.push({ line: index + 1, message: `Duplicate name (first appeared on line ${firstLine})` });
+        } else {
+            seenNames.set(nameLower, index + 1);
         }
 
         rawTags.forEach(rawTag => {
