@@ -14,6 +14,8 @@ const HeaderBar: React.FC = () => {
         aiModel,
         setAIModel,
         geminiKey,
+        aiEnabled,
+        hasBuiltInKey: appHasBuiltInKey,
         handleGeminiKeySave,
         aiInputRef,
         geminiKeyError,
@@ -28,8 +30,6 @@ const HeaderBar: React.FC = () => {
     } = useSettings();
 
     const [showConfig, setShowConfig] = useState(false);
-
-    const aiEnabled = Boolean(geminiKey);
 
     return (
         <header className="bg-green-900 text-white p-4 flex items-center justify-between relative z-10 dark:bg-green-950">
@@ -124,7 +124,13 @@ const HeaderBar: React.FC = () => {
                         </div>
                         <div>
                             <div className="font-bold mb-1">AI Settings</div>
-                            <p className="text-xs mb-2">Choose model for generating match summaries.</p>
+                            {appHasBuiltInKey ? (
+                                <p className="text-xs mb-2 text-green-600 dark:text-green-400 font-semibold">
+                                    AI is enabled — powered by Gemini
+                                </p>
+                            ) : (
+                                <p className="text-xs mb-2">Provide your own Gemini API key to enable AI features.</p>
+                            )}
                             <label htmlFor="model-select" className="block font-semibold mb-1">Model</label>
                             <select
                                 id="model-select"
@@ -135,13 +141,15 @@ const HeaderBar: React.FC = () => {
                                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                                 <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
                             </select>
-                            <label className="block font-semibold mb-1">Gemini API Key</label>
+                            <label className="block font-semibold mb-1">
+                                Gemini API Key {appHasBuiltInKey && <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(optional override)</span>}
+                            </label>
                             <input
                                 ref={aiInputRef}
                                 type="password"
                                 defaultValue={geminiKey}
                                 className="w-full border p-2 rounded mb-2 dark:bg-gray-700 dark:text-white"
-                                placeholder="Paste your Gemini API key here"
+                                placeholder={appHasBuiltInKey ? 'Using built-in key (paste to override)' : 'Paste your Gemini API key here'}
                             />
                             <Button
                                 onClick={() => {
@@ -152,18 +160,20 @@ const HeaderBar: React.FC = () => {
                             >
                                 Save Key
                             </Button>
-                            <a
-                                href="https://aistudio.google.com/app/apikey"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-700 underline text-sm"
-                            >
-                                Get your Gemini API key from Google AI Studio
-                            </a>
+                            {!appHasBuiltInKey && (
+                                <a
+                                    href="https://aistudio.google.com/app/apikey"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-700 underline text-sm"
+                                >
+                                    Get your Gemini API key from Google AI Studio
+                                </a>
+                            )}
                             {geminiKeyError && (
                                 <div className="text-red-600 text-sm mt-2">{geminiKeyError}</div>
                             )}
-                            <label className="block font-semibold mb-1">Custom Instructions</label>
+                            <label className="block font-semibold mb-1 mt-2">Custom Instructions</label>
                             <textarea
                                 value={aiCustomInstructions}
                                 onChange={(e) => setAICustomInstructions(e.target.value)}

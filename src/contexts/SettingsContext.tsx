@@ -4,6 +4,7 @@ import { getPlacesBasedOnLocation } from '../utils/locationUtils';
 import { geminiEndpoint } from '../constants/aiPrompts';
 import { WARREN_NASTY_PHRASES, WARREN_LOVELY_PHRASES } from '../constants/aiPrompts';
 import { GEOLOCATION_THROTTLE_MS, GEMINI_VALIDATION_THROTTLE_MS } from '../constants/gameConstants';
+import { getActiveGeminiKey, hasBuiltInKey } from '../utils/apiKey';
 
 interface SettingsContextValue {
     // Location
@@ -17,6 +18,9 @@ interface SettingsContextValue {
 
     // AI
     geminiKey: string;
+    activeGeminiKey: string;
+    aiEnabled: boolean;
+    hasBuiltInKey: boolean;
     aiModel: string;
     setAIModel: (model: string) => void;
     aiCustomInstructions: string;
@@ -215,6 +219,9 @@ export const SettingsProvider: React.FC<{
         }
     }, [aiModel]);
 
+    const activeKey = getActiveGeminiKey(geminiKey);
+    const aiEnabled = Boolean(activeKey);
+
     const value: SettingsContextValue = {
         selectedLocation,
         setSelectedLocation,
@@ -224,6 +231,9 @@ export const SettingsProvider: React.FC<{
         handleLocationChange,
         handleFindLocation,
         geminiKey,
+        activeGeminiKey: activeKey,
+        aiEnabled,
+        hasBuiltInKey: hasBuiltInKey(),
         aiModel,
         setAIModel,
         aiCustomInstructions,

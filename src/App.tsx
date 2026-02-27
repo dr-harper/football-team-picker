@@ -10,14 +10,15 @@ import TeamSetupCard from './components/TeamSetupCard';
 import { generateTeamsFromText } from './utils/teamGenerator';
 import { exportImage, shareImage } from './utils/imageExport';
 import { Team, TeamSetup } from './types';
-import { geminiEndpoint, MATCH_SUMMARY_PROMPT } from './constants/aiPrompts';
+import { geminiEndpoint, MATCH_SUMMARY_PROMPT, FIX_INPUT_PROMPT } from './constants/aiPrompts';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
-import { AI_SUMMARY_THROTTLE_MS } from './constants/gameConstants';
+import { AI_SUMMARY_THROTTLE_MS, AI_FIX_INPUT_THROTTLE_MS } from './constants/gameConstants';
 
 const FootballTeamPickerInner = () => {
     const {
         places,
-        geminiKey,
+        activeGeminiKey,
+        aiEnabled,
         aiModel,
         aiCustomInstructions,
         warrenMode,
@@ -42,7 +43,9 @@ const FootballTeamPickerInner = () => {
     } | null>(null);
     const [aiSummaries, setAISummaries] = useState<{ [setupId: string]: string }>({});
     const [isExporting, setIsExporting] = useState(false);
+    const [isFixingWithAI, setIsFixingWithAI] = useState(false);
     const aiSummaryThrottleRef = useRef(0);
+    const aiFixInputThrottleRef = useRef(0);
     const nextSetupIdRef = useRef(0);
 
     useEffect(() => { localStorage.setItem('playersText', playersText); }, [playersText]);
@@ -114,8 +117,36 @@ const FootballTeamPickerInner = () => {
         }
     };
 
+    const handleFixWithAI = async () => {
+        if (!activeGeminiKey || !playersText.trim()) return;
+        const now = Date.now();
+        if (now - aiFixInputThrottleRef.current < AI_FIX_INPUT_THROTTLE_MS) return;
+        aiFixInputThrottleRef.current = now;
+        setIsFixingWithAI(true);
+        try {
+            const res = await fetch(geminiEndpoint(aiModel, activeGeminiKey), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: FIX_INPUT_PROMPT + '\n\n' + playersText }] }],
+                }),
+            });
+            const data = await res.json();
+            const fixed = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            if (fixed) {
+                setPlayersText(fixed);
+                addNotification(applyWarrenTone('Player list tidied up by AI'));
+            } else {
+                addNotification(applyWarrenTone('AI could not fix the input'));
+            }
+        } catch {
+            addNotification(applyWarrenTone('Error fixing input with AI'));
+        }
+        setIsFixingWithAI(false);
+    };
+
     const handleGenerateSummary = async (setupId: string) => {
-        if (!geminiKey) return;
+        if (!activeGeminiKey) return;
         const now = Date.now();
         if (now - aiSummaryThrottleRef.current < AI_SUMMARY_THROTTLE_MS) return;
         aiSummaryThrottleRef.current = now;
@@ -138,7 +169,7 @@ const FootballTeamPickerInner = () => {
                 .join('\n\n')}`;
         setAISummaries(prev => ({ ...prev, [setupId]: 'Loading...' }));
         try {
-            const res = await fetch(geminiEndpoint(aiModel, geminiKey), {
+            const res = await fetch(geminiEndpoint(aiModel, activeGeminiKey), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }] })
@@ -190,6 +221,9 @@ const FootballTeamPickerInner = () => {
                             onGenerate={generateTeams}
                             onGenerateMultiple={() => { for (let i = 0; i < 3; i++) generateTeams(); }}
                             onReset={handleReset}
+                            onFixWithAI={handleFixWithAI}
+                            isFixingWithAI={isFixingWithAI}
+                            aiEnabled={aiEnabled}
                             errorMessage={errorMessage}
                             showNoGoalkeeperInfo={showNoGoalkeeperInfo}
                             hasTeams={teamSetups.length > 0}
@@ -211,7 +245,7 @@ const FootballTeamPickerInner = () => {
                                         onPlayerClick={handlePlayerClick}
                                         onDelete={() => deleteTeamSetup(setup.id)}
                                         onColorChange={handleColorChange}
-                                        geminiKey={geminiKey}
+                                        aiEnabled={aiEnabled}
                                         aiSummary={aiSummaries[setup.id]}
                                         onGenerateSummary={() => handleGenerateSummary(setup.id)}
                                     />

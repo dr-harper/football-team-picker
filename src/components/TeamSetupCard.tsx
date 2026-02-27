@@ -20,7 +20,7 @@ interface TeamSetupCardProps {
     onPlayerClick: (setupIndex: number, teamIndex: number, playerIndex: number) => void;
     onDelete: () => void;
     onColorChange: (setupIndex: number, teamIndex: number, color: string) => void;
-    geminiKey: string;
+    aiEnabled: boolean;
     aiSummary?: string;
     onGenerateSummary: () => void;
 }
@@ -37,7 +37,7 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = React.memo(({
     onPlayerClick,
     onDelete,
     onColorChange,
-    geminiKey,
+    aiEnabled,
     aiSummary,
     onGenerateSummary,
 }) => {
@@ -161,7 +161,7 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = React.memo(({
                 </div>
             )}
 
-            {geminiKey && (
+            {aiEnabled && (
                 <div className="flex justify-end mt-2">
                     {!aiSummary && (
                         <Button
