@@ -1,4 +1,5 @@
 import { toPng } from 'html-to-image';
+import { MotionGlobalConfig } from 'framer-motion';
 
 const HIDDEN_SELECTORS = ['.delete-button', '.color-picker', '.color-circle', '.generate-ai-summary'];
 
@@ -17,14 +18,51 @@ function setElementsVisibility(elements: (HTMLElement | null)[], display: string
     });
 }
 
+const VOTE_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣'];
+
+// Reference width at 1x pixel density — all sizes scale proportionally from this
+const BASE_WIDTH = 600;
+
+function scaled(value: number, scale: number): number {
+    return Math.round(value * scale);
+}
+
+function wrapText(ctx: CanvasRenderingContext2D, text: string, font: string, maxWidth: number): string[] {
+    ctx.font = font;
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let current = '';
+    for (const word of words) {
+        const candidate = current ? `${current} ${word}` : word;
+        if (ctx.measureText(candidate).width > maxWidth && current) {
+            lines.push(current);
+            current = word;
+        } else {
+            current = candidate;
+        }
+    }
+    if (current) lines.push(current);
+    return lines;
+}
+
 /** Render all team setup elements into a single PNG data URL */
-export async function generateTeamsImage(setupCount: number): Promise<string | null> {
+export async function generateTeamsImage(setupCount: number, taglines?: string[]): Promise<string | null> {
     const elements = Array.from({ length: setupCount }, (_, i) =>
         document.getElementById(`team-setup-${i}`),
     );
     if (elements.some(el => !el)) return null;
 
     setElementsVisibility(elements, 'none');
+
+    // Freeze Framer Motion layout animations so scroll-triggered position
+    // recalculations don't apply mid-capture transforms to player elements
+    MotionGlobalConfig.skipAnimations = true;
+
+    const savedScrollY = window.scrollY;
+    window.scrollTo(0, 0);
+    // Two rAFs: first lets the scroll settle, second lets Framer Motion
+    // flush any pending layout measurements with skipAnimations active
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     try {
         const canvas = document.createElement('canvas');
@@ -42,28 +80,79 @@ export async function generateTeamsImage(setupCount: number): Promise<string | n
             }),
         );
 
-        const totalHeight = images.reduce((sum, img) => sum + (img?.height || 0), 0);
         const maxWidth = Math.max(...images.map(img => img?.width || 0));
+        const isVote = setupCount > 1;
+
+        // Scale all sizes proportionally to the captured image width
+        const scale = Math.max(1, maxWidth / BASE_WIDTH);
+        const taglinePadding    = scaled(10, scale);
+        const taglineLineHeight = scaled(22, scale);
+        const taglineFont       = `italic ${scaled(16, scale)}px Arial`;
+        const footerHeightSingle = scaled(40, scale);
+        const footerHeightVote   = scaled(64, scale);
+        const footerHeight = isVote ? footerHeightVote : footerHeightSingle;
+        const voteFontSize   = scaled(20, scale);
+        const creditFontSize = scaled(13, scale);
+
+        const taglineStripHeight = (lines: string[]) =>
+            lines.length * taglineLineHeight + taglinePadding * 2;
+
+        // Pre-wrap taglines at the correct scaled font so heights are accurate
+        const wrappedTaglines = (taglines ?? []).map(t =>
+            t ? wrapText(context, t, taglineFont, maxWidth - taglinePadding * 2) : [],
+        );
+        const taglinesHeight = wrappedTaglines.reduce(
+            (sum, lines) => sum + (lines.length ? taglineStripHeight(lines) : 0), 0,
+        );
+        const totalHeight = images.reduce((sum, img) => sum + (img?.height || 0), 0) + taglinesHeight;
 
         canvas.width = maxWidth;
-        canvas.height = totalHeight + 40;
+        canvas.height = totalHeight + footerHeight;
 
         let yOffset = 0;
-        images.forEach(img => {
+        images.forEach((img, i) => {
             if (img) {
-                context.drawImage(img, 0, yOffset, img.width, img.height);
+                const xOffset = Math.round((canvas.width - img.width) / 2);
+                context.drawImage(img, xOffset, yOffset, img.width, img.height);
                 yOffset += img.height;
+            }
+            const lines = wrappedTaglines[i];
+            if (lines?.length) {
+                const stripHeight = taglineStripHeight(lines);
+                context.fillStyle = '#1a5c35';
+                context.fillRect(0, yOffset, canvas.width, stripHeight);
+                context.fillStyle = 'rgba(255,255,255,0.9)';
+                context.font = taglineFont;
+                context.textAlign = 'center';
+                context.textBaseline = 'top';
+                lines.forEach((line, li) => {
+                    context.fillText(line, canvas.width / 2, yOffset + taglinePadding + li * taglineLineHeight);
+                });
+                yOffset += stripHeight;
             }
         });
 
+        // Footer
+        const footerY = totalHeight;
         context.fillStyle = '#0A2507';
-        context.fillRect(0, totalHeight, canvas.width, 40);
-
-        context.fillStyle = 'white';
-        context.font = 'bold 20px Arial';
+        context.fillRect(0, footerY, canvas.width, footerHeight);
         context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.fillText('Made with teamshuffle.app', canvas.width / 2, totalHeight + 20);
+
+        if (isVote) {
+            const voteEmojis = VOTE_EMOJIS.slice(0, setupCount).join('  ');
+            context.fillStyle = '#facc15';
+            context.font = `bold ${voteFontSize}px Arial`;
+            context.textBaseline = 'middle';
+            context.fillText(`⬆️ React to vote  ${voteEmojis}`, canvas.width / 2, footerY + footerHeightVote * 0.35);
+            context.fillStyle = 'rgba(255,255,255,0.5)';
+            context.font = `${creditFontSize}px Arial`;
+            context.fillText('teamshuffle.app', canvas.width / 2, footerY + footerHeightVote * 0.75);
+        } else {
+            context.fillStyle = 'white';
+            context.font = `bold ${voteFontSize}px Arial`;
+            context.textBaseline = 'middle';
+            context.fillText('Made with teamshuffle.app', canvas.width / 2, footerY + footerHeightSingle / 2);
+        }
 
         return canvas.toDataURL('image/png');
     } catch (error) {
@@ -71,6 +160,8 @@ export async function generateTeamsImage(setupCount: number): Promise<string | n
         return null;
     } finally {
         setElementsVisibility(elements, '');
+        window.scrollTo(0, savedScrollY);
+        MotionGlobalConfig.skipAnimations = false;
     }
 }
 
@@ -79,9 +170,9 @@ function dateStamp(): string {
 }
 
 /** Download the generated image as a PNG file */
-export async function exportImage(setupCount: number): Promise<ExportResult> {
+export async function exportImage(setupCount: number, taglines?: string[]): Promise<ExportResult> {
     try {
-        const dataUrl = await generateTeamsImage(setupCount);
+        const dataUrl = await generateTeamsImage(setupCount, taglines);
         if (!dataUrl) return { success: false, error: 'Failed to generate image' };
         const link = document.createElement('a');
         link.href = dataUrl;
@@ -95,9 +186,9 @@ export async function exportImage(setupCount: number): Promise<ExportResult> {
 }
 
 /** Share the generated image via the native share API or WhatsApp fallback */
-export async function shareImage(setupCount: number): Promise<ExportResult> {
+export async function shareImage(setupCount: number, taglines?: string[]): Promise<ExportResult> {
     try {
-        const dataUrl = await generateTeamsImage(setupCount);
+        const dataUrl = await generateTeamsImage(setupCount, taglines);
         if (!dataUrl) return { success: false, error: 'Failed to generate image for sharing' };
         const response = await fetch(dataUrl);
         const blob = await response.blob();

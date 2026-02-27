@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, MapPin, Users, Shield } from 'lucide-react';
 import { MIN_PLAYERS, MAX_PLAYERS, NUM_TEAMS } from '../constants/gameConstants';
 import { validatePlayerInput } from '../utils/validation';
+import { teamPlaces } from '../constants/teamConstants';
 
 interface PlayerInputProps {
     playersText: string;
@@ -17,6 +18,10 @@ interface PlayerInputProps {
     errorMessage: string;
     showNoGoalkeeperInfo: boolean;
     hasTeams: boolean;
+    selectedLocation: string;
+    onLocationChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    onFindLocation: () => void;
+    isLoadingLocation: boolean;
 }
 
 const PlayerInput: React.FC<PlayerInputProps> = ({
@@ -31,6 +36,10 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
     errorMessage,
     showNoGoalkeeperInfo,
     hasTeams,
+    selectedLocation,
+    onLocationChange,
+    onFindLocation,
+    isLoadingLocation,
 }) => {
     const playerCount = playersText.split('\n').filter(line => line.trim()).length;
     const goalkeeperCount = playersText.split('\n').filter(line => line.includes('#g')).length;
@@ -45,22 +54,25 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
     };
 
     return (
-        <div className="bg-green-700 dark:bg-green-800 p-4 shadow-lg text-white rounded-lg">
+        <div className="bg-green-800/80 dark:bg-green-900/80 border border-green-600/40 p-5 shadow-xl text-white rounded-2xl">
             <div className="mb-4">
-                <h2 className="text-xl font-semibold mb-2 text-white">Enter Players</h2>
-                <p className="text-sm text-green-100 mt-1">
-                    Format: One player per line. Use tags to assign roles and ensure equal distribution.<br />
-                    <span className="font-bold">#g</span> = Goalkeeper, <span className="font-bold">#s</span> = Striker, <span className="font-bold">#d</span> = Defender, <span className="font-bold">#1</span> = Team 1, <span className="font-bold">#2</span> = Team 2.<br />
-                    Press <span className="font-bold">Ctrl+Enter</span> (or <span className="font-bold">Cmd+Enter</span>) to quickly generate teams.
+                <h2 className="text-2xl font-extrabold mb-1 text-white tracking-tight">Enter Players</h2>
+                <p className="text-xs text-green-300 leading-relaxed">
+                    One player per line.{' '}
+                    <span className="font-semibold text-green-200">#g</span> goalkeeper &middot;{' '}
+                    <span className="font-semibold text-green-200">#s</span> striker &middot;{' '}
+                    <span className="font-semibold text-green-200">#d</span> defender &middot;{' '}
+                    <span className="font-semibold text-green-200">#1 / #2</span> lock to team.{' '}
+                    <span className="text-green-400">Ctrl+Enter</span> to generate.
                 </p>
 
-                <div className="relative">
+                <div className="relative mt-3">
                     <Textarea
                         value={playersText}
                         onChange={(e) => onPlayersTextChange(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={`Enter one player per line. Add optional tags:\nJohn  #g\nHenry\nDavid #s\nMark #d\nTom\nBilly #g`}
-                        className="p-3 border border-green-300 rounded w-full h-40 font-mono bg-green-600 dark:bg-green-700 text-white placeholder-green-200"
+                        className="p-3 border border-green-500/50 rounded-xl w-full h-40 font-mono bg-green-900/60 dark:bg-green-950/60 text-white placeholder-green-500 focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-colors"
                     />
                     {playersText && (
                         <div className="absolute top-2 right-2 flex gap-1">
@@ -69,7 +81,7 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                                     onClick={onFixWithAI}
                                     variant="secondary"
                                     size="sm"
-                                    className="text-xs px-2 py-1 flex items-center gap-1"
+                                    className="text-xs px-2 py-1 flex items-center gap-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 rounded-lg transition-colors"
                                     disabled={isFixingWithAI}
                                     title="Fix formatting with AI"
                                 >
@@ -81,7 +93,7 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                                 onClick={() => onPlayersTextChange('')}
                                 variant="secondary"
                                 size="sm"
-                                className="text-xs px-2 py-1"
+                                className="text-xs px-2 py-1 bg-white/10 hover:bg-white/20 text-white/70 border border-white/20 rounded-lg transition-colors"
                             >
                                 Clear
                             </Button>
@@ -99,48 +111,77 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                     </div>
                 )}
 
-                <div className="flex justify-between items-center mb-2">
-                    <p className={`text-sm font-bold ${playerCount < MIN_PLAYERS ? 'text-red-500' : 'text-green-200'}`}>
-                        Players: {playerCount} / {MAX_PLAYERS}
-                    </p>
-                    <p className={`text-sm font-bold ${goalkeeperCount < NUM_TEAMS ? 'text-orange-500' : 'text-green-200'}`}>
-                        Goalkeepers: {goalkeeperCount}/{NUM_TEAMS}
-                    </p>
+                <div className="flex gap-2 mt-3">
+                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${playerCount < MIN_PLAYERS ? 'bg-red-500/25 text-red-300' : 'bg-black/20 text-green-200'}`}>
+                        <Users className="w-3 h-3" />
+                        {playerCount} / {MAX_PLAYERS} players
+                    </div>
+                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${goalkeeperCount < NUM_TEAMS ? 'bg-orange-500/25 text-orange-300' : 'bg-black/20 text-green-200'}`}>
+                        <Shield className="w-3 h-3" />
+                        {goalkeeperCount}/{NUM_TEAMS} keepers
+                    </div>
                 </div>
 
-                <div className="flex gap-4 mt-4">
+                <div className="flex items-center gap-2 mt-3">
+                    <MapPin className="w-4 h-4 text-green-400 shrink-0" />
+                    <select
+                        value={selectedLocation}
+                        onChange={onLocationChange}
+                        className="flex-1 border border-green-500/50 rounded-xl px-3 py-1.5 text-sm bg-green-900/60 dark:bg-green-950/60 text-white focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-colors"
+                        aria-label="Team name locale"
+                    >
+                        {Object.keys(teamPlaces).map(key => (
+                            <option key={key} value={key}>{key}</option>
+                        ))}
+                    </select>
+                    <Button
+                        onClick={onFindLocation}
+                        disabled={isLoadingLocation}
+                        size="sm"
+                        className="text-xs px-3 py-1.5 shrink-0 bg-white/10 hover:bg-white/20 text-white/70 border border-white/20 rounded-xl font-semibold transition-colors"
+                        title="Auto-detect location"
+                    >
+                        {isLoadingLocation ? (
+                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                            </svg>
+                        ) : 'Detect'}
+                    </Button>
+                </div>
+
+                <div className="flex gap-3 mt-4">
                     <Button
                         onClick={onGenerate}
                         disabled={hasValidationErrors}
-                        className="bg-white dark:bg-gray-700 dark:text-green-100 text-green-800 py-2 px-6 rounded font-bold shadow-md transition flex-grow hover:bg-green-100 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 bg-gradient-to-r from-emerald-400 to-green-600 hover:from-emerald-300 hover:to-green-500 text-white py-2.5 rounded-xl font-bold shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Create Team
+                        Create Teams
                     </Button>
                     <Button
                         onClick={onGenerateMultiple}
                         disabled={hasValidationErrors}
-                        className="bg-blue-700 dark:bg-blue-600 text-white py-2 px-6 rounded font-bold shadow-md transition flex-grow hover:bg-blue-800 dark:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 bg-gradient-to-r from-blue-500 to-blue-700 text-white py-2.5 rounded-xl font-bold shadow-md hover:shadow-lg hover:from-blue-400 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Create x3 Teams
+                        Create ×3
                     </Button>
                     <Button
                         onClick={onReset}
-                        className="bg-green-900 dark:bg-green-950 text-white py-2 px-4 rounded font-bold shadow-md transition border border-white hover:bg-green-800 dark:hover:bg-green-900"
+                        className="px-4 py-2.5 rounded-xl font-bold bg-transparent border border-white/20 text-white/60 hover:text-red-400 hover:border-red-400/40 hover:bg-red-400/10 transition-all"
                     >
                         Reset
                     </Button>
                 </div>
+
                 {errorMessage && (
-                    <div role="alert" className="mt-3 bg-red-700 border border-red-500 text-white px-4 py-2 rounded">
+                    <div role="alert" className="mt-3 bg-red-500/20 border border-red-400/50 text-red-200 px-4 py-2 rounded-xl text-sm">
                         {errorMessage}
                     </div>
                 )}
 
                 {hasTeams && showNoGoalkeeperInfo && (
-                    <div className="bg-yellow-600 text-white p-4 rounded-lg shadow-md mb-4 mt-4">
-                        <p>
-                            Teams were created without goalkeepers. To lock goalkeepers, add <span className="font-bold">#g</span> after their name in the player list.
-                        </p>
+                    <div className="bg-yellow-500/20 border border-yellow-400/40 text-yellow-200 p-3 rounded-xl text-sm mt-4">
+                        Teams were created without goalkeepers. Add <span className="font-bold">#g</span> after a player's name to lock in a keeper.
                     </div>
                 )}
             </div>

@@ -108,18 +108,157 @@ export const teamPlaces = {
             "Newburn", "Lemington", "Wallsend"
         ]
     },
+    Leeds: {
+        coordinates: { latitude: 53.8008, longitude: -1.5491 },
+        places: [
+            "Headingley", "Meanwood", "Chapel Allerton",
+            "Roundhay", "Hyde Park", "Armley",
+            "Beeston", "Harehills", "Chapeltown",
+            "Kirkstall", "Morley", "Pudsey",
+            "Horsforth", "Wetherby", "Otley",
+            "Garforth", "Rothwell", "Crossgates"
+        ]
+    },
+    Sheffield: {
+        coordinates: { latitude: 53.3811, longitude: -1.4701 },
+        places: [
+            "Hillsborough", "Ecclesall", "Broomhill",
+            "Walkley", "Crookes", "Woodseats",
+            "Heeley", "Nether Edge", "Sharrow",
+            "Burngreave", "Pitsmoor", "Attercliffe",
+            "Darnall", "Hillsbrough", "Woodhouse",
+            "Mosborough", "Dore", "Totley"
+        ]
+    },
+    Bristol: {
+        coordinates: { latitude: 51.4545, longitude: -2.5879 },
+        places: [
+            "Clifton", "Stokes Croft", "Bedminster",
+            "Easton", "St Pauls", "Fishponds",
+            "Redland", "Bishopston", "Horfield",
+            "Filton", "Henleaze", "Westbury",
+            "Knowle", "Totterdown", "Southville",
+            "Brislington", "Lawrence Hill", "Montpelier"
+        ]
+    },
+    Belfast: {
+        coordinates: { latitude: 54.5973, longitude: -5.9301 },
+        places: [
+            "Titanic Quarter", "Cathedral Quarter", "Botanic",
+            "Ballymacarrett", "Shankill", "Falls",
+            "Ormeau", "Stranmillis", "Malone",
+            "Castlereagh", "Andersonstown", "Glengormley",
+            "Newtownabbey", "Lisburn", "Holywood",
+            "Antrim", "Bangor", "Carrickfergus"
+        ]
+    },
+    Dublin: {
+        coordinates: { latitude: 53.3498, longitude: -6.2603 },
+        places: [
+            "Drumcondra", "Rathmines", "Ranelagh",
+            "Ballsbridge", "Sandymount", "Clontarf",
+            "Glasnevin", "Phibsborough", "Stoneybatter",
+            "Liberties", "Portobello", "Ringsend",
+            "Tallaght", "Clondalkin", "Blanchardstown",
+            "Malahide", "Swords", "Dún Laoghaire"
+        ]
+    },
+    Brighton: {
+        coordinates: { latitude: 50.8229, longitude: -0.1363 },
+        places: [
+            "Hove", "Kemptown", "Hanover",
+            "Fiveways", "Preston Park", "Patcham",
+            "Portslade", "Woodingdean", "Moulsecoomb",
+            "Hollingbury", "Withdean", "Saltdean",
+            "Rottingdean", "Shoreham", "Lancing",
+            "Worthing", "Lewes", "Burgess Hill"
+        ]
+    },
+    Nottingham: {
+        coordinates: { latitude: 52.9548, longitude: -1.1581 },
+        places: [
+            "Lace Market", "Hockley", "The Meadows",
+            "Sherwood", "Forest Fields", "Hyson Green",
+            "Mapperley", "Wollaton", "Beeston",
+            "West Bridgford", "Arnold", "Carlton",
+            "Gedling", "Clifton", "Bulwell",
+            "Radford", "St Anns", "Bestwood"
+        ]
+    },
+    Leicester: {
+        coordinates: { latitude: 52.6369, longitude: -1.1398 },
+        places: [
+            "Clarendon Park", "Highfields", "Aylestone",
+            "Stoneygate", "Braunstone", "Evington",
+            "Knighton", "Belgrave", "Spinney Hills",
+            "Thurmaston", "Wigston", "Oadby",
+            "Blaby", "Groby", "Birstall",
+            "Syston", "Loughborough", "Hinckley"
+        ]
+    },
+    Norwich: {
+        coordinates: { latitude: 52.6309, longitude: 1.2974 },
+        places: [
+            "Unthank", "Earlham", "Thorpe",
+            "Catton", "Heartsease", "Lakenham",
+            "Tuckswood", "Bowthorpe", "Hellesdon",
+            "Sprowston", "Costessey", "Wymondham",
+            "Dereham", "Cromer", "Sheringham",
+            "Wroxham", "Aylsham", "Holt"
+        ]
+    },
+    York: {
+        coordinates: { latitude: 53.9600, longitude: -1.0873 },
+        places: [
+            "Clifton", "Acomb", "Bishopthorpe",
+            "Dringhouses", "Fulford", "Heworth",
+            "Huntington", "Rawcliffe", "Skelton",
+            "Strensall", "Tang Hall", "Haxby",
+            "Poppleton", "Heslington", "Holgate",
+            "Knaresborough", "Harrogate", "Tadcaster"
+        ]
+    },
 };
 
 export const teamSuffixes = [
+    // Classic football
     "Rangers", "Wanderers", "Athletic", "Rovers", "United",
-    "Invincibles", "Gladiators", "Strikers", "Titans", "Warriors",
-    "Dynamoes", "Comets", "Blazers", "Chargers", "Hurricanes",
-    "Vikings", "Eagles", "Lions", "Sharks", "Panthers",
-    "FC", "Albion", "Hotshots", "Unathletic", "Spanners",
-    "Plumbers", "Pirates",
-    "Bulldogs", "Dragons", "Stallions", "Thunder", "Storm",
-    "Lightning", "Bears", "Hornets", "Hawks", "Knights",
-    "Raiders", "Giants", "Rockets", "Cheetahs", "Cyclones",
-    "Pythons", "Falcons", "Cougars", "Kings", "Royals",
-    "Senators", "Stars", "Tigers"
+    "City", "Town", "Vale", "Villa", "Olympic",
+    "Corinthians", "Albion", "Thistle", "Palace", "Hotspur",
+    "Wednesday", "Academicals", "Amateurs", "Old Boys", "Reserves",
+    "FC", "XI",
+
+    // Power & glory
+    "Invincibles", "Gladiators", "Titans", "Warriors", "Legion",
+    "Dynasty", "Regime", "Alliance", "Syndicate", "Brotherhood",
+    "Order", "Supremacy", "Dominion",
+
+    // Action & speed
+    "Strikers", "Blazers", "Chargers", "Rockets", "Dynamos",
+    "Comets", "Hurricanes", "Thunder", "Storm", "Lightning",
+    "Cyclones", "Inferno",
+
+    // Animals — big
+    "Lions", "Tigers", "Bears", "Panthers", "Sharks",
+    "Wolves", "Bulls", "Stallions", "Bulldogs", "Dragons",
+    "Pythons", "Cougars",
+
+    // Animals — birds
+    "Eagles", "Falcons", "Hawks", "Ravens", "Magpies",
+    "Robins", "Owls", "Swans", "Seagulls", "Jays",
+
+    // Animals — other
+    "Hornets", "Bees", "Foxes", "Badgers", "Otters",
+
+    // Mythical & fierce
+    "Vikings", "Knights", "Raiders", "Giants", "Cheetahs",
+
+    // Royalty
+    "Kings", "Royals", "Senators", "Stars",
+
+    // Cheeky / fun
+    "Desperados", "Misfits", "Bandits", "Scoundrels", "Outlaws",
+    "Renegades", "Mavericks", "Nomads", "Casuals", "Irregulars",
+    "Hotshots", "Unathletic", "Spanners", "Plumbers", "Pirates",
+    "Hooligans", "Miscreants", "Reprobates", "Oddballs", "Chancers",
 ];

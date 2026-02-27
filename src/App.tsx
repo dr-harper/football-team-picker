@@ -10,7 +10,7 @@ import TeamSetupCard from './components/TeamSetupCard';
 import { generateTeamsFromText } from './utils/teamGenerator';
 import { exportImage, shareImage } from './utils/imageExport';
 import { Team, TeamSetup } from './types';
-import { MATCH_SUMMARY_PROMPT, FIX_INPUT_PROMPT } from './constants/aiPrompts';
+import { MATCH_SUMMARY_PROMPT, FIX_INPUT_PROMPT, SETUP_TAGLINE_PROMPT } from './constants/aiPrompts';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import { AI_SUMMARY_THROTTLE_MS, AI_FIX_INPUT_THROTTLE_MS } from './constants/gameConstants';
 import { callGemini } from './utils/geminiClient';
@@ -18,6 +18,10 @@ import { callGemini } from './utils/geminiClient';
 const FootballTeamPickerInner = () => {
     const {
         places,
+        selectedLocation,
+        handleLocationChange,
+        handleFindLocation,
+        isLoadingLocation,
         activeGeminiKey,
         aiEnabled,
         aiModel,
@@ -43,14 +47,52 @@ const FootballTeamPickerInner = () => {
         playerIndex: number;
     } | null>(null);
     const [aiSummaries, setAISummaries] = useState<{ [setupId: string]: string }>({});
+    const [setupTaglines, setSetupTaglines] = useState<{ [setupId: string]: string }>({});
     const [isExporting, setIsExporting] = useState(false);
     const [isFixingWithAI, setIsFixingWithAI] = useState(false);
     const aiSummaryThrottleRef = useRef(0);
     const aiFixInputThrottleRef = useRef(0);
     const nextSetupIdRef = useRef(0);
+    const taglinesGeneratingRef = useRef<Set<string>>(new Set());
+    const setupTaglinesRef = useRef(setupTaglines);
+    useEffect(() => { setupTaglinesRef.current = setupTaglines; }, [setupTaglines]);
 
     useEffect(() => { localStorage.setItem('playersText', playersText); }, [playersText]);
     useEffect(() => { setAISummaries({}); }, [teamSetups]);
+
+    // Generate taglines in the background whenever a new setup appears
+    useEffect(() => {
+        if (!aiEnabled) return;
+        const existingIds = new Set(teamSetups.map(s => s.id));
+
+        // Clean up taglines for deleted setups
+        setSetupTaglines(prev => Object.fromEntries(Object.entries(prev).filter(([id]) => existingIds.has(id))));
+
+        teamSetups.forEach(setup => {
+            if (taglinesGeneratingRef.current.has(setup.id)) return;
+            taglinesGeneratingRef.current.add(setup.id);
+            const matchup = setup.teams
+                .map((t: Team) => `${t.name}: ${t.players.map((p: { name: string; role: string }) => `${p.name} (${p.role})`).join(', ')}`)
+                .join(' vs ');
+            const allPlayers = setup.teams.flatMap((t: Team) => t.players);
+            const outfield = allPlayers.filter((p: { isGoalkeeper: boolean }) => !p.isGoalkeeper);
+            const keepers = allPlayers.filter((p: { isGoalkeeper: boolean }) => p.isGoalkeeper);
+            const pool = Math.random() < 0.2 ? keepers : outfield;
+            const spotlight = pool[Math.floor(Math.random() * pool.length)];
+            const spotlightInstruction = spotlight ? ` Focus your callout specifically on ${spotlight.name}.` : '';
+            callGemini(
+                aiModel,
+                [{ role: 'user', parts: [{ text: `${SETUP_TAGLINE_PROMPT}${spotlightInstruction}\n\nMatchup: ${matchup}` }] }],
+                activeGeminiKey || undefined,
+            )
+                .then(data => {
+                    const tagline = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                    if (tagline) setSetupTaglines(prev => ({ ...prev, [setup.id]: tagline }));
+                })
+                .catch(() => {})
+                .finally(() => taglinesGeneratingRef.current.delete(setup.id));
+        });
+    }, [teamSetups, aiEnabled, aiModel, activeGeminiKey]);
 
     const generateTeams = useCallback(() => {
         const result = generateTeamsFromText(playersText, places, playerNumbers);
@@ -182,6 +224,17 @@ const FootballTeamPickerInner = () => {
         }
     };
 
+    const waitForTaglines = (timeoutMs = 6000): Promise<void> =>
+        new Promise(resolve => {
+            const start = Date.now();
+            const check = () => {
+                const allReady = teamSetups.every(s => setupTaglinesRef.current[s.id]);
+                if (allReady || Date.now() - start > timeoutMs) resolve();
+                else setTimeout(check, 200);
+            };
+            check();
+        });
+
     const handleReset = () => {
         setTeamSetups([]);
         setErrorMessage('');
@@ -201,14 +254,9 @@ const FootballTeamPickerInner = () => {
                     </div>
                 )}
 
-                <div className="text-center space-y-3 mb-6 mt-4">
-                    <p className="text-gray-200 text-lg sm:text-xl">
-                        Pick your 5-a-side football teams<br />
-                        <span className="text-yellow-300 text-base sm:text-lg font-semibold block mt-2">
-                            Tip: Click one player, then another to swap their positions on the pitch!
-                        </span>
-                    </p>
-                </div>
+                <p className="text-center text-green-300 text-sm mb-6 mt-4">
+                    Click any two players to swap their positions on the pitch
+                </p>
 
                 <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 foldable-grid">
                     <div className="space-y-6">
@@ -224,6 +272,10 @@ const FootballTeamPickerInner = () => {
                             errorMessage={errorMessage}
                             showNoGoalkeeperInfo={showNoGoalkeeperInfo}
                             hasTeams={teamSetups.length > 0}
+                            selectedLocation={selectedLocation}
+                            onLocationChange={handleLocationChange}
+                            onFindLocation={handleFindLocation}
+                            isLoadingLocation={isLoadingLocation}
                         />
                     </div>
 
@@ -259,7 +311,9 @@ const FootballTeamPickerInner = () => {
                 isExporting={isExporting}
                 onExport={async () => {
                     setIsExporting(true);
-                    const result = await exportImage(teamSetups.length);
+                    await waitForTaglines();
+                    const taglines = teamSetups.map(s => setupTaglinesRef.current[s.id] || '');
+                    const result = await exportImage(teamSetups.length, taglines);
                     setIsExporting(false);
                     if (!result.success) {
                         addNotification(applyWarrenTone(result.error || 'Export failed'));
@@ -267,7 +321,9 @@ const FootballTeamPickerInner = () => {
                 }}
                 onShare={async () => {
                     setIsExporting(true);
-                    const result = await shareImage(teamSetups.length);
+                    await waitForTaglines();
+                    const taglines = teamSetups.map(s => setupTaglinesRef.current[s.id] || '');
+                    const result = await shareImage(teamSetups.length, taglines);
                     setIsExporting(false);
                     if (!result.success) {
                         addNotification(applyWarrenTone(result.error || 'Sharing failed'));
