@@ -44,7 +44,7 @@ function playerRingClass(
     return 'ring-2 ring-blue-400 ring-offset-2 rounded-full cursor-pointer';
 }
 
-const PitchRenderer: React.FC<PitchRendererProps> = ({
+const PitchRenderer: React.FC<PitchRendererProps> = React.memo(({
     teams,
     setupIndex,
     selectedPlayer,
@@ -62,6 +62,10 @@ const PitchRenderer: React.FC<PitchRendererProps> = ({
                     layout
                     transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                     onClick={() => onPlayerClick(setupIndex, teamIndex, position.playerIndex)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPlayerClick(setupIndex, teamIndex, position.playerIndex); } }}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`${position.player.name}${position.player.isGoalkeeper ? ', Goalkeeper' : ''}. Click to select for swap`}
                     className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center ${playerRingClass(selectedPlayer, setupIndex, teamIndex, position.playerIndex)}`}
                 >
                     <PlayerIcon
@@ -75,7 +79,7 @@ const PitchRenderer: React.FC<PitchRendererProps> = ({
         ));
 
     return (
-        <div className="w-full aspect-video relative bg-green-600 border-2 border-white rounded-lg shadow-lg overflow-hidden sm:aspect-video sm:w-full sm:h-auto">
+        <div role="group" aria-label="Football pitch with team players" className="w-full aspect-video relative bg-green-600 border-2 border-white rounded-lg shadow-lg overflow-hidden sm:aspect-video sm:w-full sm:h-auto">
             {/* Football pitch lines */}
             <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-white"></div>
             <div className="absolute top-1/2 left-1/2 w-16 h-16 sm:w-24 sm:h-24 rounded-full border-2 border-white transform -translate-x-1/2 -translate-y-1/2"></div>
@@ -88,6 +92,8 @@ const PitchRenderer: React.FC<PitchRendererProps> = ({
             {renderTeamPlayers(teams[1], 1, false)}
         </div>
     );
-};
+});
+
+PitchRenderer.displayName = 'PitchRenderer';
 
 export default PitchRenderer;

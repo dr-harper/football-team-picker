@@ -163,7 +163,7 @@ const FootballTeamPickerInner = () => {
             <HeaderBar />
             <div className="flex-grow p-4 sm:p-6">
                 {notifications.length > 0 && (
-                    <div className="fixed bottom-24 right-4 flex flex-col items-end space-y-2 z-50">
+                    <div aria-live="polite" className="fixed bottom-24 right-4 flex flex-col items-end space-y-2 z-50">
                         {notifications.map(n => (
                             <Notification key={n.id} message={n.message} onClose={() => removeNotification(n.id)} />
                         ))}

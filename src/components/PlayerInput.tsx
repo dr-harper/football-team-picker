@@ -59,7 +59,7 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                 </div>
 
                 {hasValidationErrors && (
-                    <div className="mt-2 space-y-1">
+                    <div role="alert" className="mt-2 space-y-1">
                         {validationErrors.map((err, i) => (
                             <p key={i} className="text-sm text-orange-300">
                                 Line {err.line}: {err.message}
@@ -100,7 +100,7 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                     </Button>
                 </div>
                 {errorMessage && (
-                    <div className="mt-3 bg-red-700 border border-red-500 text-white px-4 py-2 rounded">
+                    <div role="alert" className="mt-3 bg-red-700 border border-red-500 text-white px-4 py-2 rounded">
                         {errorMessage}
                     </div>
                 )}

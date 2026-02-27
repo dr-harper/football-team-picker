@@ -9,7 +9,7 @@ interface PlayerIconProps {
     isPlaceholder?: boolean; // New prop to indicate placeholder mode
 }
 
-const PlayerIcon: React.FC<PlayerIconProps> = ({ color, number, name, isGoalkeeper, isPlaceholder }) => {
+const PlayerIcon: React.FC<PlayerIconProps> = React.memo(({ color, number, name, isGoalkeeper, isPlaceholder }) => {
     const fillColor = isPlaceholder ? '#6b7280' : isGoalkeeper ? '#facc15' : color || '#ffffff'; // Grey for placeholders
     const displayNumber = isPlaceholder ? '?' : number !== null ? number : '-';
     const displayName = isPlaceholder ? '' : name;
@@ -32,6 +32,8 @@ const PlayerIcon: React.FC<PlayerIconProps> = ({ color, number, name, isGoalkeep
                 xmlnsXlink="http://www.w3.org/1999/xlink"
                 version="1.1"
                 xmlSpace="preserve"
+                role="img"
+                aria-label={isPlaceholder ? 'Empty player slot' : `${name}${isGoalkeeper ? ', Goalkeeper' : ''}, shirt number ${number}`}
             >
                 <g>
                     <path d="M147.763,44.074c12.801,0,23.858-8.162,27.83-20.169c-7.578,2.086-17.237,3.345-27.83,3.345
@@ -54,6 +56,8 @@ const PlayerIcon: React.FC<PlayerIconProps> = ({ color, number, name, isGoalkeep
             </div>
         </div>
     );
-};
+});
+
+PlayerIcon.displayName = 'PlayerIcon';
 
 export default PlayerIcon;

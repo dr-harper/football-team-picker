@@ -26,7 +26,7 @@ const FloatingFooter: React.FC<FloatingFooterProps> = ({ visible, onExport, onSh
     if (!visible) return null;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 bg-green-900 dark:bg-green-950 text-white py-3 flex items-center justify-end pr-4 z-50 shadow-lg">
+        <div role="toolbar" aria-label="Team export actions" className="fixed bottom-0 left-0 right-0 bg-green-900 dark:bg-green-950 text-white py-3 flex items-center justify-end pr-4 z-50 shadow-lg">
             <div className="flex-grow pl-4 font-bold">Teams Generated: {teamCount}</div>
             <Button
                 onClick={onExport}

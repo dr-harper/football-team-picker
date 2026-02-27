@@ -29,7 +29,7 @@ function getPlayerId(setupIndex: number, player: { name: string; shirtNumber: nu
     return `player-${setupIndex}-${player.name}-${player.shirtNumber}`;
 }
 
-const TeamSetupCard: React.FC<TeamSetupCardProps> = ({
+const TeamSetupCard: React.FC<TeamSetupCardProps> = React.memo(({
     setup,
     setupIndex,
     totalSetups,
@@ -62,6 +62,7 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = ({
                         variant="destructive"
                         size="sm"
                         onClick={() => onDelete(setupIndex)}
+                        aria-label={`Delete team option ${setupIndex + 1}`}
                         className="bg-red-700 hover:bg-red-800 text-white delete-button"
                     >
                         <Trash2 className="w-4 h-4" />
@@ -84,6 +85,7 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = ({
                                         <div
                                             className="w-5 h-5 rounded-full border border-white color-circle"
                                             style={{ backgroundColor: team.color }}
+                                            aria-hidden="true"
                                         ></div>
                                     </label>
                                     <input
@@ -91,6 +93,7 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = ({
                                         type="color"
                                         value={team.color}
                                         onChange={(e) => onColorChange(setupIndex, teamIndex, e.target.value)}
+                                        aria-label={`Change colour for ${team.name}`}
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer color-picker"
                                     />
                                 </div>
@@ -178,6 +181,8 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = ({
             )}
         </motion.div>
     );
-};
+});
+
+TeamSetupCard.displayName = 'TeamSetupCard';
 
 export default TeamSetupCard;
