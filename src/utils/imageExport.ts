@@ -17,8 +17,28 @@ function setElementsVisibility(elements: (HTMLElement | null)[], display: string
     });
 }
 
-const INTRO_BANNER_HEIGHT = 60;
 const FOOTER_HEIGHT = 40;
+const INTRO_FONT = 'bold 22px Arial';
+const INTRO_PADDING = 16;
+const INTRO_LINE_HEIGHT = 28;
+
+/** Measure and wrap text to fit within maxWidth, returning the lines and total height needed */
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): { lines: string[]; height: number } {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let current = '';
+    for (const word of words) {
+        const candidate = current ? `${current} ${word}` : word;
+        if (ctx.measureText(candidate).width > maxWidth && current) {
+            lines.push(current);
+            current = word;
+        } else {
+            current = candidate;
+        }
+    }
+    if (current) lines.push(current);
+    return { lines, height: lines.length * INTRO_LINE_HEIGHT + INTRO_PADDING * 2 };
+}
 
 /** Render all team setup elements into a single PNG data URL */
 export async function generateTeamsImage(setupCount: number, intro?: string): Promise<string | null> {
@@ -47,20 +67,27 @@ export async function generateTeamsImage(setupCount: number, intro?: string): Pr
 
         const totalHeight = images.reduce((sum, img) => sum + (img?.height || 0), 0);
         const maxWidth = Math.max(...images.map(img => img?.width || 0));
-        const introBannerHeight = intro ? INTRO_BANNER_HEIGHT : 0;
+
+        // Pre-measure intro wrap using a temporary context
+        context.font = INTRO_FONT;
+        const { lines: introLines, height: introBannerHeight } = intro
+            ? wrapText(context, intro, maxWidth - INTRO_PADDING * 2)
+            : { lines: [], height: 0 };
 
         canvas.width = maxWidth;
         canvas.height = totalHeight + introBannerHeight + FOOTER_HEIGHT;
 
         // Intro banner
-        if (intro) {
+        if (intro && introLines.length > 0) {
             context.fillStyle = '#0d3d20';
             context.fillRect(0, 0, canvas.width, introBannerHeight);
-            context.fillStyle = '#facc15'; // yellow-400
-            context.font = 'bold 22px Arial';
+            context.fillStyle = '#facc15';
+            context.font = INTRO_FONT;
             context.textAlign = 'center';
-            context.textBaseline = 'middle';
-            context.fillText(intro, canvas.width / 2, introBannerHeight / 2);
+            context.textBaseline = 'top';
+            introLines.forEach((line, i) => {
+                context.fillText(line, canvas.width / 2, INTRO_PADDING + i * INTRO_LINE_HEIGHT);
+            });
         }
 
         let yOffset = introBannerHeight;
