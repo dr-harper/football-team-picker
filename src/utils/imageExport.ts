@@ -20,33 +20,12 @@ function setElementsVisibility(elements: (HTMLElement | null)[], display: string
 const FOOTER_HEIGHT_SINGLE = 40;
 const FOOTER_HEIGHT_VOTE = 64;
 const VOTE_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣'];
-const INTRO_FONT = 'bold 22px Arial';
-const INTRO_PADDING = 16;
-const INTRO_LINE_HEIGHT = 28;
-
-/** Measure and wrap text to fit within maxWidth, returning the lines and total height needed */
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): { lines: string[]; height: number } {
-    const words = text.split(' ');
-    const lines: string[] = [];
-    let current = '';
-    for (const word of words) {
-        const candidate = current ? `${current} ${word}` : word;
-        if (ctx.measureText(candidate).width > maxWidth && current) {
-            lines.push(current);
-            current = word;
-        } else {
-            current = candidate;
-        }
-    }
-    if (current) lines.push(current);
-    return { lines, height: lines.length * INTRO_LINE_HEIGHT + INTRO_PADDING * 2 };
-}
 
 const TAGLINE_HEIGHT = 36;
 const TAGLINE_FONT = 'italic 16px Arial';
 
 /** Render all team setup elements into a single PNG data URL */
-export async function generateTeamsImage(setupCount: number, intro?: string, taglines?: string[]): Promise<string | null> {
+export async function generateTeamsImage(setupCount: number, taglines?: string[]): Promise<string | null> {
     const elements = Array.from({ length: setupCount }, (_, i) =>
         document.getElementById(`team-setup-${i}`),
     );
@@ -73,33 +52,13 @@ export async function generateTeamsImage(setupCount: number, intro?: string, tag
         const taglinesHeight = (taglines ?? []).filter(t => t).length * TAGLINE_HEIGHT;
         const totalHeight = images.reduce((sum, img) => sum + (img?.height || 0), 0) + taglinesHeight;
         const maxWidth = Math.max(...images.map(img => img?.width || 0));
-
-        // Pre-measure intro wrap using a temporary context
-        context.font = INTRO_FONT;
-        const { lines: introLines, height: introBannerHeight } = intro
-            ? wrapText(context, intro, maxWidth - INTRO_PADDING * 2)
-            : { lines: [], height: 0 };
-
         const isVote = setupCount > 1;
         const footerHeight = isVote ? FOOTER_HEIGHT_VOTE : FOOTER_HEIGHT_SINGLE;
 
         canvas.width = maxWidth;
-        canvas.height = totalHeight + introBannerHeight + footerHeight;
+        canvas.height = totalHeight + footerHeight;
 
-        // Intro banner
-        if (intro && introLines.length > 0) {
-            context.fillStyle = '#0d3d20';
-            context.fillRect(0, 0, canvas.width, introBannerHeight);
-            context.fillStyle = '#facc15';
-            context.font = INTRO_FONT;
-            context.textAlign = 'center';
-            context.textBaseline = 'top';
-            introLines.forEach((line, i) => {
-                context.fillText(line, canvas.width / 2, INTRO_PADDING + i * INTRO_LINE_HEIGHT);
-            });
-        }
-
-        let yOffset = introBannerHeight;
+        let yOffset = 0;
         images.forEach((img, i) => {
             if (img) {
                 context.drawImage(img, 0, yOffset, img.width, img.height);
@@ -119,7 +78,7 @@ export async function generateTeamsImage(setupCount: number, intro?: string, tag
         });
 
         // Footer
-        const footerY = totalHeight + introBannerHeight;
+        const footerY = totalHeight;
         context.fillStyle = '#0A2507';
         context.fillRect(0, footerY, canvas.width, footerHeight);
 
@@ -157,9 +116,9 @@ function dateStamp(): string {
 }
 
 /** Download the generated image as a PNG file */
-export async function exportImage(setupCount: number, intro?: string, taglines?: string[]): Promise<ExportResult> {
+export async function exportImage(setupCount: number, taglines?: string[]): Promise<ExportResult> {
     try {
-        const dataUrl = await generateTeamsImage(setupCount, intro, taglines);
+        const dataUrl = await generateTeamsImage(setupCount, taglines);
         if (!dataUrl) return { success: false, error: 'Failed to generate image' };
         const link = document.createElement('a');
         link.href = dataUrl;
@@ -173,9 +132,9 @@ export async function exportImage(setupCount: number, intro?: string, taglines?:
 }
 
 /** Share the generated image via the native share API or WhatsApp fallback */
-export async function shareImage(setupCount: number, intro?: string, taglines?: string[]): Promise<ExportResult> {
+export async function shareImage(setupCount: number, taglines?: string[]): Promise<ExportResult> {
     try {
-        const dataUrl = await generateTeamsImage(setupCount, intro, taglines);
+        const dataUrl = await generateTeamsImage(setupCount, taglines);
         if (!dataUrl) return { success: false, error: 'Failed to generate image for sharing' };
         const response = await fetch(dataUrl);
         const blob = await response.blob();

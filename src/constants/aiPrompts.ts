@@ -15,16 +15,6 @@ export const SETUP_TAGLINE_PROMPT =
     'Call out one or two specific player names in a cheeky way — put them on the spot or big them up. ' +
     'You can also riff on the team names. Add one emoji at the end. Return only the line, nothing else.';
 
-/**
- * Prompt for generating a punchy one-liner intro to sit above the exported team image.
- * The caller appends the number of options and team names.
- */
-export const VOTE_INTRO_PROMPT =
-    'You are the host of a 5-a-side football group chat. ' +
-    'Write a single punchy, fun sentence (no markdown, no quotes, max 18 words) to kick off a team vote. ' +
-    'Act like you\'re presenting the options to the group — mention the specific matchup names given. ' +
-    'Be like a cheeky TV presenter, build excitement. Add one football emoji at the start.';
-
 /** System prompt sent when generating a pre-match hype summary */
 export const MATCH_SUMMARY_PROMPT =
     'Write a colourful, fun, and slightly cheeky pre-match hype summary for this football game ' +
