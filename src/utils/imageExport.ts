@@ -1,4 +1,5 @@
 import { toPng } from 'html-to-image';
+import { MotionGlobalConfig } from 'framer-motion';
 
 const HIDDEN_SELECTORS = ['.delete-button', '.color-picker', '.color-circle', '.generate-ai-summary'];
 
@@ -53,10 +54,15 @@ export async function generateTeamsImage(setupCount: number, taglines?: string[]
 
     setElementsVisibility(elements, 'none');
 
+    // Freeze Framer Motion layout animations so scroll-triggered position
+    // recalculations don't apply mid-capture transforms to player elements
+    MotionGlobalConfig.skipAnimations = true;
+
     const savedScrollY = window.scrollY;
     window.scrollTo(0, 0);
-    // Wait for scroll and any layout reflow to settle before capturing
-    await new Promise(resolve => requestAnimationFrame(resolve));
+    // Two rAFs: first lets the scroll settle, second lets Framer Motion
+    // flush any pending layout measurements with skipAnimations active
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     try {
         const canvas = document.createElement('canvas');
@@ -155,6 +161,7 @@ export async function generateTeamsImage(setupCount: number, taglines?: string[]
     } finally {
         setElementsVisibility(elements, '');
         window.scrollTo(0, savedScrollY);
+        MotionGlobalConfig.skipAnimations = false;
     }
 }
 
