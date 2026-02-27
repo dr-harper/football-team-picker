@@ -21,8 +21,30 @@ const FOOTER_HEIGHT_SINGLE = 40;
 const FOOTER_HEIGHT_VOTE = 64;
 const VOTE_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣'];
 
-const TAGLINE_HEIGHT = 36;
+const TAGLINE_PADDING = 10;
+const TAGLINE_LINE_HEIGHT = 22;
 const TAGLINE_FONT = 'italic 16px Arial';
+
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let current = '';
+    for (const word of words) {
+        const candidate = current ? `${current} ${word}` : word;
+        if (ctx.measureText(candidate).width > maxWidth && current) {
+            lines.push(current);
+            current = word;
+        } else {
+            current = candidate;
+        }
+    }
+    if (current) lines.push(current);
+    return lines;
+}
+
+function taglineHeight(lines: string[]): number {
+    return lines.length * TAGLINE_LINE_HEIGHT + TAGLINE_PADDING * 2;
+}
 
 /** Render all team setup elements into a single PNG data URL */
 export async function generateTeamsImage(setupCount: number, taglines?: string[]): Promise<string | null> {
@@ -49,11 +71,17 @@ export async function generateTeamsImage(setupCount: number, taglines?: string[]
             }),
         );
 
-        const taglinesHeight = (taglines ?? []).filter(t => t).length * TAGLINE_HEIGHT;
-        const totalHeight = images.reduce((sum, img) => sum + (img?.height || 0), 0) + taglinesHeight;
         const maxWidth = Math.max(...images.map(img => img?.width || 0));
         const isVote = setupCount > 1;
         const footerHeight = isVote ? FOOTER_HEIGHT_VOTE : FOOTER_HEIGHT_SINGLE;
+
+        // Pre-wrap all taglines so we know their heights before setting canvas size
+        context.font = TAGLINE_FONT;
+        const wrappedTaglines = (taglines ?? []).map(t =>
+            t ? wrapText(context, t, maxWidth - TAGLINE_PADDING * 2) : [],
+        );
+        const taglinesHeight = wrappedTaglines.reduce((sum, lines) => sum + (lines.length ? taglineHeight(lines) : 0), 0);
+        const totalHeight = images.reduce((sum, img) => sum + (img?.height || 0), 0) + taglinesHeight;
 
         canvas.width = maxWidth;
         canvas.height = totalHeight + footerHeight;
@@ -64,16 +92,19 @@ export async function generateTeamsImage(setupCount: number, taglines?: string[]
                 context.drawImage(img, 0, yOffset, img.width, img.height);
                 yOffset += img.height;
             }
-            const tagline = taglines?.[i];
-            if (tagline) {
+            const lines = wrappedTaglines[i];
+            if (lines?.length) {
+                const stripHeight = taglineHeight(lines);
                 context.fillStyle = '#1a5c35';
-                context.fillRect(0, yOffset, canvas.width, TAGLINE_HEIGHT);
+                context.fillRect(0, yOffset, canvas.width, stripHeight);
                 context.fillStyle = 'rgba(255,255,255,0.9)';
                 context.font = TAGLINE_FONT;
                 context.textAlign = 'center';
-                context.textBaseline = 'middle';
-                context.fillText(tagline, canvas.width / 2, yOffset + TAGLINE_HEIGHT / 2);
-                yOffset += TAGLINE_HEIGHT;
+                context.textBaseline = 'top';
+                lines.forEach((line, li) => {
+                    context.fillText(line, canvas.width / 2, yOffset + TAGLINE_PADDING + li * TAGLINE_LINE_HEIGHT);
+                });
+                yOffset += stripHeight;
             }
         });
 
