@@ -42,8 +42,11 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
     return { lines, height: lines.length * INTRO_LINE_HEIGHT + INTRO_PADDING * 2 };
 }
 
+const TAGLINE_HEIGHT = 36;
+const TAGLINE_FONT = 'italic 16px Arial';
+
 /** Render all team setup elements into a single PNG data URL */
-export async function generateTeamsImage(setupCount: number, intro?: string): Promise<string | null> {
+export async function generateTeamsImage(setupCount: number, intro?: string, taglines?: string[]): Promise<string | null> {
     const elements = Array.from({ length: setupCount }, (_, i) =>
         document.getElementById(`team-setup-${i}`),
     );
@@ -67,7 +70,8 @@ export async function generateTeamsImage(setupCount: number, intro?: string): Pr
             }),
         );
 
-        const totalHeight = images.reduce((sum, img) => sum + (img?.height || 0), 0);
+        const taglinesHeight = (taglines ?? []).filter(t => t).length * TAGLINE_HEIGHT;
+        const totalHeight = images.reduce((sum, img) => sum + (img?.height || 0), 0) + taglinesHeight;
         const maxWidth = Math.max(...images.map(img => img?.width || 0));
 
         // Pre-measure intro wrap using a temporary context
@@ -96,10 +100,21 @@ export async function generateTeamsImage(setupCount: number, intro?: string): Pr
         }
 
         let yOffset = introBannerHeight;
-        images.forEach(img => {
+        images.forEach((img, i) => {
             if (img) {
                 context.drawImage(img, 0, yOffset, img.width, img.height);
                 yOffset += img.height;
+            }
+            const tagline = taglines?.[i];
+            if (tagline) {
+                context.fillStyle = '#1a5c35';
+                context.fillRect(0, yOffset, canvas.width, TAGLINE_HEIGHT);
+                context.fillStyle = 'rgba(255,255,255,0.9)';
+                context.font = TAGLINE_FONT;
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(tagline, canvas.width / 2, yOffset + TAGLINE_HEIGHT / 2);
+                yOffset += TAGLINE_HEIGHT;
             }
         });
 
@@ -142,9 +157,9 @@ function dateStamp(): string {
 }
 
 /** Download the generated image as a PNG file */
-export async function exportImage(setupCount: number, intro?: string): Promise<ExportResult> {
+export async function exportImage(setupCount: number, intro?: string, taglines?: string[]): Promise<ExportResult> {
     try {
-        const dataUrl = await generateTeamsImage(setupCount, intro);
+        const dataUrl = await generateTeamsImage(setupCount, intro, taglines);
         if (!dataUrl) return { success: false, error: 'Failed to generate image' };
         const link = document.createElement('a');
         link.href = dataUrl;
@@ -158,9 +173,9 @@ export async function exportImage(setupCount: number, intro?: string): Promise<E
 }
 
 /** Share the generated image via the native share API or WhatsApp fallback */
-export async function shareImage(setupCount: number, intro?: string): Promise<ExportResult> {
+export async function shareImage(setupCount: number, intro?: string, taglines?: string[]): Promise<ExportResult> {
     try {
-        const dataUrl = await generateTeamsImage(setupCount, intro);
+        const dataUrl = await generateTeamsImage(setupCount, intro, taglines);
         if (!dataUrl) return { success: false, error: 'Failed to generate image for sharing' };
         const response = await fetch(dataUrl);
         const blob = await response.blob();

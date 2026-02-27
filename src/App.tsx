@@ -10,7 +10,7 @@ import TeamSetupCard from './components/TeamSetupCard';
 import { generateTeamsFromText } from './utils/teamGenerator';
 import { exportImage, shareImage } from './utils/imageExport';
 import { Team, TeamSetup } from './types';
-import { MATCH_SUMMARY_PROMPT, FIX_INPUT_PROMPT, VOTE_INTRO_PROMPT } from './constants/aiPrompts';
+import { MATCH_SUMMARY_PROMPT, FIX_INPUT_PROMPT, VOTE_INTRO_PROMPT, SETUP_TAGLINE_PROMPT } from './constants/aiPrompts';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import { AI_SUMMARY_THROTTLE_MS, AI_FIX_INPUT_THROTTLE_MS } from './constants/gameConstants';
 import { callGemini } from './utils/geminiClient';
@@ -43,14 +43,42 @@ const FootballTeamPickerInner = () => {
         playerIndex: number;
     } | null>(null);
     const [aiSummaries, setAISummaries] = useState<{ [setupId: string]: string }>({});
+    const [setupTaglines, setSetupTaglines] = useState<{ [setupId: string]: string }>({});
     const [isExporting, setIsExporting] = useState(false);
     const [isFixingWithAI, setIsFixingWithAI] = useState(false);
     const aiSummaryThrottleRef = useRef(0);
     const aiFixInputThrottleRef = useRef(0);
     const nextSetupIdRef = useRef(0);
+    const taglinesGeneratingRef = useRef<Set<string>>(new Set());
 
     useEffect(() => { localStorage.setItem('playersText', playersText); }, [playersText]);
     useEffect(() => { setAISummaries({}); }, [teamSetups]);
+
+    // Generate taglines in the background whenever a new setup appears
+    useEffect(() => {
+        if (!aiEnabled) return;
+        const existingIds = new Set(teamSetups.map(s => s.id));
+
+        // Clean up taglines for deleted setups
+        setSetupTaglines(prev => Object.fromEntries(Object.entries(prev).filter(([id]) => existingIds.has(id))));
+
+        teamSetups.forEach(setup => {
+            if (taglinesGeneratingRef.current.has(setup.id)) return;
+            taglinesGeneratingRef.current.add(setup.id);
+            const matchup = setup.teams.map((t: Team) => t.name).join(' vs ');
+            callGemini(
+                aiModel,
+                [{ role: 'user', parts: [{ text: `${SETUP_TAGLINE_PROMPT}\n\nMatchup: ${matchup}` }] }],
+                activeGeminiKey || undefined,
+            )
+                .then(data => {
+                    const tagline = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                    if (tagline) setSetupTaglines(prev => ({ ...prev, [setup.id]: tagline }));
+                })
+                .catch(() => {})
+                .finally(() => taglinesGeneratingRef.current.delete(setup.id));
+        });
+    }, [teamSetups, aiEnabled, aiModel, activeGeminiKey]);
 
     const generateTeams = useCallback(() => {
         const result = generateTeamsFromText(playersText, places, playerNumbers);
@@ -279,7 +307,8 @@ const FootballTeamPickerInner = () => {
                 onExport={async () => {
                     setIsExporting(true);
                     const intro = await generateVoteIntro();
-                    const result = await exportImage(teamSetups.length, intro);
+                    const taglines = teamSetups.map(s => setupTaglines[s.id] || '');
+                    const result = await exportImage(teamSetups.length, intro, taglines);
                     setIsExporting(false);
                     if (!result.success) {
                         addNotification(applyWarrenTone(result.error || 'Export failed'));
@@ -288,7 +317,8 @@ const FootballTeamPickerInner = () => {
                 onShare={async () => {
                     setIsExporting(true);
                     const intro = await generateVoteIntro();
-                    const result = await shareImage(teamSetups.length, intro);
+                    const taglines = teamSetups.map(s => setupTaglines[s.id] || '');
+                    const result = await shareImage(teamSetups.length, intro, taglines);
                     setIsExporting(false);
                     if (!result.success) {
                         addNotification(applyWarrenTone(result.error || 'Sharing failed'));

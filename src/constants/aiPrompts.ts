@@ -7,6 +7,15 @@ export const geminiEndpoint = (model: string, key: string): string =>
     `${GEMINI_API_BASE_URL}/${model}:generateContent?key=${key}`;
 
 /**
+ * Prompt for a short one-line description of a specific team matchup.
+ * The caller appends the matchup names.
+ */
+export const SETUP_TAGLINE_PROMPT =
+    'Write a single short line (no markdown, no quotes, max 12 words) that captures the vibe of this football matchup. ' +
+    'Hint at the contrast between the two teams — style, attitude, or names. Add one emoji at the end. ' +
+    'Return only the line, nothing else.';
+
+/**
  * Prompt for generating a punchy one-liner intro to sit above the exported team image.
  * The caller appends the number of options and team names.
  */
