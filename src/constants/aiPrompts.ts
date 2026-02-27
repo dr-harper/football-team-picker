@@ -6,6 +6,15 @@ export const GEMINI_API_BASE_URL =
 export const geminiEndpoint = (model: string, key: string): string =>
     `${GEMINI_API_BASE_URL}/${model}:generateContent?key=${key}`;
 
+/**
+ * Prompt for generating a punchy one-liner intro to sit above the exported team image.
+ * The caller appends the number of options and team names.
+ */
+export const VOTE_INTRO_PROMPT =
+    'Write a single punchy line (no markdown, no quotes, max 15 words) to go above a football team vote image. ' +
+    'Mention the team names provided and hype up the vote — which team will it be tonight? ' +
+    'Add one relevant emoji at the start. Keep it fun and casual.';
+
 /** System prompt sent when generating a pre-match hype summary */
 export const MATCH_SUMMARY_PROMPT =
     'Write a colourful, fun, and slightly cheeky pre-match hype summary for this football game ' +

@@ -10,7 +10,7 @@ import TeamSetupCard from './components/TeamSetupCard';
 import { generateTeamsFromText } from './utils/teamGenerator';
 import { exportImage, shareImage } from './utils/imageExport';
 import { Team, TeamSetup } from './types';
-import { MATCH_SUMMARY_PROMPT, FIX_INPUT_PROMPT } from './constants/aiPrompts';
+import { MATCH_SUMMARY_PROMPT, FIX_INPUT_PROMPT, VOTE_INTRO_PROMPT } from './constants/aiPrompts';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import { AI_SUMMARY_THROTTLE_MS, AI_FIX_INPUT_THROTTLE_MS } from './constants/gameConstants';
 import { callGemini } from './utils/geminiClient';
@@ -182,6 +182,25 @@ const FootballTeamPickerInner = () => {
         }
     };
 
+    const generateVoteIntro = async (): Promise<string> => {
+        const teamNames = teamSetups.flatMap(s => s.teams.map(t => t.name));
+        const fallback = `⚽ ${teamSetups.length} teams up for the vote — which one tonight?`;
+        if (!aiEnabled || teamSetups.length < 2) return fallback;
+        try {
+            const prompt =
+                VOTE_INTRO_PROMPT +
+                `\n\nThere are ${teamSetups.length} options. Team names: ${teamNames.join(', ')}.`;
+            const data = await callGemini(
+                aiModel,
+                [{ role: 'user', parts: [{ text: prompt }] }],
+                activeGeminiKey || undefined,
+            );
+            return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || fallback;
+        } catch {
+            return fallback;
+        }
+    };
+
     const handleReset = () => {
         setTeamSetups([]);
         setErrorMessage('');
@@ -259,7 +278,8 @@ const FootballTeamPickerInner = () => {
                 isExporting={isExporting}
                 onExport={async () => {
                     setIsExporting(true);
-                    const result = await exportImage(teamSetups.length);
+                    const intro = await generateVoteIntro();
+                    const result = await exportImage(teamSetups.length, intro);
                     setIsExporting(false);
                     if (!result.success) {
                         addNotification(applyWarrenTone(result.error || 'Export failed'));
@@ -267,7 +287,8 @@ const FootballTeamPickerInner = () => {
                 }}
                 onShare={async () => {
                     setIsExporting(true);
-                    const result = await shareImage(teamSetups.length);
+                    const intro = await generateVoteIntro();
+                    const result = await shareImage(teamSetups.length, intro);
                     setIsExporting(false);
                     if (!result.success) {
                         addNotification(applyWarrenTone(result.error || 'Sharing failed'));
