@@ -17,7 +17,9 @@ function setElementsVisibility(elements: (HTMLElement | null)[], display: string
     });
 }
 
-const FOOTER_HEIGHT = 40;
+const FOOTER_HEIGHT_SINGLE = 40;
+const FOOTER_HEIGHT_VOTE = 64;
+const VOTE_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣'];
 const INTRO_FONT = 'bold 22px Arial';
 const INTRO_PADDING = 16;
 const INTRO_LINE_HEIGHT = 28;
@@ -74,8 +76,11 @@ export async function generateTeamsImage(setupCount: number, intro?: string): Pr
             ? wrapText(context, intro, maxWidth - INTRO_PADDING * 2)
             : { lines: [], height: 0 };
 
+        const isVote = setupCount > 1;
+        const footerHeight = isVote ? FOOTER_HEIGHT_VOTE : FOOTER_HEIGHT_SINGLE;
+
         canvas.width = maxWidth;
-        canvas.height = totalHeight + introBannerHeight + FOOTER_HEIGHT;
+        canvas.height = totalHeight + introBannerHeight + footerHeight;
 
         // Intro banner
         if (intro && introLines.length > 0) {
@@ -99,13 +104,29 @@ export async function generateTeamsImage(setupCount: number, intro?: string): Pr
         });
 
         // Footer
+        const footerY = totalHeight + introBannerHeight;
         context.fillStyle = '#0A2507';
-        context.fillRect(0, totalHeight + introBannerHeight, canvas.width, FOOTER_HEIGHT);
-        context.fillStyle = 'white';
-        context.font = 'bold 20px Arial';
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.fillText('Made with teamshuffle.app', canvas.width / 2, totalHeight + introBannerHeight + FOOTER_HEIGHT / 2);
+        context.fillRect(0, footerY, canvas.width, footerHeight);
+
+        if (isVote) {
+            // Row 1: vote prompt with emojis
+            const voteEmojis = VOTE_EMOJIS.slice(0, setupCount).join('  ');
+            context.fillStyle = '#facc15';
+            context.font = 'bold 20px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(`⬆️ React to vote  ${voteEmojis}`, canvas.width / 2, footerY + 20);
+            // Row 2: credit
+            context.fillStyle = 'rgba(255,255,255,0.5)';
+            context.font = '13px Arial';
+            context.fillText('teamshuffle.app', canvas.width / 2, footerY + 50);
+        } else {
+            context.fillStyle = 'white';
+            context.font = 'bold 20px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText('Made with teamshuffle.app', canvas.width / 2, footerY + FOOTER_HEIGHT_SINGLE / 2);
+        }
 
         return canvas.toDataURL('image/png');
     } catch (error) {

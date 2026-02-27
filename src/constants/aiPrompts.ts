@@ -11,9 +11,10 @@ export const geminiEndpoint = (model: string, key: string): string =>
  * The caller appends the number of options and team names.
  */
 export const VOTE_INTRO_PROMPT =
-    'Write a single punchy line (no markdown, no quotes, max 15 words) to go above a football team vote image. ' +
-    'Mention the team names provided and hype up the vote — which team will it be tonight? ' +
-    'Add one relevant emoji at the start. Keep it fun and casual.';
+    'You are the host of a 5-a-side football group chat. ' +
+    'Write a single punchy, fun sentence (no markdown, no quotes, max 18 words) to kick off a team vote. ' +
+    'Act like you\'re presenting the options to the group — mention the specific matchup names given. ' +
+    'Be like a cheeky TV presenter, build excitement. Add one football emoji at the start.';
 
 /** System prompt sent when generating a pre-match hype summary */
 export const MATCH_SUMMARY_PROMPT =
