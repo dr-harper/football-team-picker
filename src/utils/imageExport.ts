@@ -53,6 +53,11 @@ export async function generateTeamsImage(setupCount: number, taglines?: string[]
 
     setElementsVisibility(elements, 'none');
 
+    const savedScrollY = window.scrollY;
+    window.scrollTo(0, 0);
+    // Wait for scroll and any layout reflow to settle before capturing
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
     try {
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
@@ -149,6 +154,7 @@ export async function generateTeamsImage(setupCount: number, taglines?: string[]
         return null;
     } finally {
         setElementsVisibility(elements, '');
+        window.scrollTo(0, savedScrollY);
     }
 }
 
