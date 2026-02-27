@@ -17,15 +17,17 @@ function setElementsVisibility(elements: (HTMLElement | null)[], display: string
     });
 }
 
-const FOOTER_HEIGHT_SINGLE = 40;
-const FOOTER_HEIGHT_VOTE = 64;
 const VOTE_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣'];
 
-const TAGLINE_PADDING = 10;
-const TAGLINE_LINE_HEIGHT = 22;
-const TAGLINE_FONT = 'italic 16px Arial';
+// Reference width at 1x pixel density — all sizes scale proportionally from this
+const BASE_WIDTH = 600;
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+function scaled(value: number, scale: number): number {
+    return Math.round(value * scale);
+}
+
+function wrapText(ctx: CanvasRenderingContext2D, text: string, font: string, maxWidth: number): string[] {
+    ctx.font = font;
     const words = text.split(' ');
     const lines: string[] = [];
     let current = '';
@@ -40,10 +42,6 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
     }
     if (current) lines.push(current);
     return lines;
-}
-
-function taglineHeight(lines: string[]): number {
-    return lines.length * TAGLINE_LINE_HEIGHT + TAGLINE_PADDING * 2;
 }
 
 /** Render all team setup elements into a single PNG data URL */
@@ -73,14 +71,28 @@ export async function generateTeamsImage(setupCount: number, taglines?: string[]
 
         const maxWidth = Math.max(...images.map(img => img?.width || 0));
         const isVote = setupCount > 1;
-        const footerHeight = isVote ? FOOTER_HEIGHT_VOTE : FOOTER_HEIGHT_SINGLE;
 
-        // Pre-wrap all taglines so we know their heights before setting canvas size
-        context.font = TAGLINE_FONT;
+        // Scale all sizes proportionally to the captured image width
+        const scale = Math.max(1, maxWidth / BASE_WIDTH);
+        const taglinePadding    = scaled(10, scale);
+        const taglineLineHeight = scaled(22, scale);
+        const taglineFont       = `italic ${scaled(16, scale)}px Arial`;
+        const footerHeightSingle = scaled(40, scale);
+        const footerHeightVote   = scaled(64, scale);
+        const footerHeight = isVote ? footerHeightVote : footerHeightSingle;
+        const voteFontSize   = scaled(20, scale);
+        const creditFontSize = scaled(13, scale);
+
+        const taglineStripHeight = (lines: string[]) =>
+            lines.length * taglineLineHeight + taglinePadding * 2;
+
+        // Pre-wrap taglines at the correct scaled font so heights are accurate
         const wrappedTaglines = (taglines ?? []).map(t =>
-            t ? wrapText(context, t, maxWidth - TAGLINE_PADDING * 2) : [],
+            t ? wrapText(context, t, taglineFont, maxWidth - taglinePadding * 2) : [],
         );
-        const taglinesHeight = wrappedTaglines.reduce((sum, lines) => sum + (lines.length ? taglineHeight(lines) : 0), 0);
+        const taglinesHeight = wrappedTaglines.reduce(
+            (sum, lines) => sum + (lines.length ? taglineStripHeight(lines) : 0), 0,
+        );
         const totalHeight = images.reduce((sum, img) => sum + (img?.height || 0), 0) + taglinesHeight;
 
         canvas.width = maxWidth;
@@ -94,15 +106,15 @@ export async function generateTeamsImage(setupCount: number, taglines?: string[]
             }
             const lines = wrappedTaglines[i];
             if (lines?.length) {
-                const stripHeight = taglineHeight(lines);
+                const stripHeight = taglineStripHeight(lines);
                 context.fillStyle = '#1a5c35';
                 context.fillRect(0, yOffset, canvas.width, stripHeight);
                 context.fillStyle = 'rgba(255,255,255,0.9)';
-                context.font = TAGLINE_FONT;
+                context.font = taglineFont;
                 context.textAlign = 'center';
                 context.textBaseline = 'top';
                 lines.forEach((line, li) => {
-                    context.fillText(line, canvas.width / 2, yOffset + TAGLINE_PADDING + li * TAGLINE_LINE_HEIGHT);
+                    context.fillText(line, canvas.width / 2, yOffset + taglinePadding + li * taglineLineHeight);
                 });
                 yOffset += stripHeight;
             }
@@ -112,25 +124,22 @@ export async function generateTeamsImage(setupCount: number, taglines?: string[]
         const footerY = totalHeight;
         context.fillStyle = '#0A2507';
         context.fillRect(0, footerY, canvas.width, footerHeight);
+        context.textAlign = 'center';
 
         if (isVote) {
-            // Row 1: vote prompt with emojis
             const voteEmojis = VOTE_EMOJIS.slice(0, setupCount).join('  ');
             context.fillStyle = '#facc15';
-            context.font = 'bold 20px Arial';
-            context.textAlign = 'center';
+            context.font = `bold ${voteFontSize}px Arial`;
             context.textBaseline = 'middle';
-            context.fillText(`⬆️ React to vote  ${voteEmojis}`, canvas.width / 2, footerY + 20);
-            // Row 2: credit
+            context.fillText(`⬆️ React to vote  ${voteEmojis}`, canvas.width / 2, footerY + footerHeightVote * 0.35);
             context.fillStyle = 'rgba(255,255,255,0.5)';
-            context.font = '13px Arial';
-            context.fillText('teamshuffle.app', canvas.width / 2, footerY + 50);
+            context.font = `${creditFontSize}px Arial`;
+            context.fillText('teamshuffle.app', canvas.width / 2, footerY + footerHeightVote * 0.75);
         } else {
             context.fillStyle = 'white';
-            context.font = 'bold 20px Arial';
-            context.textAlign = 'center';
+            context.font = `bold ${voteFontSize}px Arial`;
             context.textBaseline = 'middle';
-            context.fillText('Made with teamshuffle.app', canvas.width / 2, footerY + FOOTER_HEIGHT_SINGLE / 2);
+            context.fillText('Made with teamshuffle.app', canvas.width / 2, footerY + footerHeightSingle / 2);
         }
 
         return canvas.toDataURL('image/png');
