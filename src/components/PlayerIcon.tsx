@@ -51,7 +51,7 @@ const PlayerIcon: React.FC<PlayerIconProps> = React.memo(({ color, number, name,
             <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold text-white pointer-events-none" style={{ textShadow: '0px 0px 1px black, 0px 0px 3px black' }}>
                 {displayNumber}
             </div>
-            <div className="absolute top-3/4 left-1/2 transform -translate-x-1/2 text-lg text-center bg-black bg-opacity-60 px-1 py-0.5 rounded pointer-events-none">
+            <div className="absolute top-3/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-lg text-center bg-black bg-opacity-60 px-1 py-0.5 rounded pointer-events-none">
                 {displayName}
             </div>
         </div>
