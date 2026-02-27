@@ -101,7 +101,8 @@ export async function generateTeamsImage(setupCount: number, taglines?: string[]
         let yOffset = 0;
         images.forEach((img, i) => {
             if (img) {
-                context.drawImage(img, 0, yOffset, img.width, img.height);
+                const xOffset = Math.round((canvas.width - img.width) / 2);
+                context.drawImage(img, xOffset, yOffset, img.width, img.height);
                 yOffset += img.height;
             }
             const lines = wrappedTaglines[i];
