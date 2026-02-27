@@ -70,9 +70,15 @@ const FootballTeamPickerInner = () => {
             const matchup = setup.teams
                 .map((t: Team) => `${t.name}: ${t.players.map((p: { name: string; role: string }) => `${p.name} (${p.role})`).join(', ')}`)
                 .join(' vs ');
+            const allPlayers = setup.teams.flatMap((t: Team) => t.players);
+            const outfield = allPlayers.filter((p: { isGoalkeeper: boolean }) => !p.isGoalkeeper);
+            const keepers = allPlayers.filter((p: { isGoalkeeper: boolean }) => p.isGoalkeeper);
+            const pool = Math.random() < 0.2 ? keepers : outfield;
+            const spotlight = pool[Math.floor(Math.random() * pool.length)];
+            const spotlightInstruction = spotlight ? ` Focus your callout specifically on ${spotlight.name}.` : '';
             callGemini(
                 aiModel,
-                [{ role: 'user', parts: [{ text: `${SETUP_TAGLINE_PROMPT}\n\nMatchup: ${matchup}` }] }],
+                [{ role: 'user', parts: [{ text: `${SETUP_TAGLINE_PROMPT}${spotlightInstruction}\n\nMatchup: ${matchup}` }] }],
                 activeGeminiKey || undefined,
             )
                 .then(data => {
