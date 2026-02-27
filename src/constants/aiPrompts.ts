@@ -11,9 +11,9 @@ export const geminiEndpoint = (model: string, key: string): string =>
  * The caller appends the matchup names.
  */
 export const SETUP_TAGLINE_PROMPT =
-    'Write a single short line (no markdown, no quotes, max 12 words) that captures the vibe of this football matchup. ' +
-    'Hint at the contrast between the two teams — style, attitude, or names. Add one emoji at the end. ' +
-    'Return only the line, nothing else.';
+    'Write a single short, funny line (no markdown, no quotes, max 14 words) for a 5-a-side football team vote. ' +
+    'Call out one or two specific player names in a cheeky way — put them on the spot or big them up. ' +
+    'You can also riff on the team names. Add one emoji at the end. Return only the line, nothing else.';
 
 /**
  * Prompt for generating a punchy one-liner intro to sit above the exported team image.

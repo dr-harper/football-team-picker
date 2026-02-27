@@ -65,7 +65,9 @@ const FootballTeamPickerInner = () => {
         teamSetups.forEach(setup => {
             if (taglinesGeneratingRef.current.has(setup.id)) return;
             taglinesGeneratingRef.current.add(setup.id);
-            const matchup = setup.teams.map((t: Team) => t.name).join(' vs ');
+            const matchup = setup.teams
+                .map((t: Team) => `${t.name}: ${t.players.map((p: { name: string }) => p.name).join(', ')}`)
+                .join(' vs ');
             callGemini(
                 aiModel,
                 [{ role: 'user', parts: [{ text: `${SETUP_TAGLINE_PROMPT}\n\nMatchup: ${matchup}` }] }],
