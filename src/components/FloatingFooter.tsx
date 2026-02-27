@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from './ui/button';
-import { Share2 } from 'lucide-react';
+import { Share2, Download } from 'lucide-react';
 
 interface FloatingFooterProps {
     visible: boolean;
@@ -12,7 +12,7 @@ interface FloatingFooterProps {
 
 const Spinner: React.FC = () => (
     <svg
-        className="animate-spin h-5 w-5"
+        className="animate-spin h-4 w-4"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"
@@ -26,41 +26,34 @@ const FloatingFooter: React.FC<FloatingFooterProps> = ({ visible, onExport, onSh
     if (!visible) return null;
 
     return (
-        <div role="toolbar" aria-label="Team export actions" className="fixed bottom-0 left-0 right-0 bg-green-900 dark:bg-green-950 text-white py-3 flex items-center justify-end pr-4 z-50 shadow-lg">
-            <div className="flex-grow pl-4 font-bold">Teams Generated: {teamCount}</div>
-            <Button
-                onClick={onExport}
-                disabled={isExporting}
-                className="bg-blue-700 dark:bg-blue-600 text-white py-2 px-6 rounded font-bold shadow-md hover:bg-blue-800 dark:hover:bg-blue-700 flex items-center gap-2 mr-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                {isExporting ? (
-                    <Spinner />
-                ) : (
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M12 7.5l4.5 4.5m0 0l-4.5 4.5m4.5-4.5H3"
-                        />
-                    </svg>
-                )}
-                {isExporting ? 'Exporting...' : 'Export Image'}
-            </Button>
-            <Button
-                onClick={onShare}
-                disabled={isExporting}
-                className="bg-green-700 dark:bg-green-600 text-white py-2 px-6 rounded font-bold shadow-md hover:bg-green-800 dark:hover:bg-green-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                <Share2 className="w-5 h-5" />
-                Share
-            </Button>
+        <div
+            role="toolbar"
+            aria-label="Team export actions"
+            className="fixed bottom-0 left-0 right-0 bg-green-950/95 dark:bg-black/80 border-t border-white/10 text-white py-3 px-4 flex items-center justify-between z-50 backdrop-blur-sm"
+        >
+            <div className="flex items-center gap-2">
+                <span className="bg-white/10 text-white text-xs font-bold px-3 py-1 rounded-full">
+                    {teamCount} {teamCount === 1 ? 'option' : 'options'} generated
+                </span>
+            </div>
+            <div className="flex items-center gap-2">
+                <Button
+                    onClick={onExport}
+                    disabled={isExporting}
+                    className="bg-white/10 hover:bg-white/20 border border-white/20 text-white py-2 px-4 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {isExporting ? <Spinner /> : <Download className="w-4 h-4" />}
+                    {isExporting ? 'Exporting...' : 'Export'}
+                </Button>
+                <Button
+                    onClick={onShare}
+                    disabled={isExporting}
+                    className="bg-gradient-to-r from-emerald-400 to-green-600 hover:from-emerald-300 hover:to-green-500 text-white py-2 px-4 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <Share2 className="w-4 h-4" />
+                    Share
+                </Button>
+            </div>
         </div>
     );
 };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState, useLayoutEffect } from 'react';
 import { cn } from '../lib/utils';
 
 interface PlayerIconProps {
@@ -13,6 +13,15 @@ const PlayerIcon: React.FC<PlayerIconProps> = React.memo(({ color, number, name,
     const fillColor = isPlaceholder ? '#6b7280' : isGoalkeeper ? '#facc15' : color || '#ffffff'; // Grey for placeholders
     const displayNumber = isPlaceholder ? '?' : number !== null ? number : '-';
     const displayName = isPlaceholder ? '' : name;
+
+    const nameRef = useRef<HTMLDivElement>(null);
+    const [isMultiLine, setIsMultiLine] = useState(false);
+    useLayoutEffect(() => {
+        if (nameRef.current) {
+            const lineHeight = parseFloat(getComputedStyle(nameRef.current).lineHeight);
+            setIsMultiLine(nameRef.current.clientHeight > lineHeight * 1.5);
+        }
+    }, [displayName]);
 
     return (
         <div className={cn(
@@ -51,7 +60,7 @@ const PlayerIcon: React.FC<PlayerIconProps> = React.memo(({ color, number, name,
             <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold text-white pointer-events-none" style={{ textShadow: '0px 0px 1px black, 0px 0px 3px black' }}>
                 {displayNumber}
             </div>
-            <div className="absolute top-3/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-lg text-center bg-black bg-opacity-60 px-1 py-0.5 rounded pointer-events-none">
+            <div ref={nameRef} className={`absolute top-3/4 left-1/2 transform -translate-x-1/2${isMultiLine ? ' -translate-y-1/2' : ''} text-lg text-center bg-black bg-opacity-60 px-1 py-0.5 rounded pointer-events-none`}>
                 {displayName}
             </div>
         </div>

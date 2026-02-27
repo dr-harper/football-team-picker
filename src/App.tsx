@@ -18,6 +18,10 @@ import { callGemini } from './utils/geminiClient';
 const FootballTeamPickerInner = () => {
     const {
         places,
+        selectedLocation,
+        handleLocationChange,
+        handleFindLocation,
+        isLoadingLocation,
         activeGeminiKey,
         aiEnabled,
         aiModel,
@@ -250,14 +254,9 @@ const FootballTeamPickerInner = () => {
                     </div>
                 )}
 
-                <div className="text-center space-y-3 mb-6 mt-4">
-                    <p className="text-gray-200 text-lg sm:text-xl">
-                        Pick your 5-a-side football teams<br />
-                        <span className="text-yellow-300 text-base sm:text-lg font-semibold block mt-2">
-                            Tip: Click one player, then another to swap their positions on the pitch!
-                        </span>
-                    </p>
-                </div>
+                <p className="text-center text-green-300 text-sm mb-6 mt-4">
+                    Click any two players to swap their positions on the pitch
+                </p>
 
                 <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 foldable-grid">
                     <div className="space-y-6">
@@ -273,6 +272,10 @@ const FootballTeamPickerInner = () => {
                             errorMessage={errorMessage}
                             showNoGoalkeeperInfo={showNoGoalkeeperInfo}
                             hasTeams={teamSetups.length > 0}
+                            selectedLocation={selectedLocation}
+                            onLocationChange={handleLocationChange}
+                            onFindLocation={handleFindLocation}
+                            isLoadingLocation={isLoadingLocation}
                         />
                     </div>
 
