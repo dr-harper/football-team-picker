@@ -10,9 +10,10 @@ import TeamSetupCard from './components/TeamSetupCard';
 import { generateTeamsFromText } from './utils/teamGenerator';
 import { exportImage, shareImage } from './utils/imageExport';
 import { Team, TeamSetup } from './types';
-import { geminiEndpoint, MATCH_SUMMARY_PROMPT, FIX_INPUT_PROMPT } from './constants/aiPrompts';
+import { MATCH_SUMMARY_PROMPT, FIX_INPUT_PROMPT } from './constants/aiPrompts';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import { AI_SUMMARY_THROTTLE_MS, AI_FIX_INPUT_THROTTLE_MS } from './constants/gameConstants';
+import { callGemini } from './utils/geminiClient';
 
 const FootballTeamPickerInner = () => {
     const {
@@ -118,20 +119,17 @@ const FootballTeamPickerInner = () => {
     };
 
     const handleFixWithAI = async () => {
-        if (!activeGeminiKey || !playersText.trim()) return;
+        if (!aiEnabled || !playersText.trim()) return;
         const now = Date.now();
         if (now - aiFixInputThrottleRef.current < AI_FIX_INPUT_THROTTLE_MS) return;
         aiFixInputThrottleRef.current = now;
         setIsFixingWithAI(true);
         try {
-            const res = await fetch(geminiEndpoint(aiModel, activeGeminiKey), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ role: 'user', parts: [{ text: FIX_INPUT_PROMPT + '\n\n' + playersText }] }],
-                }),
-            });
-            const data = await res.json();
+            const data = await callGemini(
+                aiModel,
+                [{ role: 'user', parts: [{ text: FIX_INPUT_PROMPT + '\n\n' + playersText }] }],
+                activeGeminiKey || undefined,
+            );
             const fixed = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
             if (fixed) {
                 setPlayersText(fixed);
@@ -146,7 +144,7 @@ const FootballTeamPickerInner = () => {
     };
 
     const handleGenerateSummary = async (setupId: string) => {
-        if (!activeGeminiKey) return;
+        if (!aiEnabled) return;
         const now = Date.now();
         if (now - aiSummaryThrottleRef.current < AI_SUMMARY_THROTTLE_MS) return;
         aiSummaryThrottleRef.current = now;
@@ -169,12 +167,11 @@ const FootballTeamPickerInner = () => {
                 .join('\n\n')}`;
         setAISummaries(prev => ({ ...prev, [setupId]: 'Loading...' }));
         try {
-            const res = await fetch(geminiEndpoint(aiModel, activeGeminiKey), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }] })
-            });
-            const data = await res.json();
+            const data = await callGemini(
+                aiModel,
+                [{ role: 'user', parts: [{ text: prompt }] }],
+                activeGeminiKey || undefined,
+            );
             const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No summary generated.';
             setAISummaries(prev => ({ ...prev, [setupId]: summary }));
         } catch {

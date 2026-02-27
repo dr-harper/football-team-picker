@@ -19,6 +19,7 @@ function obfuscateKey(key: string): string {
 }
 
 const rawKey = process.env.VITE_GEMINI_KEY || "";
+const proxyUrl = process.env.VITE_AI_PROXY_URL || "";
 
 export default defineConfig({
   base: process.env.BASE_PATH || "/",
@@ -35,6 +36,7 @@ export default defineConfig({
       process.env.BUILD_VERSION || Math.floor(Date.now() / 1000).toString()
     ),
     __GEMINI_KEY_OBF__: JSON.stringify(rawKey ? obfuscateKey(rawKey) : ""),
+    __AI_PROXY_URL__: JSON.stringify(proxyUrl),
   },
   test: {
     globals: true,
