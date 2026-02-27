@@ -30,6 +30,13 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
     const validationErrors = useMemo(() => validatePlayerInput(playersText), [playersText]);
     const hasValidationErrors = validationErrors.length > 0;
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !hasValidationErrors) {
+            e.preventDefault();
+            onGenerate();
+        }
+    };
+
     return (
         <div className="bg-green-700 dark:bg-green-800 p-4 shadow-lg text-white rounded-lg">
             <div className="mb-4">
@@ -37,12 +44,14 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                 <p className="text-sm text-green-100 mt-1">
                     Format: One player per line. Use tags to assign roles and ensure equal distribution.<br />
                     <span className="font-bold">#g</span> = Goalkeeper, <span className="font-bold">#s</span> = Striker, <span className="font-bold">#d</span> = Defender, <span className="font-bold">#1</span> = Team 1, <span className="font-bold">#2</span> = Team 2.<br />
+                    Press <span className="font-bold">Ctrl+Enter</span> (or <span className="font-bold">Cmd+Enter</span>) to quickly generate teams.
                 </p>
 
                 <div className="relative">
                     <Textarea
                         value={playersText}
                         onChange={(e) => onPlayersTextChange(e.target.value)}
+                        onKeyDown={handleKeyDown}
                         placeholder={`Enter one player per line. Add optional tags:\nJohn  #g\nHenry\nDavid #s\nMark #d\nTom\nBilly #g`}
                         className="p-3 border border-green-300 rounded w-full h-40 font-mono bg-green-600 dark:bg-green-700 text-white placeholder-green-200"
                     />

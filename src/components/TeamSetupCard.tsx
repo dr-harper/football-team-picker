@@ -18,11 +18,11 @@ interface TeamSetupCardProps {
     totalSetups: number;
     selectedPlayer: SelectedPlayer | null;
     onPlayerClick: (setupIndex: number, teamIndex: number, playerIndex: number) => void;
-    onDelete: (index: number) => void;
+    onDelete: () => void;
     onColorChange: (setupIndex: number, teamIndex: number, color: string) => void;
     geminiKey: string;
     aiSummary?: string;
-    onGenerateSummary: (setupIndex: number) => void;
+    onGenerateSummary: () => void;
 }
 
 function getPlayerId(setupIndex: number, player: { name: string; shirtNumber: number | null }) {
@@ -61,7 +61,7 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = React.memo(({
                     <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => onDelete(setupIndex)}
+                        onClick={onDelete}
                         aria-label={`Delete team option ${setupIndex + 1}`}
                         className="bg-red-700 hover:bg-red-800 text-white delete-button"
                     >
@@ -165,7 +165,7 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = React.memo(({
                 <div className="flex justify-end mt-2">
                     {!aiSummary && (
                         <Button
-                            onClick={() => onGenerateSummary(setupIndex)}
+                            onClick={onGenerateSummary}
                             className="bg-yellow-400 text-green-900 font-bold px-3 py-1 rounded shadow flex items-center gap-2 generate-ai-summary"
                             disabled={aiSummary === 'Loading...'}
                         >
