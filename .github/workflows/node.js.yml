@@ -5,6 +5,40 @@ on:
     branches: [ "main" ]
 
 jobs:
+  # ── Deploy Google Cloud Function (Gemini proxy) ──────────────────
+  deploy-function:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write          # needed for Workload Identity Federation
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+        service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Deploy Cloud Function
+      run: |
+        gcloud functions deploy geminiProxy \
+          --gen2 \
+          --project="${{ secrets.GCP_PROJECT_ID }}" \
+          --region="${{ secrets.GCP_REGION }}" \
+          --runtime=nodejs20 \
+          --trigger-http \
+          --allow-unauthenticated \
+          --source=functions \
+          --entry-point=geminiProxy \
+          --set-env-vars="GEMINI_KEY=${{ secrets.GEMINI_KEY }},ALLOWED_ORIGIN=https://teamshuffle.app"
+
+  # ── Build & deploy frontend ─────────────────────────────────────
   build-and-deploy:
     runs-on: ubuntu-latest
 
@@ -25,6 +59,7 @@ jobs:
       run: npm run build
       env:
         BUILD_VERSION: ${{ github.sha }}
+        VITE_AI_PROXY_URL: ${{ secrets.AI_PROXY_URL }}
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
+import { Sparkles } from 'lucide-react';
 import { MIN_PLAYERS, MAX_PLAYERS, NUM_TEAMS } from '../constants/gameConstants';
 import { validatePlayerInput } from '../utils/validation';
 
@@ -10,6 +11,9 @@ interface PlayerInputProps {
     onGenerate: () => void;
     onGenerateMultiple: () => void;
     onReset: () => void;
+    onFixWithAI: () => void;
+    isFixingWithAI: boolean;
+    aiEnabled: boolean;
     errorMessage: string;
     showNoGoalkeeperInfo: boolean;
     hasTeams: boolean;
@@ -21,6 +25,9 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
     onGenerate,
     onGenerateMultiple,
     onReset,
+    onFixWithAI,
+    isFixingWithAI,
+    aiEnabled,
     errorMessage,
     showNoGoalkeeperInfo,
     hasTeams,
@@ -56,14 +63,29 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                         className="p-3 border border-green-300 rounded w-full h-40 font-mono bg-green-600 dark:bg-green-700 text-white placeholder-green-200"
                     />
                     {playersText && (
-                        <Button
-                            onClick={() => onPlayersTextChange('')}
-                            variant="secondary"
-                            size="sm"
-                            className="absolute top-2 right-2 text-xs px-2 py-1"
-                        >
-                            Clear
-                        </Button>
+                        <div className="absolute top-2 right-2 flex gap-1">
+                            {aiEnabled && (
+                                <Button
+                                    onClick={onFixWithAI}
+                                    variant="secondary"
+                                    size="sm"
+                                    className="text-xs px-2 py-1 flex items-center gap-1"
+                                    disabled={isFixingWithAI}
+                                    title="Fix formatting with AI"
+                                >
+                                    <Sparkles className="w-3 h-3" />
+                                    {isFixingWithAI ? 'Fixing...' : 'Fix with AI'}
+                                </Button>
+                            )}
+                            <Button
+                                onClick={() => onPlayersTextChange('')}
+                                variant="secondary"
+                                size="sm"
+                                className="text-xs px-2 py-1"
+                            >
+                                Clear
+                            </Button>
+                        </div>
                     )}
                 </div>
 

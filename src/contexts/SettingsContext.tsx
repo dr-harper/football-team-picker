@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { teamPlaces } from '../constants/teamConstants';
 import { getPlacesBasedOnLocation } from '../utils/locationUtils';
-import { geminiEndpoint } from '../constants/aiPrompts';
 import { WARREN_NASTY_PHRASES, WARREN_LOVELY_PHRASES } from '../constants/aiPrompts';
 import { GEOLOCATION_THROTTLE_MS, GEMINI_VALIDATION_THROTTLE_MS } from '../constants/gameConstants';
+import { getActiveGeminiKey, isAIAvailable, hasBuiltInAI } from '../utils/apiKey';
+import { callGemini, hasProxyConfigured } from '../utils/geminiClient';
 
 interface SettingsContextValue {
     // Location
@@ -17,6 +18,9 @@ interface SettingsContextValue {
 
     // AI
     geminiKey: string;
+    activeGeminiKey: string;
+    aiEnabled: boolean;
+    hasBuiltInKey: boolean;
     aiModel: string;
     setAIModel: (model: string) => void;
     aiCustomInstructions: string;
@@ -196,12 +200,11 @@ export const SettingsProvider: React.FC<{
             const key = aiInputRef.current.value;
             setGeminiKeyError(null);
             try {
-                const res = await fetch(geminiEndpoint(aiModel, key), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Reply with OK' }] }] })
-                });
-                const data = await res.json();
+                const data = await callGemini(
+                    aiModel,
+                    [{ role: 'user', parts: [{ text: 'Reply with OK' }] }],
+                    key,
+                );
                 const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
                 if (reply === 'OK') {
                     setGeminiKey(key);
@@ -215,6 +218,9 @@ export const SettingsProvider: React.FC<{
         }
     }, [aiModel]);
 
+    const activeKey = getActiveGeminiKey(geminiKey);
+    const aiEnabled = isAIAvailable(geminiKey);
+
     const value: SettingsContextValue = {
         selectedLocation,
         setSelectedLocation,
@@ -224,6 +230,9 @@ export const SettingsProvider: React.FC<{
         handleLocationChange,
         handleFindLocation,
         geminiKey,
+        activeGeminiKey: activeKey,
+        aiEnabled,
+        hasBuiltInKey: hasBuiltInAI(),
         aiModel,
         setAIModel,
         aiCustomInstructions,

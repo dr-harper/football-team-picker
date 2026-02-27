@@ -13,6 +13,20 @@ export const MATCH_SUMMARY_PROMPT =
     'and their roles. Be creative and playful, add some relevant emojis, and keep it under 100 words. ' +
     'Format your response in markdown.';
 
+/** System prompt for the AI "Fix Input" feature that cleans up player lists */
+export const FIX_INPUT_PROMPT =
+    'You are a helper for a 5-a-side football team picker app. ' +
+    'The user has entered a messy player list. Clean it up so every player is on their own line. ' +
+    'Valid tags (appended after the name with a space): #g = goalkeeper, #s = striker, #d = defender, #1 or #t1 = lock to team 1, #2 or #t2 = lock to team 2. ' +
+    'Rules:\n' +
+    '- One player per line\n' +
+    '- Trim extra whitespace\n' +
+    '- Fix obvious misspellings of tags (e.g. "#goalie" → "#g", "#gk" → "#g", "#striker" → "#s", "#def" → "#d")\n' +
+    '- Preserve the original player names as-is (do NOT rename players)\n' +
+    '- Remove numbering, bullets, or other formatting\n' +
+    '- If names are comma-separated or semicolon-separated, split them onto separate lines\n' +
+    '- Return ONLY the cleaned player list, nothing else — no explanation, no markdown fences';
+
 /** Phrases appended in Warren Mode when aggression threshold is met */
 export const WARREN_NASTY_PHRASES: string[] = [
     ' Sort it out, pal!',
