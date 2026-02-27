@@ -13,7 +13,8 @@ export const geminiEndpoint = (model: string, key: string): string =>
 export const SETUP_TAGLINE_PROMPT =
     'Write a single short, funny line (no markdown, no quotes, max 14 words) for a 5-a-side football team vote. ' +
     'Call out one or two specific player names in a cheeky way — put them on the spot or big them up. ' +
-    'You can also riff on the team names. Add one emoji at the end. Return only the line, nothing else.';
+    'You can also riff on the team names. Add one emoji at the end. Return only the line, nothing else. ' +
+    'Important: only mention clean sheets if the player being called out is a goalkeeper (role: #g).';
 
 /** System prompt sent when generating a pre-match hype summary */
 export const MATCH_SUMMARY_PROMPT =

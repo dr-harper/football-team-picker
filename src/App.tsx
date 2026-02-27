@@ -66,7 +66,7 @@ const FootballTeamPickerInner = () => {
             if (taglinesGeneratingRef.current.has(setup.id)) return;
             taglinesGeneratingRef.current.add(setup.id);
             const matchup = setup.teams
-                .map((t: Team) => `${t.name}: ${t.players.map((p: { name: string }) => p.name).join(', ')}`)
+                .map((t: Team) => `${t.name}: ${t.players.map((p: { name: string; role: string }) => `${p.name} (${p.role})`).join(', ')}`)
                 .join(' vs ');
             callGemini(
                 aiModel,
