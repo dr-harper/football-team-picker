@@ -27,3 +27,45 @@ export interface PositionedPlayer {
     player: Player;
     playerIndex: number;
 }
+
+// --- Firebase / League types ---
+
+export interface League {
+    id: string;
+    name: string;
+    joinCode: string;
+    createdBy: string;
+    memberIds: string[];
+    createdAt: number;
+}
+
+export type GameStatus = 'scheduled' | 'in_progress' | 'completed';
+
+export interface GameScore {
+    team1: number;
+    team2: number;
+}
+
+export interface Game {
+    id: string;
+    leagueId: string;
+    title: string;
+    date: number; // timestamp
+    status: GameStatus;
+    playersText?: string;
+    teams?: Team[];
+    score?: GameScore;
+    createdBy: string;
+    createdAt: number;
+}
+
+export type AvailabilityStatus = 'available' | 'unavailable' | 'maybe';
+
+export interface PlayerAvailability {
+    id: string; // `${gameId}_${userId}`
+    gameId: string;
+    userId: string;
+    displayName: string;
+    status: AvailabilityStatus;
+    updatedAt: number;
+}
