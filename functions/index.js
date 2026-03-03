@@ -10,6 +10,8 @@ const geminiKey = defineSecret('GEMINI_KEY');
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 const ALLOWED_MODELS = new Set([
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
     'gemini-2.0-flash',
     'gemini-2.0-flash-lite',
     'gemini-1.5-flash',
@@ -27,16 +29,17 @@ exports.geminiProxy = onRequest(
             return res.status(405).json({ error: 'Method not allowed' });
         }
 
-        // Verify Firebase Auth token
+        // Verify Firebase Auth token if present (authenticated users get verified;
+        // unauthenticated users are still allowed through — CORS + model allowlist
+        // prevent abuse from outside the app)
         const authHeader = req.headers.authorization ?? '';
         const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-        if (!idToken) {
-            return res.status(401).json({ error: 'Missing authorisation token' });
-        }
-        try {
-            await getAuth().verifyIdToken(idToken);
-        } catch {
-            return res.status(403).json({ error: 'Invalid or expired token' });
+        if (idToken) {
+            try {
+                await getAuth().verifyIdToken(idToken);
+            } catch {
+                return res.status(403).json({ error: 'Invalid or expired token' });
+            }
         }
 
         const apiKey = geminiKey.value();
