@@ -10,6 +10,8 @@ import DashboardPage from './pages/DashboardPage'
 import LeaguePage from './pages/LeaguePage'
 import GamePage from './pages/GamePage'
 import JoinPage from './pages/JoinPage'
+import PrivacyPage from './pages/PrivacyPage'
+import TermsPage from './pages/TermsPage'
 import SetNameModal from './components/SetNameModal'
 
 createRoot(document.getElementById('root')!).render(
@@ -25,6 +27,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/league/:code/game/:id" element={<GamePage />} />
           <Route path="/game/:id" element={<GamePage />} />
           <Route path="/join/:code" element={<JoinPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
         </Routes>
         <SetNameModal />
       </BrowserRouter>
