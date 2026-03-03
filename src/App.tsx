@@ -10,9 +10,9 @@ import TeamSetupCard from './components/TeamSetupCard';
 import { generateTeamsFromText } from './utils/teamGenerator';
 import { exportImage, shareImage } from './utils/imageExport';
 import { Team, TeamSetup } from './types';
-import { MATCH_SUMMARY_PROMPT, FIX_INPUT_PROMPT, SETUP_TAGLINE_PROMPT } from './constants/aiPrompts';
+import { FIX_INPUT_PROMPT, SETUP_TAGLINE_PROMPT } from './constants/aiPrompts';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
-import { AI_SUMMARY_THROTTLE_MS, AI_FIX_INPUT_THROTTLE_MS } from './constants/gameConstants';
+import { AI_FIX_INPUT_THROTTLE_MS } from './constants/gameConstants';
 import { callGemini } from './utils/geminiClient';
 
 const FootballTeamPickerInner = () => {
@@ -25,12 +25,8 @@ const FootballTeamPickerInner = () => {
         activeGeminiKey,
         aiEnabled,
         aiModel,
-        aiCustomInstructions,
-        warrenMode,
-        warrenAggression,
         notifications,
         removeNotification,
-        applyWarrenTone,
         addNotification,
     } = useSettings();
 
@@ -46,11 +42,9 @@ const FootballTeamPickerInner = () => {
         teamIndex: number;
         playerIndex: number;
     } | null>(null);
-    const [aiSummaries, setAISummaries] = useState<{ [setupId: string]: string }>({});
     const [setupTaglines, setSetupTaglines] = useState<{ [setupId: string]: string }>({});
     const [isExporting, setIsExporting] = useState(false);
     const [isFixingWithAI, setIsFixingWithAI] = useState(false);
-    const aiSummaryThrottleRef = useRef(0);
     const aiFixInputThrottleRef = useRef(0);
     const nextSetupIdRef = useRef(0);
     const taglinesGeneratingRef = useRef<Set<string>>(new Set());
@@ -58,7 +52,6 @@ const FootballTeamPickerInner = () => {
     useEffect(() => { setupTaglinesRef.current = setupTaglines; }, [setupTaglines]);
 
     useEffect(() => { localStorage.setItem('playersText', playersText); }, [playersText]);
-    useEffect(() => { setAISummaries({}); }, [teamSetups]);
 
     // Generate taglines in the background whenever a new setup appears
     useEffect(() => {
@@ -97,7 +90,7 @@ const FootballTeamPickerInner = () => {
     const generateTeams = useCallback(() => {
         const result = generateTeamsFromText(playersText, places, playerNumbers);
         if (result.error) {
-            setErrorMessage(applyWarrenTone(result.error));
+            setErrorMessage(result.error);
             return;
         }
         setPlayerNumbers(result.playerNumbers);
@@ -105,7 +98,7 @@ const FootballTeamPickerInner = () => {
         setTeamSetups(prev => [...prev, { id, teams: result.teams, playersInput: playersText }]);
         setErrorMessage('');
         setShowNoGoalkeeperInfo(result.noGoalkeepers);
-    }, [playersText, places, playerNumbers, applyWarrenTone]);
+    }, [playersText, places, playerNumbers]);
 
     const deleteTeamSetup = (setupId: string) => {
         setTeamSetups(prev => prev.filter(setup => setup.id !== setupId));
@@ -175,53 +168,14 @@ const FootballTeamPickerInner = () => {
             const fixed = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
             if (fixed) {
                 setPlayersText(fixed);
-                addNotification(applyWarrenTone('Player list tidied up by AI'));
+                addNotification('Player list tidied up by AI');
             } else {
-                addNotification(applyWarrenTone('AI could not fix the input'));
+                addNotification('AI could not fix the input');
             }
         } catch {
-            addNotification(applyWarrenTone('Error fixing input with AI'));
+            addNotification('Error fixing input with AI');
         }
         setIsFixingWithAI(false);
-    };
-
-    const handleGenerateSummary = async (setupId: string) => {
-        if (!aiEnabled) return;
-        const now = Date.now();
-        if (now - aiSummaryThrottleRef.current < AI_SUMMARY_THROTTLE_MS) return;
-        aiSummaryThrottleRef.current = now;
-        const setup = teamSetups.find(s => s.id === setupId);
-        if (!setup) return;
-        const toneInstruction = warrenMode
-            ? ` Use a ${Math.random() < warrenAggression / 100 ? 'grumpy and angry' : 'cheerful and encouraging'} tone.`
-            : '';
-        const customInstruction = aiCustomInstructions ? ` ${aiCustomInstructions}` : '';
-        const prompt =
-            MATCH_SUMMARY_PROMPT +
-            toneInstruction +
-            customInstruction +
-            `\n\n${setup.teams
-                .map(
-                    (team: Team, idx: number) =>
-                        `Team ${idx + 1} (${team.name}):\n` +
-                        team.players.map(p => `- ${p.name} (${p.role})`).join('\n')
-                )
-                .join('\n\n')}`;
-        setAISummaries(prev => ({ ...prev, [setupId]: 'Loading...' }));
-        try {
-            const data = await callGemini(
-                aiModel,
-                [{ role: 'user', parts: [{ text: prompt }] }],
-                activeGeminiKey || undefined,
-            );
-            const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No summary generated.';
-            setAISummaries(prev => ({ ...prev, [setupId]: summary }));
-        } catch {
-            setAISummaries(prev => ({
-                ...prev,
-                [setupId]: applyWarrenTone('Error generating summary.'),
-            }));
-        }
     };
 
     const waitForTaglines = (timeoutMs = 6000): Promise<void> =>
@@ -239,7 +193,7 @@ const FootballTeamPickerInner = () => {
         setTeamSetups([]);
         setErrorMessage('');
         setPlayerNumbers({});
-        addNotification(applyWarrenTone('All teams cleared'));
+        addNotification('All teams cleared');
     };
 
     return (
@@ -259,7 +213,7 @@ const FootballTeamPickerInner = () => {
                 </p>
 
                 <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 foldable-grid">
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         <PlayerInput
                             playersText={playersText}
                             onPlayersTextChange={setPlayersText}
@@ -294,9 +248,6 @@ const FootballTeamPickerInner = () => {
                                         onPlayerClick={handlePlayerClick}
                                         onDelete={() => deleteTeamSetup(setup.id)}
                                         onColorChange={handleColorChange}
-                                        aiEnabled={aiEnabled}
-                                        aiSummary={aiSummaries[setup.id]}
-                                        onGenerateSummary={() => handleGenerateSummary(setup.id)}
                                     />
                                 ))}
                             </AnimatePresence>
@@ -316,7 +267,7 @@ const FootballTeamPickerInner = () => {
                     const result = await exportImage(teamSetups.length, taglines);
                     setIsExporting(false);
                     if (!result.success) {
-                        addNotification(applyWarrenTone(result.error || 'Export failed'));
+                        addNotification(result.error || 'Export failed');
                     }
                 }}
                 onShare={async () => {
@@ -326,7 +277,7 @@ const FootballTeamPickerInner = () => {
                     const result = await shareImage(teamSetups.length, taglines);
                     setIsExporting(false);
                     if (!result.success) {
-                        addNotification(applyWarrenTone(result.error || 'Sharing failed'));
+                        addNotification(result.error || 'Sharing failed');
                     }
                 }}
                 teamCount={teamSetups.length}

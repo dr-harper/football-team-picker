@@ -1,9 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Trash2, Sparkles } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import PitchRenderer from './PitchRenderer';
-import ReactMarkdown from 'react-markdown';
 import { Team, Player, TeamSetup } from '../types';
 
 interface SelectedPlayer {
@@ -20,9 +19,6 @@ interface TeamSetupCardProps {
     onPlayerClick: (setupIndex: number, teamIndex: number, playerIndex: number) => void;
     onDelete: () => void;
     onColorChange: (setupIndex: number, teamIndex: number, color: string) => void;
-    aiEnabled: boolean;
-    aiSummary?: string;
-    onGenerateSummary: () => void;
 }
 
 function getPlayerId(setupIndex: number, player: { name: string; shirtNumber: number | null }) {
@@ -37,9 +33,6 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = React.memo(({
     onPlayerClick,
     onDelete,
     onColorChange,
-    aiEnabled,
-    aiSummary,
-    onGenerateSummary,
 }) => {
     return (
         <motion.div
@@ -155,26 +148,6 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = React.memo(({
                 </div>
             )}
 
-            {aiEnabled && (
-                <div className="flex justify-end mt-3">
-                    {!aiSummary && (
-                        <Button
-                            onClick={onGenerateSummary}
-                            className="bg-amber-500/15 border border-amber-400/40 text-amber-300 hover:bg-amber-500/25 font-semibold px-3 py-1.5 rounded-xl text-sm flex items-center gap-2 generate-ai-summary transition-colors"
-                            disabled={aiSummary === 'Loading...'}
-                        >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            {aiSummary === 'Loading...' ? 'Generating...' : 'AI Match Summary'}
-                        </Button>
-                    )}
-                </div>
-            )}
-
-            {aiSummary && (
-                <div className="bg-black/20 border border-white/10 rounded-xl p-4 mt-3 text-white prose prose-sm max-w-none prose-invert">
-                    <ReactMarkdown>{aiSummary}</ReactMarkdown>
-                </div>
-            )}
         </motion.div>
     );
 });

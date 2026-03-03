@@ -20,7 +20,7 @@ const ALLOWED_MODELS = new Set([
 
 exports.geminiProxy = onRequest(
     {
-        cors: ['https://teamshuffle.app', 'http://localhost:5173'],
+        cors: ['https://teamshuffle.app', 'http://localhost:5173', 'http://localhost:4173'],
         secrets: [geminiKey],
         region: 'europe-west2',
     },

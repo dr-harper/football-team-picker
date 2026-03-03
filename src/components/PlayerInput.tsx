@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
-import { Sparkles, MapPin, Users, Shield } from 'lucide-react';
+import { Sparkles, MapPin, Users, Shield, Bot } from 'lucide-react';
 import { MIN_PLAYERS, MAX_PLAYERS, NUM_TEAMS } from '../constants/gameConstants';
 import { validatePlayerInput } from '../utils/validation';
 import { teamPlaces } from '../constants/teamConstants';
+import { useSettings } from '../contexts/SettingsContext';
 
 interface PlayerInputProps {
     playersText: string;
@@ -41,6 +42,7 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
     onFindLocation,
     isLoadingLocation,
 }) => {
+    const { aiOn, setAiOn } = useSettings();
     const playerCount = playersText.split('\n').filter(line => line.trim()).length;
     const goalkeeperCount = playersText.split('\n').filter(line => line.includes('#g')).length;
     const validationErrors = useMemo(() => validatePlayerInput(playersText), [playersText]);
@@ -122,7 +124,11 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 mt-3">
+                <p className="text-xs text-green-400/70 mt-3 mb-1">
+                    <MapPin className="w-3 h-3 inline mr-1 -mt-0.5" />
+                    Used for local team name suggestions
+                </p>
+                <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-green-400 shrink-0" />
                     <select
                         value={selectedLocation}
@@ -150,7 +156,21 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                     </Button>
                 </div>
 
-                <div className="flex gap-3 mt-4">
+                <button
+                    onClick={() => setAiOn(!aiOn)}
+                    className={`flex items-center justify-between w-full mt-4 px-3 py-2 rounded-xl border transition-colors text-sm ${aiEnabled ? 'bg-green-500/15 border-green-400/40 text-green-300' : 'bg-white/5 border-white/15 text-white/40'}`}
+                >
+                    <div className="flex items-center gap-2">
+                        <Bot className="w-4 h-4" />
+                        <span className="font-medium">AI features</span>
+                        <span className="text-xs opacity-60">{aiEnabled ? 'Team taglines, name fixing' : 'Off'}</span>
+                    </div>
+                    <div className={`relative w-9 h-5 rounded-full transition-colors ${aiOn ? 'bg-green-500' : 'bg-white/20'}`}>
+                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${aiOn ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </div>
+                </button>
+
+                <div className="flex gap-3 mt-3">
                     <Button
                         onClick={onGenerate}
                         disabled={hasValidationErrors}

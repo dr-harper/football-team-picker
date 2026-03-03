@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { teamPlaces } from '../constants/teamConstants';
 import { getPlacesBasedOnLocation } from '../utils/locationUtils';
-import { WARREN_NASTY_PHRASES, WARREN_LOVELY_PHRASES } from '../constants/aiPrompts';
 import { GEOLOCATION_THROTTLE_MS, GEMINI_VALIDATION_THROTTLE_MS } from '../constants/gameConstants';
 import { getActiveGeminiKey, isAIAvailable, hasBuiltInAI } from '../utils/apiKey';
 import { callGemini, hasProxyConfigured } from '../utils/geminiClient';
@@ -20,6 +19,8 @@ interface SettingsContextValue {
     geminiKey: string;
     activeGeminiKey: string;
     aiEnabled: boolean;
+    aiOn: boolean;
+    setAiOn: (on: boolean) => void;
     hasBuiltInKey: boolean;
     aiModel: string;
     setAIModel: (model: string) => void;
@@ -29,12 +30,6 @@ interface SettingsContextValue {
     aiInputRef: React.RefObject<HTMLInputElement | null>;
     handleGeminiKeySave: () => Promise<void>;
 
-    // Warren Mode
-    warrenMode: boolean;
-    setWarrenMode: (mode: boolean) => void;
-    warrenAggression: number;
-    setWarrenAggression: (aggression: number) => void;
-
     // Dark Mode
     darkMode: boolean;
     setDarkMode: (mode: boolean) => void;
@@ -42,9 +37,6 @@ interface SettingsContextValue {
     // Notifications
     notifications: { id: number; message: string }[];
     removeNotification: (id: number) => void;
-
-    // Helpers
-    applyWarrenTone: (msg: string) => string;
     addNotification: (msg: string) => void;
 }
 
@@ -85,12 +77,8 @@ export const SettingsProvider: React.FC<{
     const [geminiKeyError, setGeminiKeyError] = useState<string | null>(null);
     const aiInputRef = useRef<HTMLInputElement>(null);
 
-    // Warren Mode
-    const [warrenMode, setWarrenModeState] = useState(() => localStorage.getItem('warrenMode') === 'true');
-    const [warrenAggression, setWarrenAggressionState] = useState(() => {
-        const stored = localStorage.getItem('warrenAggression');
-        return stored ? Number(stored) : 20;
-    });
+    // AI on/off toggle
+    const [aiOn, setAiOnState] = useState(() => localStorage.getItem('aiOn') !== 'false');
 
     // Dark Mode
     const [darkMode, setDarkModeState] = useState(() => {
@@ -100,13 +88,12 @@ export const SettingsProvider: React.FC<{
 
     // --- localStorage persistence ---
     useEffect(() => { localStorage.setItem('selectedLocation', selectedLocation); }, [selectedLocation]);
-    useEffect(() => { localStorage.setItem('warrenMode', String(warrenMode)); }, [warrenMode]);
-    useEffect(() => { localStorage.setItem('warrenAggression', String(warrenAggression)); }, [warrenAggression]);
     useEffect(() => {
         document.documentElement.classList.toggle('dark', darkMode);
         localStorage.setItem('darkMode', String(darkMode));
     }, [darkMode]);
     useEffect(() => { localStorage.setItem('aiCustomInstructions', aiCustomInstructions); }, [aiCustomInstructions]);
+    useEffect(() => { localStorage.setItem('aiOn', String(aiOn)); }, [aiOn]);
 
     useEffect(() => {
         setPlaces(
@@ -125,15 +112,6 @@ export const SettingsProvider: React.FC<{
                 .catch(() => {});
         }
     }, []);
-
-    // --- Helpers (memoised to avoid unnecessary consumer re-renders) ---
-    const applyWarrenTone = useCallback((msg: string) => {
-        if (!warrenMode) return msg;
-        if (Math.random() < warrenAggression / 100) {
-            return msg + ' ' + WARREN_NASTY_PHRASES[Math.floor(Math.random() * WARREN_NASTY_PHRASES.length)];
-        }
-        return msg + ' ' + WARREN_LOVELY_PHRASES[Math.floor(Math.random() * WARREN_LOVELY_PHRASES.length)];
-    }, [warrenMode, warrenAggression]);
 
     const removeNotification = useCallback((id: number) => {
         setNotifications(n => n.filter(note => note.id !== id));
@@ -154,8 +132,6 @@ export const SettingsProvider: React.FC<{
         setAICustomInstructionsState(instructions);
     };
 
-    const setWarrenMode = (mode: boolean) => setWarrenModeState(mode);
-    const setWarrenAggression = (aggression: number) => setWarrenAggressionState(aggression);
     const setDarkMode = (mode: boolean) => setDarkModeState(mode);
 
     // --- Throttle guards ---
@@ -186,11 +162,11 @@ export const SettingsProvider: React.FC<{
         }
         setIsLoadingLocation(false);
         if (location === 'Generic') {
-            addNotification(applyWarrenTone("Sorry, we don't have any regional data for your location. Defaulting to Generic"));
+            addNotification("Sorry, we don't have any regional data for your location. Defaulting to Generic");
         } else {
-            addNotification(applyWarrenTone(`Location found: ${location}`));
+            addNotification(`Location found: ${location}`);
         }
-    }, [addNotification, applyWarrenTone]);
+    }, [addNotification]);
 
     const handleGeminiKeySave = useCallback(async () => {
         const now = Date.now();
@@ -219,7 +195,8 @@ export const SettingsProvider: React.FC<{
     }, [aiModel]);
 
     const activeKey = getActiveGeminiKey(geminiKey);
-    const aiEnabled = isAIAvailable(geminiKey);
+    const aiAvailable = isAIAvailable(geminiKey);
+    const aiEnabled = aiAvailable && aiOn;
 
     const value: SettingsContextValue = {
         selectedLocation,
@@ -232,6 +209,8 @@ export const SettingsProvider: React.FC<{
         geminiKey,
         activeGeminiKey: activeKey,
         aiEnabled,
+        aiOn,
+        setAiOn: (on: boolean) => setAiOnState(on),
         hasBuiltInKey: hasBuiltInAI(),
         aiModel,
         setAIModel,
@@ -240,15 +219,10 @@ export const SettingsProvider: React.FC<{
         geminiKeyError,
         aiInputRef,
         handleGeminiKeySave,
-        warrenMode,
-        setWarrenMode,
-        warrenAggression,
-        setWarrenAggression,
         darkMode,
         setDarkMode,
         notifications,
         removeNotification,
-        applyWarrenTone,
         addNotification,
     };
 

@@ -230,25 +230,36 @@ export async function exportImage(setupCount: number, taglines?: string[], heade
     }
 }
 
-/** Share the generated image via the native share API or WhatsApp fallback */
+/** Share the generated image via the native share API, falling back to download */
 export async function shareImage(setupCount: number, taglines?: string[], header?: ImageHeader): Promise<ExportResult> {
     try {
         const dataUrl = await generateTeamsImage(setupCount, taglines, header);
         if (!dataUrl) return { success: false, error: 'Failed to generate image for sharing' };
-        const response = await fetch(dataUrl);
-        const blob = await response.blob();
-        const file = new File([blob], `Football_teams_${dateStamp()}.png`, { type: 'image/png' });
+
+        const filename = `Football_teams_${dateStamp()}.png`;
         const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean; share?: (data: ShareData) => Promise<void> };
-        if (nav.canShare && nav.canShare({ files: [file] })) {
-            await nav.share({
-                files: [file],
-                title: 'TeamShuffle Teams',
-                text: 'Made with teamshuffle.app',
-            });
-        } else {
-            const shareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent('Check out the teams I made on teamshuffle.app')}`;
-            window.open(shareUrl, '_blank');
+
+        if (nav.share && nav.canShare) {
+            const response = await fetch(dataUrl);
+            const blob = await response.blob();
+            const file = new File([blob], filename, { type: 'image/png' });
+            try {
+                await nav.share({ files: [file], title: 'TeamShuffle Teams', text: 'Made with teamshuffle.app' });
+                return { success: true };
+            } catch (err) {
+                // NotAllowedError: gesture context lost after async image generation — fall through to download
+                if (err instanceof Error && err.name === 'AbortError') {
+                    return { success: true }; // user cancelled share sheet, not an error
+                }
+                // Any other error (incl. NotAllowedError) — fall through to download
+            }
         }
+
+        // Fallback: download the image
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = filename;
+        link.click();
         return { success: true };
     } catch (err) {
         console.error('Sharing failed:', err);

@@ -20,6 +20,14 @@
 
 <body>
   <script>
+    // Restore path from GitHub Pages 404 redirect
+    (function() {
+      var p = new URLSearchParams(window.location.search).get('p');
+      if (p) {
+        window.history.replaceState(null, '', decodeURIComponent(p));
+      }
+    })();
+
     const stored = localStorage.getItem('darkMode');
     if (!stored || stored === 'true') {
       document.documentElement.classList.add('dark');
