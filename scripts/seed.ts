@@ -10,7 +10,7 @@
  * The script is idempotent-ish: it checks for an existing "Dev League" before creating one.
  */
 
-import { initializeApp, cert, App } from 'firebase-admin/app';
+import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { existsSync } from 'fs';

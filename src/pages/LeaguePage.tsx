@@ -127,7 +127,8 @@ const LeaguePage: React.FC = () => {
 
     const copyCode = () => {
         if (!league) return;
-        navigator.clipboard.writeText(league.joinCode);
+        const url = `${window.location.origin}/join/${league.joinCode}`;
+        navigator.clipboard.writeText(url);
         setCopiedCode(true);
         setTimeout(() => setCopiedCode(false), 2000);
     };
@@ -223,9 +224,10 @@ const LeaguePage: React.FC = () => {
                     <button
                         onClick={copyCode}
                         className="flex items-center gap-1 text-green-300 hover:text-white text-sm transition-colors bg-white/10 px-3 py-1.5 rounded-lg"
+                        title="Copy invite link"
                     >
                         {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                        {league.joinCode}
+                        {copiedCode ? 'Copied!' : league.joinCode}
                     </button>
                 </div>
             </header>
@@ -915,7 +917,7 @@ const LeaguePage: React.FC = () => {
                                             <p className="px-4 pb-4 text-white/30 text-sm">No goals or assists yet</p>
                                         ) : (
                                             <div className="divide-y divide-white/5">
-                                                {sortedContributors.map(({ name, goals, assists, total }, i) => (
+                                                {sortedContributors.map(({ name, goals, assists }, i) => (
                                                     <div key={name} className={`px-4 py-2.5 ${name === myName ? 'bg-green-500/8' : ''}`}>
                                                         <div className="flex items-center gap-2 mb-1.5">
                                                             <span className="w-5 text-center text-sm shrink-0 leading-none">
@@ -1170,12 +1172,12 @@ const LeaguePage: React.FC = () => {
                         <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
                             <div className="text-white font-medium mb-2">Invite others</div>
                             <div className="flex items-center gap-2">
-                                <div className="flex-1 bg-white/5 border border-white/10 rounded-lg p-3 font-mono text-lg text-center tracking-widest text-white">
-                                    {league.joinCode}
+                                <div className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white/70 truncate">
+                                    {window.location.origin}/join/{league.joinCode}
                                 </div>
                                 <Button
                                     onClick={copyCode}
-                                    className="bg-green-600 hover:bg-green-500 text-white px-4"
+                                    className="bg-green-600 hover:bg-green-500 text-white px-4 shrink-0"
                                 >
                                     {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                                 </Button>

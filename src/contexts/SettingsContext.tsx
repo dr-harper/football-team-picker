@@ -3,7 +3,7 @@ import { teamPlaces } from '../constants/teamConstants';
 import { getPlacesBasedOnLocation } from '../utils/locationUtils';
 import { GEOLOCATION_THROTTLE_MS, GEMINI_VALIDATION_THROTTLE_MS } from '../constants/gameConstants';
 import { getActiveGeminiKey, isAIAvailable, hasBuiltInAI } from '../utils/apiKey';
-import { callGemini, hasProxyConfigured } from '../utils/geminiClient';
+import { callGemini } from '../utils/geminiClient';
 
 interface SettingsContextValue {
     // Location

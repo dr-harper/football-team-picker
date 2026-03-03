@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Plus, Users, Calendar, LogOut, Trophy, ArrowRight, Copy, Check, Trash2, Goal, Award, Star } from 'lucide-react';
+import { Plus, Users, Calendar, LogOut, Trophy, ArrowRight, Copy, Check, Trash2, Goal, Star } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserLeagues, createLeague, joinLeagueByCode, deleteLeague } from '../utils/firestore';

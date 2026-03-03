@@ -27,6 +27,7 @@ jobs:
         BASE_PATH: /pr/${{ github.event.number }}/
         BUILD_VERSION: ${{ github.sha }}
         VITE_AI_PROXY_URL: ${{ secrets.AI_PROXY_URL }}
+        VITE_GEMINI_KEY: ${{ secrets.VITE_GEMINI_KEY }}
         VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
         VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
         VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
@@ -35,8 +36,7 @@ jobs:
         VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
 
     - name: Deploy preview
-      id: deploy
-      uses: peaceiris/actions-gh-pages@v3
+      uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_branch: gh-pages
@@ -44,16 +44,36 @@ jobs:
         destination_dir: pr/${{ github.event.number }}
         keep_files: true
 
-    - name: Comment preview URL
+    - name: Post or update preview comment
       uses: actions/github-script@v7
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
           const pr = context.payload.pull_request.number;
           const url = `https://teamshuffle.app/pr/${pr}/`;
-          github.rest.issues.createComment({
+          const body = `🔍 **Preview:** ${url}\n\n_Updated ${new Date().toUTCString()}_`;
+          const marker = '🔍 **Preview:**';
+
+          const { data: comments } = await github.rest.issues.listComments({
             owner: context.repo.owner,
             repo: context.repo.repo,
             issue_number: pr,
-            body: `🔍 Preview: ${url}`,
           });
+
+          const existing = comments.find(c => c.body.startsWith(marker));
+
+          if (existing) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing.id,
+              body,
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body,
+            });
+          }
