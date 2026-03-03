@@ -6,6 +6,7 @@
  *   2. Direct API call with a client-side key (user-provided or built-in obfuscated)
  */
 
+import { signInAnonymously } from 'firebase/auth';
 import { GEMINI_API_BASE_URL } from '../constants/aiPrompts';
 import { auth } from '../firebase';
 
@@ -41,12 +42,14 @@ export async function callGemini(
     directKey?: string,
 ): Promise<GeminiResponse> {
     if (PROXY_URL) {
-        const idToken = await auth.currentUser?.getIdToken();
+        // Ensure we have a Firebase user (sign in anonymously if not authenticated)
+        const user = auth.currentUser ?? (await signInAnonymously(auth)).user;
+        const idToken = await user.getIdToken();
         const res = await fetch(PROXY_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {}),
+                'Authorization': `Bearer ${idToken}`,
             },
             body: JSON.stringify({ model, contents }),
         });
