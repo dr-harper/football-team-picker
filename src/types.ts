@@ -37,6 +37,9 @@ export interface League {
     createdBy: string;
     memberIds: string[];
     createdAt: number;
+    defaultVenue?: string;
+    defaultVenueLat?: number;
+    defaultVenueLon?: number;
 }
 
 export type GameStatus = 'scheduled' | 'in_progress' | 'completed';
@@ -46,17 +49,41 @@ export interface GameScore {
     team2: number;
 }
 
+export interface GoalScorer {
+    name: string;
+    goals: number;
+}
+
 export interface Game {
     id: string;
     leagueId: string;
     title: string;
     date: number; // timestamp
     status: GameStatus;
+    location?: string;
+    locationLat?: number;
+    locationLon?: number;
     playersText?: string;
     teams?: Team[];
+    draftSetups?: TeamSetup[];
     score?: GameScore;
+    guestPlayers?: string[];           // ringer names added by admin, no account needed
+    guestAvailability?: Record<string, AvailabilityStatus>; // per-guest status override (default: available)
+    playerPositions?: Record<string, 'g' | 'd' | 's'>;    // position tag per player name (g=GK, d=DEF, s=FWD)
+    goalScorers?: GoalScorer[];    // simple tally per player
+    assisters?: GoalScorer[];      // assist tally per player (reuses GoalScorer shape)
+    manOfTheMatch?: string;        // player name picked by admin
+    gameCode?: string;             // short 6-char shareable code
     createdBy: string;
     createdAt: number;
+}
+
+export interface WeatherForecast {
+    temperature: number;
+    rainMm: number;
+    rainProbability: number;
+    windSpeed: number;
+    weatherCode: number;
 }
 
 export type AvailabilityStatus = 'available' | 'unavailable' | 'maybe';

@@ -14,7 +14,7 @@ import {
     Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { League, Game, PlayerAvailability, GameStatus, GameScore, Team } from '../types';
+import { League, Game, PlayerAvailability, GameStatus, GameScore, Team, GoalScorer } from '../types';
 
 // ---- Leagues ----
 
@@ -27,17 +27,34 @@ function generateJoinCode(): string {
     return code;
 }
 
-export async function createLeague(name: string, userId: string): Promise<League> {
+export async function createLeague(
+    name: string,
+    userId: string,
+    defaultVenue?: string,
+    defaultVenueLat?: number,
+    defaultVenueLon?: number,
+): Promise<League> {
     const joinCode = generateJoinCode();
-    const data = {
+    const data: Omit<League, 'id'> = {
         name,
         joinCode,
         createdBy: userId,
         memberIds: [userId],
         createdAt: Date.now(),
+        ...(defaultVenue ? { defaultVenue } : {}),
+        ...(defaultVenueLat !== undefined ? { defaultVenueLat } : {}),
+        ...(defaultVenueLon !== undefined ? { defaultVenueLon } : {}),
     };
     const ref = await addDoc(collection(db, 'leagues'), data);
     return { id: ref.id, ...data };
+}
+
+export async function getLeagueByCode(joinCode: string): Promise<League | null> {
+    const q = query(collection(db, 'leagues'), where('joinCode', '==', joinCode.toUpperCase()));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const d = snap.docs[0];
+    return { id: d.id, ...d.data() } as League;
 }
 
 export async function getLeague(leagueId: string): Promise<League | null> {
@@ -89,6 +106,17 @@ export async function leaveLeague(leagueId: string, userId: string): Promise<voi
     });
 }
 
+export async function deleteLeague(leagueId: string): Promise<void> {
+    // Delete all games and their availability records for this league
+    const gamesSnap = await getDocs(query(collection(db, 'games'), where('leagueId', '==', leagueId)));
+    for (const gameDoc of gamesSnap.docs) {
+        const availSnap = await getDocs(query(collection(db, 'availability'), where('gameId', '==', gameDoc.id)));
+        await Promise.all(availSnap.docs.map(d => deleteDoc(d.ref)));
+        await deleteDoc(gameDoc.ref);
+    }
+    await deleteDoc(doc(db, 'leagues', leagueId));
+}
+
 // ---- Games ----
 
 export async function createGame(
@@ -96,17 +124,33 @@ export async function createGame(
     title: string,
     date: number,
     userId: string,
+    location?: string,
+    locationLat?: number,
+    locationLon?: number,
 ): Promise<Game> {
-    const data = {
+    const gameCode = generateJoinCode();
+    const data: Omit<Game, 'id'> = {
         leagueId,
         title,
         date,
         status: 'scheduled' as GameStatus,
+        gameCode,
         createdBy: userId,
         createdAt: Date.now(),
+        ...(location ? { location } : {}),
+        ...(locationLat !== undefined ? { locationLat } : {}),
+        ...(locationLon !== undefined ? { locationLon } : {}),
     };
     const ref = await addDoc(collection(db, 'games'), data);
     return { id: ref.id, ...data };
+}
+
+export async function getGameByCode(gameCode: string): Promise<Game | null> {
+    const q = query(collection(db, 'games'), where('gameCode', '==', gameCode.toUpperCase()));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const d = snap.docs[0];
+    return { id: d.id, ...d.data() } as Game;
 }
 
 export async function getGame(gameId: string): Promise<Game | null> {
@@ -155,8 +199,36 @@ export async function updateGameScore(gameId: string, score: GameScore): Promise
     await updateDoc(doc(db, 'games', gameId), { score, status: 'completed' });
 }
 
+export async function updateGameDrafts(gameId: string, draftSetups: import('../types').TeamSetup[]): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { draftSetups });
+}
+
 export async function deleteGame(gameId: string): Promise<void> {
     await deleteDoc(doc(db, 'games', gameId));
+}
+
+export async function updateGameGuests(gameId: string, guestPlayers: string[]): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { guestPlayers });
+}
+
+export async function updateGuestAvailability(gameId: string, guestAvailability: Record<string, string>): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { guestAvailability });
+}
+
+export async function updatePlayerPositions(gameId: string, playerPositions: Record<string, string>): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { playerPositions });
+}
+
+export async function updateGameGoalScorers(gameId: string, goalScorers: GoalScorer[]): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { goalScorers });
+}
+
+export async function updateGameAssisters(gameId: string, assisters: GoalScorer[]): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { assisters });
+}
+
+export async function updateGameMotm(gameId: string, manOfTheMatch: string | null): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { manOfTheMatch: manOfTheMatch ?? '' });
 }
 
 // ---- Availability ----
@@ -191,6 +263,10 @@ export function subscribeToGameAvailability(gameId: string, cb: (avail: PlayerAv
 }
 
 // ---- Members ----
+
+export async function updateUserDisplayName(userId: string, displayName: string): Promise<void> {
+    await setDoc(doc(db, 'users', userId), { displayName, hasSetName: true }, { merge: true });
+}
 
 export async function getLeagueMembers(memberIds: string[]): Promise<{ id: string; displayName: string; email: string }[]> {
     if (memberIds.length === 0) return [];

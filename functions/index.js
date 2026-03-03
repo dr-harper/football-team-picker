@@ -1,67 +1,50 @@
-const functions = require("@google-cloud/functions-framework");
+const { onRequest } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 
-const GEMINI_API_BASE =
-  "https://generativelanguage.googleapis.com/v1beta/models";
+const geminiKey = defineSecret('GEMINI_KEY');
 
-/**
- * Allowed origins for CORS.  Set the ALLOWED_ORIGIN env var to your
- * production domain (e.g. "https://teamshuffle.app").  During local
- * development you can set it to "*" or "http://localhost:5173".
- */
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
+const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-/** Send CORS headers on every response */
-function setCors(res) {
-  res.set("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
-  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type");
-  res.set("Access-Control-Max-Age", "3600");
-}
+exports.geminiProxy = onRequest(
+    {
+        cors: ['https://teamshuffle.app', 'http://localhost:5173'],
+        secrets: [geminiKey],
+        region: 'europe-west2',
+    },
+    async (req, res) => {
+        if (req.method !== 'POST') {
+            return res.status(405).json({ error: 'Method not allowed' });
+        }
 
-functions.http("geminiProxy", async (req, res) => {
-  setCors(res);
+        const apiKey = geminiKey.value();
+        if (!apiKey) {
+            return res.status(500).json({ error: 'Server misconfigured: no API key' });
+        }
 
-  // Handle preflight
-  if (req.method === "OPTIONS") {
-    return res.status(204).send("");
-  }
+        const { model, contents } = req.body || {};
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+        if (!model || !contents) {
+            return res.status(400).json({ error: 'Missing required fields: "model" and "contents"' });
+        }
 
-  const apiKey = process.env.GEMINI_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: "Server misconfigured: no API key" });
-  }
+        const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`;
 
-  const { model, contents } = req.body || {};
+        try {
+            const geminiRes = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents }),
+            });
 
-  if (!model || !contents) {
-    return res
-      .status(400)
-      .json({ error: 'Missing required fields: "model" and "contents"' });
-  }
+            const data = await geminiRes.json();
 
-  const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`;
+            if (!geminiRes.ok) {
+                return res.status(geminiRes.status).json(data);
+            }
 
-  try {
-    const geminiRes = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents }),
-    });
-
-    const data = await geminiRes.json();
-
-    if (!geminiRes.ok) {
-      return res.status(geminiRes.status).json(data);
-    }
-
-    return res.status(200).json(data);
-  } catch (err) {
-    return res
-      .status(502)
-      .json({ error: "Failed to reach Gemini API", detail: err.message });
-  }
-});
+            return res.status(200).json(data);
+        } catch (err) {
+            return res.status(502).json({ error: 'Failed to reach Gemini API', detail: err.message });
+        }
+    },
+);

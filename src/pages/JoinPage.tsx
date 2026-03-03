@@ -27,7 +27,7 @@ const JoinPage: React.FC = () => {
         joinLeagueByCode(code, user.uid)
             .then(league => {
                 if (league) {
-                    navigate(`/league/${league.id}`);
+                    navigate(`/league/${league.joinCode}`);
                 } else {
                     setError('No league found with that code');
                 }

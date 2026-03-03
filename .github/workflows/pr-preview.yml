@@ -15,7 +15,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 18
+        node-version: 22
         cache: 'npm'
 
     - name: Install dependencies
@@ -27,6 +27,12 @@ jobs:
         BASE_PATH: /pr/${{ github.event.number }}/
         BUILD_VERSION: ${{ github.sha }}
         VITE_AI_PROXY_URL: ${{ secrets.AI_PROXY_URL }}
+        VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+        VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+        VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+        VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+        VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
 
     - name: Deploy preview
       id: deploy
@@ -49,5 +55,5 @@ jobs:
             owner: context.repo.owner,
             repo: context.repo.repo,
             issue_number: pr,
-            body: `Preview URL: ${url}`,
+            body: `🔍 Preview: ${url}`,
           });

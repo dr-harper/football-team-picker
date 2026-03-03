@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Plus, Users, Calendar, LogOut, Trophy, ArrowRight, Copy, Check } from 'lucide-react';
+import { Plus, Users, Calendar, LogOut, Trophy, ArrowRight, Copy, Check, Trash2, Goal, Award, Star } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserLeagues, createLeague, joinLeagueByCode } from '../utils/firestore';
+import { getUserLeagues, createLeague, joinLeagueByCode, deleteLeague } from '../utils/firestore';
 import { League, Game } from '../types';
 import { getLeagueGames } from '../utils/firestore';
+import { geocodeLocation, GeoResult } from '../utils/weather';
+
+interface LeagueStats {
+    topScorer: { name: string; goals: number } | null;
+    motmLeader: { name: string; count: number } | null;
+    gamesPlayed: number;
+}
 
 const DashboardPage: React.FC = () => {
     const { user, logout } = useAuth();
@@ -16,9 +23,14 @@ const DashboardPage: React.FC = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showJoinModal, setShowJoinModal] = useState(false);
     const [newLeagueName, setNewLeagueName] = useState('');
+    const [newLeagueVenue, setNewLeagueVenue] = useState('');
+    const [verifiedVenue, setVerifiedVenue] = useState<GeoResult | null>(null);
+    const [verifyingVenue, setVerifyingVenue] = useState(false);
     const [joinCode, setJoinCode] = useState('');
     const [error, setError] = useState('');
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
+    const [deletingLeagueId, setDeletingLeagueId] = useState<string | null>(null);
+    const [leagueStats, setLeagueStats] = useState<Map<string, LeagueStats>>(new Map());
 
     useEffect(() => {
         if (!user) return;
@@ -32,29 +44,75 @@ const DashboardPage: React.FC = () => {
             const userLeagues = await getUserLeagues(user.uid);
             setLeagues(userLeagues);
 
-            // Load upcoming games from all leagues
             const allGames: Game[] = [];
+            const statsMap = new Map<string, LeagueStats>();
+
             for (const league of userLeagues) {
                 const games = await getLeagueGames(league.id);
                 allGames.push(...games.filter(g => g.status !== 'completed'));
+
+                // Aggregate stats from completed games
+                const completed = games.filter(g => g.status === 'completed');
+                const goalTotals = new Map<string, number>();
+                const motmTotals = new Map<string, number>();
+                for (const g of completed) {
+                    for (const scorer of g.goalScorers ?? []) {
+                        goalTotals.set(scorer.name, (goalTotals.get(scorer.name) ?? 0) + scorer.goals);
+                    }
+                    if (g.manOfTheMatch) {
+                        motmTotals.set(g.manOfTheMatch, (motmTotals.get(g.manOfTheMatch) ?? 0) + 1);
+                    }
+                }
+                const topScorerEntry = [...goalTotals.entries()].sort((a, b) => b[1] - a[1])[0];
+                const motmEntry = [...motmTotals.entries()].sort((a, b) => b[1] - a[1])[0];
+                statsMap.set(league.id, {
+                    topScorer: topScorerEntry ? { name: topScorerEntry[0], goals: topScorerEntry[1] } : null,
+                    motmLeader: motmEntry ? { name: motmEntry[0], count: motmEntry[1] } : null,
+                    gamesPlayed: completed.length,
+                });
             }
+
             allGames.sort((a, b) => a.date - b.date);
             setUpcomingGames(allGames.slice(0, 5));
-        } catch {
-            // handle silently
+            setLeagueStats(statsMap);
+        } catch (err) {
+            console.error('[loadData]', err);
         }
         setLoading(false);
+    };
+
+    const handleVerifyVenue = async () => {
+        if (!newLeagueVenue.trim()) return;
+        setVerifyingVenue(true);
+        const result = await geocodeLocation(newLeagueVenue.trim());
+        setVerifyingVenue(false);
+        if (result) {
+            setVerifiedVenue(result);
+            setNewLeagueVenue(result.displayName);
+        } else {
+            setError('Location not found — try a more specific address');
+        }
     };
 
     const handleCreateLeague = async () => {
         if (!user || !newLeagueName.trim()) return;
         setError('');
         try {
-            await createLeague(newLeagueName.trim(), user.uid);
+            const venueName = verifiedVenue?.displayName || (newLeagueVenue.trim() || undefined);
+            await createLeague(
+                newLeagueName.trim(),
+                user.uid,
+                venueName,
+                verifiedVenue?.lat,
+                verifiedVenue?.lon,
+            );
             setNewLeagueName('');
+            setNewLeagueVenue('');
+            setVerifiedVenue(null);
             setShowCreateModal(false);
             await loadData();
-        } catch {
+        } catch (err) {
+            console.error('[createLeague]', err);
             setError('Failed to create league');
         }
     };
@@ -70,7 +128,7 @@ const DashboardPage: React.FC = () => {
             }
             setJoinCode('');
             setShowJoinModal(false);
-            navigate(`/league/${league.id}`);
+            navigate(`/league/${league.joinCode}`);
         } catch {
             setError('Failed to join league');
         }
@@ -83,6 +141,18 @@ const DashboardPage: React.FC = () => {
     };
 
     const getLeagueName = (leagueId: string) => leagues.find(l => l.id === leagueId)?.name || 'Unknown League';
+    const getLeagueCode = (leagueId: string) => leagues.find(l => l.id === leagueId)?.joinCode;
+
+    const handleDeleteLeague = async (league: League, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (confirm(`Delete "${league.name}"? This will permanently remove all games and cannot be undone.`)) {
+            setDeletingLeagueId(league.id);
+            await deleteLeague(league.id);
+            await loadData();
+            setDeletingLeagueId(null);
+        }
+    };
 
     const handleLogout = async () => {
         await logout();
@@ -154,7 +224,7 @@ const DashboardPage: React.FC = () => {
                             {upcomingGames.map(game => (
                                 <Link
                                     key={game.id}
-                                    to={`/game/${game.id}`}
+                                    to={getLeagueCode(game.leagueId) ? `/league/${getLeagueCode(game.leagueId)}/game/${game.id}` : `/game/${game.id}`}
                                     className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
                                 >
                                     <div>
@@ -207,10 +277,10 @@ const DashboardPage: React.FC = () => {
                             {leagues.map(league => (
                                 <Link
                                     key={league.id}
-                                    to={`/league/${league.id}`}
+                                    to={`/league/${league.joinCode}`}
                                     className="bg-white/10 backdrop-blur-sm border border-white/10 hover:bg-white/15 rounded-xl p-4 flex items-center justify-between transition-colors"
                                 >
-                                    <div>
+                                    <div className="flex-1 min-w-0">
                                         <div className="text-white font-bold text-lg">{league.name}</div>
                                         <div className="text-green-300 text-sm flex items-center gap-3">
                                             <span>{league.memberIds.length} member{league.memberIds.length !== 1 ? 's' : ''}</span>
@@ -226,8 +296,47 @@ const DashboardPage: React.FC = () => {
                                                 )}
                                             </button>
                                         </div>
+                                        {/* Per-league stats */}
+                                        {(() => {
+                                            const stats = leagueStats.get(league.id);
+                                            if (!stats || stats.gamesPlayed === 0) return null;
+                                            return (
+                                                <div className="flex flex-wrap gap-3 mt-1.5">
+                                                    {stats.topScorer && (
+                                                        <span className="text-xs text-white/60 flex items-center gap-1">
+                                                            <Goal className="w-3 h-3 text-green-400" />
+                                                            {stats.topScorer.name} ({stats.topScorer.goals})
+                                                        </span>
+                                                    )}
+                                                    {stats.motmLeader && (
+                                                        <span className="text-xs text-white/60 flex items-center gap-1">
+                                                            <Star className="w-3 h-3 text-yellow-400" />
+                                                            {stats.motmLeader.name} ×{stats.motmLeader.count}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
-                                    <ArrowRight className="w-5 h-5 text-white/40" />
+                                    <div className="flex items-center gap-2">
+                                        {user && league.createdBy === user.uid && (
+                                            <button
+                                                onClick={(e) => handleDeleteLeague(league, e)}
+                                                disabled={deletingLeagueId === league.id}
+                                                className="text-red-400/50 hover:text-red-400 transition-colors p-1 disabled:opacity-50"
+                                            >
+                                                {deletingLeagueId === league.id ? (
+                                                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                                    </svg>
+                                                ) : (
+                                                    <Trash2 className="w-4 h-4" />
+                                                )}
+                                            </button>
+                                        )}
+                                        <ArrowRight className="w-5 h-5 text-white/40" />
+                                    </div>
                                 </Link>
                             ))}
                         </div>
@@ -237,7 +346,7 @@ const DashboardPage: React.FC = () => {
 
             {/* Create League Modal */}
             {showCreateModal && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 p-4" onClick={() => setShowCreateModal(false)}>
+                <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 p-4" onClick={() => { setShowCreateModal(false); setError(''); }}>
                     <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6" onClick={e => e.stopPropagation()}>
                         <h3 className="text-xl font-bold text-green-900 dark:text-white mb-4">Create a League</h3>
                         <input
@@ -249,9 +358,32 @@ const DashboardPage: React.FC = () => {
                             autoFocus
                             onKeyDown={e => e.key === 'Enter' && handleCreateLeague()}
                         />
+                        <div className="mb-3">
+                            <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Default venue (optional)</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={newLeagueVenue}
+                                    onChange={e => { setNewLeagueVenue(e.target.value); setVerifiedVenue(null); setError(''); }}
+                                    placeholder="e.g. Hackney Marshes, London"
+                                    className={`flex-1 border rounded-lg p-3 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent ${verifiedVenue ? 'border-green-500 dark:border-green-500' : 'border-gray-300 dark:border-gray-600'}`}
+                                    onKeyDown={e => e.key === 'Enter' && handleVerifyVenue()}
+                                />
+                                <Button
+                                    onClick={handleVerifyVenue}
+                                    disabled={!newLeagueVenue.trim() || verifyingVenue}
+                                    className="bg-green-100 hover:bg-green-200 text-green-800 dark:bg-green-900 dark:hover:bg-green-800 dark:text-green-200 px-3 shrink-0"
+                                >
+                                    {verifyingVenue ? '…' : verifiedVenue ? '✓' : 'Verify'}
+                                </Button>
+                            </div>
+                            {verifiedVenue && (
+                                <p className="text-xs text-green-600 dark:text-green-400 mt-1">📍 {verifiedVenue.displayName}</p>
+                            )}
+                        </div>
                         {error && <div className="text-red-600 text-sm mb-3">{error}</div>}
                         <div className="flex gap-2 justify-end">
-                            <Button onClick={() => setShowCreateModal(false)} variant="ghost" className="text-gray-600 dark:text-gray-300">
+                            <Button onClick={() => { setShowCreateModal(false); setError(''); }} variant="ghost" className="text-gray-600 dark:text-gray-300">
                                 Cancel
                             </Button>
                             <Button onClick={handleCreateLeague} className="bg-green-700 hover:bg-green-600 text-white">

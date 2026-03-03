@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /leagues/{leagueId} {
+      allow read:   if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && request.auth.uid in resource.data.memberIds;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
+    }
+
+    match /games/{gameId} {
+      // Any authenticated user can read a game (needed for join-by-code flow)
+      allow read: if request.auth != null;
+
+      // Only league members can create games
+      allow create: if request.auth != null
+        && exists(/databases/$(database)/documents/leagues/$(request.resource.data.leagueId))
+        && request.auth.uid in get(/databases/$(database)/documents/leagues/$(request.resource.data.leagueId)).data.memberIds;
+
+      // Only the game creator can update or delete
+      allow update: if request.auth != null && request.auth.uid == resource.data.createdBy;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
+    }
+
+    match /availability/{docId} {
+      // Anyone in the league can read availability
+      allow read: if request.auth != null;
+
+      // Users can only write their own availability documents
+      // Doc ID convention: {gameId}_{userId}
+      allow write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+  }
+}
