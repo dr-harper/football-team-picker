@@ -7,6 +7,7 @@
  */
 
 import { GEMINI_API_BASE_URL } from '../constants/aiPrompts';
+import { auth } from '../firebase';
 
 declare const __AI_PROXY_URL__: string;
 
@@ -40,9 +41,13 @@ export async function callGemini(
     directKey?: string,
 ): Promise<GeminiResponse> {
     if (PROXY_URL) {
+        const idToken = await auth.currentUser?.getIdToken();
         const res = await fetch(PROXY_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {}),
+            },
             body: JSON.stringify({ model, contents }),
         });
         return res.json();

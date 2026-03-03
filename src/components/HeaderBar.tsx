@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { teamPlaces } from '../constants/teamConstants';
-import { Settings, Bot, Check, X, MapPin } from 'lucide-react';
+import { Settings, Bot, Check, X, MapPin, User, LayoutDashboard } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const HeaderBar: React.FC = () => {
+    const { user } = useAuth();
+    const navigate = useNavigate();
     const {
         selectedLocation,
         handleLocationChange,
@@ -38,6 +42,27 @@ const HeaderBar: React.FC = () => {
                 <span className="font-bold text-xl">Team Shuffle</span>
             </div>
             <div className="relative flex items-center gap-2">
+                {user ? (
+                    <Button
+                        onClick={() => navigate('/dashboard')}
+                        variant="ghost"
+                        size="sm"
+                        className="text-white flex items-center gap-1 text-xs"
+                    >
+                        <LayoutDashboard className="w-4 h-4" />
+                        <span className="hidden sm:inline">Dashboard</span>
+                    </Button>
+                ) : (
+                    <Button
+                        onClick={() => navigate('/auth')}
+                        variant="ghost"
+                        size="sm"
+                        className="text-white flex items-center gap-1 text-xs"
+                    >
+                        <User className="w-4 h-4" />
+                        <span className="hidden sm:inline">Sign In</span>
+                    </Button>
+                )}
                 <Button
                     onClick={() => setShowConfig(true)}
                     variant="ghost"

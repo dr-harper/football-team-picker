@@ -1,67 +1,77 @@
-const functions = require("@google-cloud/functions-framework");
+const { onRequest } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
+const { initializeApp } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
 
-const GEMINI_API_BASE =
-  "https://generativelanguage.googleapis.com/v1beta/models";
+initializeApp();
 
-/**
- * Allowed origins for CORS.  Set the ALLOWED_ORIGIN env var to your
- * production domain (e.g. "https://teamshuffle.app").  During local
- * development you can set it to "*" or "http://localhost:5173".
- */
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
+const geminiKey = defineSecret('GEMINI_KEY');
 
-/** Send CORS headers on every response */
-function setCors(res) {
-  res.set("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
-  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type");
-  res.set("Access-Control-Max-Age", "3600");
-}
+const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-functions.http("geminiProxy", async (req, res) => {
-  setCors(res);
+const ALLOWED_MODELS = new Set([
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+]);
 
-  // Handle preflight
-  if (req.method === "OPTIONS") {
-    return res.status(204).send("");
-  }
+exports.geminiProxy = onRequest(
+    {
+        cors: ['https://teamshuffle.app', 'http://localhost:5173'],
+        secrets: [geminiKey],
+        region: 'europe-west2',
+    },
+    async (req, res) => {
+        if (req.method !== 'POST') {
+            return res.status(405).json({ error: 'Method not allowed' });
+        }
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+        // Verify Firebase Auth token
+        const authHeader = req.headers.authorization ?? '';
+        const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+        if (!idToken) {
+            return res.status(401).json({ error: 'Missing authorisation token' });
+        }
+        try {
+            await getAuth().verifyIdToken(idToken);
+        } catch {
+            return res.status(403).json({ error: 'Invalid or expired token' });
+        }
 
-  const apiKey = process.env.GEMINI_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: "Server misconfigured: no API key" });
-  }
+        const apiKey = geminiKey.value();
+        if (!apiKey) {
+            return res.status(500).json({ error: 'Server misconfigured: no API key' });
+        }
 
-  const { model, contents } = req.body || {};
+        const { model, contents } = req.body || {};
 
-  if (!model || !contents) {
-    return res
-      .status(400)
-      .json({ error: 'Missing required fields: "model" and "contents"' });
-  }
+        if (!model || !contents) {
+            return res.status(400).json({ error: 'Missing required fields: "model" and "contents"' });
+        }
 
-  const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`;
+        if (!ALLOWED_MODELS.has(model)) {
+            return res.status(400).json({ error: `Model "${model}" is not permitted` });
+        }
 
-  try {
-    const geminiRes = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents }),
-    });
+        const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`;
 
-    const data = await geminiRes.json();
+        try {
+            const geminiRes = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents }),
+            });
 
-    if (!geminiRes.ok) {
-      return res.status(geminiRes.status).json(data);
-    }
+            const data = await geminiRes.json();
 
-    return res.status(200).json(data);
-  } catch (err) {
-    return res
-      .status(502)
-      .json({ error: "Failed to reach Gemini API", detail: err.message });
-  }
-});
+            if (!geminiRes.ok) {
+                return res.status(geminiRes.status).json(data);
+            }
+
+            return res.status(200).json(data);
+        } catch (err) {
+            return res.status(502).json({ error: 'Failed to reach Gemini API', detail: err.message });
+        }
+    },
+);
