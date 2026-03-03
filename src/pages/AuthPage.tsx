@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 
 const AuthPage: React.FC = () => {
     const { signIn, signUp, signInWithGoogle } = useAuth();
     const navigate = useNavigate();
-    const [isLogin, setIsLogin] = useState(true);
+    const location = useLocation();
+    const initialMode = (location.state as { mode?: string } | null)?.mode;
+    const [isLogin, setIsLogin] = useState(initialMode !== 'signup');
+    const pendingLeagueName = sessionStorage.getItem('pendingJoinLeagueName');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [displayName, setDisplayName] = useState('');
@@ -17,6 +20,7 @@ const AuthPage: React.FC = () => {
         const pendingCode = sessionStorage.getItem('pendingJoinCode');
         if (pendingCode) {
             sessionStorage.removeItem('pendingJoinCode');
+            sessionStorage.removeItem('pendingJoinLeagueName');
             navigate(`/join/${pendingCode}`);
         } else {
             navigate('/dashboard');
@@ -64,6 +68,15 @@ const AuthPage: React.FC = () => {
                     <img src="/logo.png" alt="Team Shuffle Logo" className="w-8 h-8" />
                     <span className="font-bold text-xl text-green-900 dark:text-white">Team Shuffle</span>
                 </div>
+
+                {pendingLeagueName && (
+                    <div className="mb-4 text-center bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-xl p-3">
+                        <p className="text-green-700 dark:text-green-300 text-sm">
+                            {isLogin ? 'Sign in to join' : 'Create an account to join'}
+                        </p>
+                        <p className="text-green-900 dark:text-white font-bold">{pendingLeagueName}</p>
+                    </div>
+                )}
 
                 <h2 className="text-2xl font-bold text-center mb-6 text-green-900 dark:text-white">
                     {isLogin ? 'Sign In' : 'Create Account'}

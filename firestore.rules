@@ -9,7 +9,8 @@ service cloud.firestore {
     }
 
     match /leagues/{leagueId} {
-      allow read:   if request.auth != null;
+      // Public read allows the join landing page to show league name before sign-up
+      allow read:   if true;
       allow create: if request.auth != null;
       // Allow update if already a member OR if user is adding only themselves to memberIds (join flow)
       allow update: if request.auth != null && (

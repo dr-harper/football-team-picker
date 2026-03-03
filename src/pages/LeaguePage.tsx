@@ -13,6 +13,7 @@ import {
     getLeagueMembers,
     leaveLeague,
     deleteLeague,
+    removeMember,
     updateUserDisplayName,
     getLeagueByCode,
 } from '../utils/firestore';
@@ -1142,6 +1143,21 @@ const LeaguePage: React.FC = () => {
                                                     title="Edit name"
                                                 >
                                                     <Pencil className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
+                                            {isAdmin && member.id !== league.createdBy && !isEditing && (
+                                                <button
+                                                    onClick={async () => {
+                                                        if (!id) return;
+                                                        if (confirm(`Remove ${member.displayName} from the league?`)) {
+                                                            await removeMember(id, member.id);
+                                                            setMembers(prev => prev.filter(m => m.id !== member.id));
+                                                        }
+                                                    }}
+                                                    className="text-white/30 hover:text-red-400 transition-colors"
+                                                    title="Remove member"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
                                                 </button>
                                             )}
                                         </div>

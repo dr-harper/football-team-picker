@@ -103,6 +103,14 @@ export async function leaveLeague(leagueId: string, userId: string): Promise<voi
     });
 }
 
+export async function removeMember(leagueId: string, memberUserId: string): Promise<void> {
+    const league = await getLeague(leagueId);
+    if (!league) return;
+    await updateDoc(doc(db, 'leagues', leagueId), {
+        memberIds: league.memberIds.filter(id => id !== memberUserId),
+    });
+}
+
 export async function deleteLeague(leagueId: string): Promise<void> {
     // Delete all games and their availability records for this league
     const gamesSnap = await getDocs(query(collection(db, 'games'), where('leagueId', '==', leagueId)));
