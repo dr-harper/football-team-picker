@@ -1,0 +1,31 @@
+name: Deploy Function
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'functions/**'
+  workflow_dispatch:  # also allows manual trigger
+
+jobs:
+  deploy-function:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # needed for Workload Identity Federation
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install function dependencies
+      run: npm ci --prefix functions
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+        service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+    - name: Deploy Firebase function
+      run: npx firebase-tools deploy --only functions --project football-team-picker-mh --non-interactive
