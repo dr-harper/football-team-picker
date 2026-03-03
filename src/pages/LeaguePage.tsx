@@ -412,8 +412,9 @@ const LeaguePage: React.FC = () => {
                             upcomingGames.map(game => {
                                 const avail = scheduleAvailability.get(game.id) ?? [];
                                 const myStatus = avail.find(a => a.userId === user?.uid)?.status;
+                                const guestStatusMap = game.guestAvailability ?? {};
                                 const inCount = avail.filter(a => a.status === 'available').length
-                                    + (game.guestPlayers?.length ?? 0);
+                                    + (game.guestPlayers ?? []).filter(n => (guestStatusMap[n] ?? 'available') === 'available').length;
                                 const maybeCount = avail.filter(a => a.status === 'maybe').length;
                                 return (
                                     <div key={game.id} className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4 flex items-center gap-3">
@@ -535,8 +536,9 @@ const LeaguePage: React.FC = () => {
                             upcomingGames.map(game => {
                                 const avail = scheduleAvailability.get(game.id) ?? [];
                                 const myStatus = avail.find(a => a.userId === user?.uid)?.status;
+                                const guestStatusMap = game.guestAvailability ?? {};
                                 const inCount = avail.filter(a => a.status === 'available').length
-                                    + (game.guestPlayers?.length ?? 0);
+                                    + (game.guestPlayers ?? []).filter(n => (guestStatusMap[n] ?? 'available') === 'available').length;
                                 const maybeCount = avail.filter(a => a.status === 'maybe').length;
                                 return (
                                     <div key={game.id} className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">

@@ -348,7 +348,7 @@ const GamePage: React.FC = () => {
 
     const guestStatusMap = game.guestAvailability ?? {};
     const guestsAvailable = (game.guestPlayers ?? []).filter(n => (guestStatusMap[n] ?? 'available') === 'available');
-    const gueststMaybe = (game.guestPlayers ?? []).filter(n => guestStatusMap[n] === 'maybe');
+    const guestsMaybe = (game.guestPlayers ?? []).filter(n => guestStatusMap[n] === 'maybe');
     const guestsUnavailable = (game.guestPlayers ?? []).filter(n => guestStatusMap[n] === 'unavailable');
 
     const handleGuestStatusChange = async (name: string, status: AvailabilityStatus) => {
@@ -371,7 +371,7 @@ const GamePage: React.FC = () => {
     const allPlayerNames = [
         ...availablePlayers.map(a => a.displayName),
         ...guestsAvailable,
-        ...gueststMaybe,
+        ...guestsMaybe,
     ];
 
     const totalAvailable = availablePlayers.length + guestsAvailable.length;
@@ -672,7 +672,7 @@ const GamePage: React.FC = () => {
                             )}
                             <div className="flex gap-4 text-xs mb-2">
                                 <span className="text-green-400">{availablePlayers.length + guestsAvailable.length} in</span>
-                                <span className="text-yellow-400">{maybePlayers.length + gueststMaybe.length} maybe</span>
+                                <span className="text-yellow-400">{maybePlayers.length + guestsMaybe.length} maybe</span>
                                 <span className="text-red-400">{unavailablePlayers.length + guestsUnavailable.length} out</span>
                             </div>
                             {renderAvailabilityList()}

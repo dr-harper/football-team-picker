@@ -13,6 +13,7 @@ import JoinPage from './pages/JoinPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import SetNameModal from './components/SetNameModal'
+import ProtectedRoute from './components/ProtectedRoute'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -22,10 +23,10 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/" element={<App />} />
           <Route path="/auth" element={<AuthPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/league/:code" element={<LeaguePage />} />
-          <Route path="/league/:code/game/:id" element={<GamePage />} />
-          <Route path="/game/:id" element={<GamePage />} />
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+          <Route path="/league/:code" element={<ProtectedRoute><LeaguePage /></ProtectedRoute>} />
+          <Route path="/league/:code/game/:id" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
+          <Route path="/game/:id" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
           <Route path="/join/:code" element={<JoinPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
