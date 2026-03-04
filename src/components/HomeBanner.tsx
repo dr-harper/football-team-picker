@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Zap, Calendar, Trophy, PlusCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserLeagues, getLeagueGames } from '../utils/firestore';
 
@@ -67,20 +68,23 @@ const HomeBanner: React.FC = () => {
 
     if (!user) {
         return (
-            <div className="bg-green-800 dark:bg-green-950 text-white px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm border-t border-green-700/50">
-                <span className="text-green-100/90 text-center sm:text-left">
+            <div className="rounded-xl px-5 py-4 flex items-center gap-4 bg-white/10 border border-white/15 backdrop-blur-sm text-white">
+                <div className="w-9 h-9 shrink-0 flex items-center justify-center">
+                    <Zap className="w-6 h-6 text-amber-400" />
+                </div>
+                <p className="flex-1 text-sm text-green-100/90">
                     Organise your kickabout — create leagues, track results, invite friends.
-                </span>
+                </p>
                 <div className="flex items-center gap-2 shrink-0">
                     <button
                         onClick={() => navigate('/auth?mode=signin')}
-                        className="px-3 py-1 rounded-md text-xs font-medium bg-white/10 hover:bg-white/20 transition-colors"
+                        className="px-3 py-1.5 rounded-md text-xs font-medium bg-white/10 hover:bg-white/20 transition-colors"
                     >
                         Sign in
                     </button>
                     <button
                         onClick={() => navigate('/auth?mode=signup')}
-                        className="px-3 py-1 rounded-md text-xs font-medium bg-white text-green-900 hover:bg-green-50 transition-colors"
+                        className="px-3 py-1.5 rounded-md text-xs font-medium bg-white text-green-900 hover:bg-green-50 transition-colors"
                     >
                         Create account
                     </button>
@@ -90,40 +94,49 @@ const HomeBanner: React.FC = () => {
     }
 
     // Logged in
-    const handleDashboard = () => navigate('/dashboard');
-
     const dashboardLink = (
         <button
-            onClick={handleDashboard}
-            className="px-3 py-1 rounded-md text-xs font-medium bg-white/10 hover:bg-white/20 transition-colors shrink-0"
+            onClick={() => navigate('/dashboard')}
+            className="px-3 py-1.5 rounded-md text-xs font-medium bg-white/10 hover:bg-white/20 transition-colors shrink-0"
         >
             → Dashboard
         </button>
     );
 
-    let content: React.ReactNode;
-
     if (leagueCount === 0) {
-        content = (
-            <span className="text-green-100/90">Ready to organise your first league?</span>
+        return (
+            <div className="rounded-xl px-5 py-4 flex items-center gap-4 bg-white/10 border border-white/15 backdrop-blur-sm text-white">
+                <div className="w-9 h-9 shrink-0 flex items-center justify-center">
+                    <PlusCircle className="w-6 h-6 text-green-300" />
+                </div>
+                <p className="flex-1 text-sm text-green-100/90">Ready to organise your first league?</p>
+                {dashboardLink}
+            </div>
         );
-    } else if (!nextGame) {
-        content = (
-            <span className="text-green-100/90">
-                🏆 {leagueCount} league{leagueCount !== 1 ? 's' : ''} · No games scheduled
-            </span>
-        );
-    } else {
-        content = (
-            <span className="text-green-100/90">
-                ⚽ Next up: <strong className="text-white">{nextGame.leagueName}</strong> · {nextGame.title} · {formatGameDate(nextGame.date)}
-            </span>
+    }
+
+    if (!nextGame) {
+        return (
+            <div className="rounded-xl px-5 py-4 flex items-center gap-4 bg-white/10 border border-white/15 backdrop-blur-sm text-white">
+                <div className="w-9 h-9 shrink-0 flex items-center justify-center">
+                    <Trophy className="w-6 h-6 text-yellow-400" />
+                </div>
+                <p className="flex-1 text-sm text-green-100/90">
+                    {leagueCount} league{leagueCount !== 1 ? 's' : ''} · No games scheduled
+                </p>
+                {dashboardLink}
+            </div>
         );
     }
 
     return (
-        <div className="bg-green-800 dark:bg-green-950 text-white px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm border-t border-green-700/50">
-            <div className="text-center sm:text-left">{content}</div>
+        <div className="rounded-xl px-5 py-4 flex items-center gap-4 bg-white/10 border border-white/15 backdrop-blur-sm text-white">
+            <div className="w-9 h-9 shrink-0 flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-green-300" />
+            </div>
+            <p className="flex-1 text-sm text-green-100/90">
+                Next up: <strong className="text-white">{nextGame.leagueName}</strong> · {nextGame.title} · {formatGameDate(nextGame.date)}
+            </p>
             {dashboardLink}
         </div>
     );

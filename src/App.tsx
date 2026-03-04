@@ -201,7 +201,6 @@ const FootballTeamPickerInner = () => {
     return (
         <>
             <HeaderBar />
-            <HomeBanner />
             <div className="flex-grow p-4 sm:p-6">
                 {notifications.length > 0 && (
                     <div aria-live="polite" className="fixed bottom-24 right-4 flex flex-col items-end space-y-2 z-50">
@@ -211,7 +210,9 @@ const FootballTeamPickerInner = () => {
                     </div>
                 )}
 
-                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 foldable-grid mt-4">
+                <div className="max-w-6xl mx-auto mt-4 space-y-6">
+                <HomeBanner />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 foldable-grid">
                     <div className="space-y-4">
                         <PlayerInput
                             playersText={playersText}
@@ -258,6 +259,7 @@ const FootballTeamPickerInner = () => {
                             </>
                         )}
                     </div>
+                </div>
                 </div>
             </div>
 
