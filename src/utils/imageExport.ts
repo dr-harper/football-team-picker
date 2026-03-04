@@ -1,7 +1,7 @@
 import { toPng } from 'html-to-image';
 import { MotionGlobalConfig } from 'framer-motion';
 
-const HIDDEN_SELECTORS = ['.delete-button', '.color-picker', '.color-circle', '.generate-ai-summary'];
+const HIDDEN_SELECTORS = ['.delete-button', '.color-picker', '.color-circle', '.generate-ai-summary', '.swap-hint'];
 
 export interface ExportResult {
     success: boolean;

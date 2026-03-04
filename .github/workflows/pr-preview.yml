@@ -55,7 +55,7 @@ jobs:
           --expires 7d \
           --non-interactive 2>&1)
         echo "$OUTPUT"
-        URL=$(echo "$OUTPUT" | grep -oE 'https://[a-z0-9-]+\.web\.app' | head -1)
+        URL=$(echo "$OUTPUT" | grep -oE 'https://[a-z0-9-]+--pr-[a-z0-9-]+\.web\.app' | head -1)
         echo "url=${URL}" >> $GITHUB_OUTPUT
 
     - name: Post or update preview comment
