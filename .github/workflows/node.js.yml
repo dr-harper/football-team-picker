@@ -31,12 +31,10 @@ jobs:
     - name: Tests
       run: npm test
 
-  # ── Build & deploy frontend to GitHub Pages ──────────────────────────────
+  # ── Build & deploy to Firebase Hosting + Functions ──────────────────────
   build-and-deploy:
     needs: check
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
     - name: Checkout code
@@ -64,9 +62,13 @@ jobs:
         VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
         VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
 
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v4
+    - name: Install functions dependencies
+      run: cd functions && npm ci
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./dist
-        cname: teamshuffle.app
+        credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+    - name: Deploy to Firebase Hosting & Functions
+      run: npx firebase-tools deploy --only hosting,functions --project "${{ secrets.VITE_FIREBASE_PROJECT_ID }}"

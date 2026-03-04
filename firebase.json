@@ -15,6 +15,13 @@
     ],
     "rewrites": [
       {
+        "source": "/join/**",
+        "function": {
+          "functionId": "joinOg",
+          "region": "europe-west2"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
