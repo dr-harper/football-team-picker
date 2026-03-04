@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
+import { Users, Shuffle, Trophy, Calendar } from 'lucide-react';
 
 const AuthPage: React.FC = () => {
     const { signIn, signUp, signInWithGoogle } = useAuth();
@@ -61,10 +62,45 @@ const AuthPage: React.FC = () => {
         }
     };
 
+    const features = [
+        { icon: <Users className="w-5 h-5 text-emerald-400" />, title: 'Organise your league', desc: 'Create a league and invite your mates with a simple link' },
+        { icon: <Calendar className="w-5 h-5 text-blue-400" />, title: 'Manage availability', desc: "Track who's available each week so you always know numbers" },
+        { icon: <Shuffle className="w-5 h-5 text-green-400" />, title: 'Fair teams every time', desc: 'Generate balanced teams instantly with smart shuffling' },
+        { icon: <Trophy className="w-5 h-5 text-yellow-400" />, title: 'Track results', desc: 'Record scores, top scorers and Man of the Match' },
+    ];
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800 p-4">
-            <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8">
-                <div className="flex items-center gap-2 mb-6 justify-center">
+            <div className="w-full max-w-4xl flex flex-col lg:flex-row gap-6 lg:gap-0 items-center lg:items-stretch">
+
+                {/* CTA / feature panel */}
+                <div className="w-full lg:w-1/2 flex flex-col justify-center lg:pr-10 text-white">
+                    <div className="flex items-center gap-2 mb-4">
+                        <img src="/logo.png" alt="Team Shuffle Logo" className="w-9 h-9" />
+                        <span className="font-bold text-2xl">Team Shuffle</span>
+                    </div>
+                    <h1 className="text-3xl lg:text-4xl font-extrabold mb-3 leading-tight">
+                        The easiest way to run your kickabout
+                    </h1>
+                    <p className="text-white/70 mb-6">
+                        Sign up for free to create leagues, pick fair teams and keep track of results — all in one place.
+                    </p>
+                    <div className="space-y-4">
+                        {features.map(f => (
+                            <div key={f.title} className="flex items-start gap-3">
+                                <div className="mt-0.5 flex-shrink-0 rounded-lg bg-white/10 p-2">{f.icon}</div>
+                                <div>
+                                    <p className="font-semibold text-sm">{f.title}</p>
+                                    <p className="text-white/60 text-sm">{f.desc}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Auth form card */}
+                <div className="w-full lg:w-1/2 max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8">
+                <div className="flex items-center gap-2 mb-6 justify-center lg:hidden">
                     <img src="/logo.png" alt="Team Shuffle Logo" className="w-8 h-8" />
                     <span className="font-bold text-xl text-green-900 dark:text-white">Team Shuffle</span>
                 </div>
@@ -182,6 +218,8 @@ const AuthPage: React.FC = () => {
                         Use without an account
                     </button>
                 </div>
+            </div>
+
             </div>
         </div>
     );
