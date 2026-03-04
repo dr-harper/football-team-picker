@@ -1,5 +1,12 @@
 # Team Shuffle Changelog
 
+## v1.1.0 - 4th March 2026
+
+### Features:
+- 🏠 **Home banner** — context-aware banner below the header on the team generator page: unauthenticated users see sign-in/create-account CTAs; logged-in users see their next upcoming game (league, title, date/time) or a league count summary, with a quick link to the Dashboard
+
+---
+
 ## v1.0.0 - 4th March 2026
 
 ### Features:

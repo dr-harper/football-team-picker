@@ -30,9 +30,9 @@ interface SettingsContextValue {
     aiInputRef: React.RefObject<HTMLInputElement | null>;
     handleGeminiKeySave: () => Promise<void>;
 
-    // Dark Mode
-    darkMode: boolean;
-    setDarkMode: (mode: boolean) => void;
+    // Theme
+    theme: string;
+    setTheme: (theme: string) => void;
 
     // Notifications
     notifications: { id: number; message: string }[];
@@ -80,18 +80,16 @@ export const SettingsProvider: React.FC<{
     // AI on/off toggle
     const [aiOn, setAiOnState] = useState(() => localStorage.getItem('aiOn') !== 'false');
 
-    // Dark Mode
-    const [darkMode, setDarkModeState] = useState(() => {
-        const stored = localStorage.getItem('darkMode');
-        return stored ? stored === 'true' : true;
-    });
+    // Theme
+    const [theme, setThemeState] = useState(() => localStorage.getItem('theme') || 'dark');
 
     // --- localStorage persistence ---
     useEffect(() => { localStorage.setItem('selectedLocation', selectedLocation); }, [selectedLocation]);
     useEffect(() => {
-        document.documentElement.classList.toggle('dark', darkMode);
-        localStorage.setItem('darkMode', String(darkMode));
-    }, [darkMode]);
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+        localStorage.setItem('theme', theme);
+    }, [theme]);
     useEffect(() => { localStorage.setItem('aiCustomInstructions', aiCustomInstructions); }, [aiCustomInstructions]);
     useEffect(() => { localStorage.setItem('aiOn', String(aiOn)); }, [aiOn]);
 
@@ -132,7 +130,7 @@ export const SettingsProvider: React.FC<{
         setAICustomInstructionsState(instructions);
     };
 
-    const setDarkMode = (mode: boolean) => setDarkModeState(mode);
+    const setTheme = (t: string) => setThemeState(t);
 
     // --- Throttle guards ---
     const locationThrottleRef = useRef(0);
@@ -219,8 +217,8 @@ export const SettingsProvider: React.FC<{
         geminiKeyError,
         aiInputRef,
         handleGeminiKeySave,
-        darkMode,
-        setDarkMode,
+        theme,
+        setTheme,
         notifications,
         removeNotification,
         addNotification,

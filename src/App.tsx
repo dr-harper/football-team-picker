@@ -5,6 +5,7 @@ import Notification from './components/Notification';
 import Footer from './components/Footer';
 import FloatingFooter from './components/FloatingFooter';
 import HeaderBar from './components/HeaderBar';
+import HomeBanner from './components/HomeBanner';
 import PlayerInput from './components/PlayerInput';
 import PlaceholderPitch from './components/PlaceholderPitch';
 import TeamSetupCard from './components/TeamSetupCard';
@@ -209,7 +210,9 @@ const FootballTeamPickerInner = () => {
                     </div>
                 )}
 
-                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 foldable-grid mt-4">
+                <div className="max-w-6xl mx-auto mt-4 space-y-6">
+                <HomeBanner />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 foldable-grid">
                     <div className="space-y-4">
                         <PlayerInput
                             playersText={playersText}
@@ -256,6 +259,7 @@ const FootballTeamPickerInner = () => {
                             </>
                         )}
                     </div>
+                </div>
                 </div>
             </div>
 
