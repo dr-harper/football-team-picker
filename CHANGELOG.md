@@ -1,65 +1,53 @@
-# Changelog
+# Team Shuffle Changelog
 
-All notable changes to this project will be documented in this file.
+## v1.0.0 - 4th March 2026
 
-## [Unreleased] — 3rd March 2026
+### Features:
+- 🔐 **Auth & Leagues** — sign up with email or Google, create a league, invite others with a shareable join code
+- 📅 **Game management** — schedule games within a league, set location, track player availability (in / maybe / out)
+- 🔀 **3-step wizard** — game page guides admins through Availability → Teams → Match with a progress bar
+- ⚽ **Goal scorers & assists** — tally goals and assists per player during or after a game
+- 🏅 **Man of the Match** — award MOTM from participating players
+- 📊 **League stats** — top scorers, win rate leaderboard, attendance table, MOTM podium with All-time / This Year / Last Month filter
+- 👤 **My Stats** — personal highlight card (Games / Goals / Assists / Win Rate / MOTM) on the league lobby
+- 👥 **Guest players** — add non-member guests to games with their own availability tracking
+- 📸 **Image export** — share team sheets as images with game context header and weather
+- 🌤️ **Weather** — automatic forecast for scheduled game locations
+- 📍 **Location map** — Leaflet map preview on game pages
+- 🔗 **Short game codes** — 6-character shareable codes in URLs; falls back to Firestore IDs for older games
 
-### Features
-
-- **Firebase Auth & Leagues** — users can sign up, create a league with a shareable join code, and invite others
-- **Game management** — create scheduled games within a league, set location, and track player availability with in/out/maybe responses
-- **Short game codes** — each game gets a 6-character shareable code; URLs use the short code and fall back to Firestore IDs for older games
-- **3-step wizard flow** — game page guides admins through Availability → Teams → Match steps with a clickable progress bar; initial step is inferred from game state
-- **Goal scorers & assists** — admins can tally goals and assists per player during or after a game
-- **Man of the Match** — admin can award MOTM from participating players
-- **Stats tab** — league statistics page featuring:
-  - Personal highlight card (Games / Goals / Assists / Win Rate / MOTM) for the signed-in user
-  - Goal contributions leaderboard (goals + assists, with hat-trick 🎩 badges)
-  - Win rate leaderboard with last-5 form guide (colour-coded W/D/L squares)
-  - Clean sheets leaderboard
-  - Attendance table with colour-coded percentages
-  - Player of the Match podium
-  - All-time / This Year / Last Month filter
-- **My Stats sidebar** — personal stats widget on the Upcoming tab linking through to the full stats page
-- **Calendar picker** — date/time picker for scheduling games
-- **Location map** — Leaflet map on game pages when a location is set
-- **Seed script** — `npx tsx scripts/seed.ts` creates a Dev League with 10 completed historical games (goals, assists, MOTM) and 3 upcoming games
-
-### Fixes
-
-- Firestore security rules tightened: game writes restricted to the creating user; availability writes restricted to the owning user
-- `firebase.json` now includes a hosting block pointing at `dist/` with SPA rewrites
-- `.DS_Store` added to `.gitignore`
+### Fixes:
+- Firestore security rules tightened — game writes restricted to creator; availability writes to the owning user
+- SPA rewrites configured in `firebase.json` so direct navigation to any route works correctly
 
 ---
 
-## [Previous]
+## v0.3.0 - Feb 2026
 
-### Removed
-- Deleted unused `App.css` and `react.svg` template files
-- Removed unused `d3` dependency and `@types/node` devDependency
-- Removed `Math.floor(2)` dead code in team count
+### Features:
+- 🌍 **Locales** — 9 UK and Irish locales with locale-specific team name suffixes (~90 options)
+- 🎨 **UI refresh** — modernised 2025 styling with coherent button colour scheme
 
-### Refactored
-- **Shared types**: Extracted `Player`, `Team`, `TeamSetup`, and `PositionedPlayer` interfaces to `src/types.ts` for reuse across all modules
-- **Constants**: Extracted magic numbers (player limits, shirt number range, colours, timeout durations) to `src/constants/gameConstants.ts` and AI prompt strings / Warren phrases to `src/constants/aiPrompts.ts`
-- **Component decomposition**: Broke monolithic `App.tsx` (1043 lines) into focused modules:
-  - `PlayerInput` — textarea, player count, buttons, error display
-  - `PitchRenderer` — SVG pitch with positioned players
-  - `TeamSetupCard` — team card with colour pickers, AI summary, pitch
-  - `PlaceholderPitch` — empty state pitch display
-  - `teamGenerator.ts` — player parsing, shuffling, distribution, shirt numbers
-  - `imageExport.ts` — image generation, download, and share logic
-  - App.tsx reduced to ~250 lines of state and composition
-- **React Context**: Replaced 19-prop `HeaderBar` interface with `SettingsContext` (`SettingsProvider` + `useSettings` hook), moving location, AI, Warren mode, and dark mode state out of App.tsx
+---
 
-### Added
-- **Input validation**: `validatePlayerInput()` and `sanitisePlayerName()` utilities. Validates name length (max 30 characters), character pattern (letters, spaces, hyphens, apostrophes), and tag recognition. Inline errors shown in `PlayerInput`; Generate buttons disabled when validation errors are present
-- **Export UX improvements**: `isExporting` loading state with spinner animation in `FloatingFooter`. Export and share functions now return `{ success, error? }` and trigger notifications on failure
-- **Rate limiting**: `createThrottle()` utility. Geolocation throttled to 10s, Gemini key validation to 5s, AI summary generation to 10s
-- **Vitest test suite**: Replaced `node:test` runner with Vitest. 41 tests across 5 files:
-  - `colorUtils.test.ts` — colour similarity and palette selection
-  - `teamGenerator.test.ts` — parsing, validation, balancing, goalkeeper distribution, shirt numbers
-  - `teamNameGenerator.test.ts` — name generation, uniqueness, fallback
-  - `validation.test.ts` — name sanitisation, character validation, tag recognition
-  - `rateLimiter.test.ts` — throttle behaviour with fake timers
+## v0.2.0 - Jan 2026
+
+### Features:
+- 🤖 **AI team summaries** — Gemini-powered team name and summary generation
+- 🔄 **Player swap** — click any two players on the pitch to swap positions and teams
+- 🃏 **Warren mode** — commentary mode with custom phrases
+
+### Refactored:
+- Broke monolithic `App.tsx` into focused components — `PlayerInput`, `PitchRenderer`, `TeamSetupCard`, `teamGenerator.ts`, `imageExport.ts`
+- Extracted shared types to `src/types.ts` and constants to `src/constants/`
+- Replaced 19-prop `HeaderBar` with `SettingsContext`
+
+---
+
+## v0.1.0 - Dec 2025
+
+### Features:
+- ⚽ **Team generator** — paste player names, generate balanced teams with shirt numbers
+- 🖼️ **Image export** — download or share team sheets as PNG
+- ✅ **Input validation** — player name sanitisation with inline error display
+- 🧪 **Tests** — 41 Vitest tests across team generation, validation, colour utils, and rate limiting

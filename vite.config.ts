@@ -2,6 +2,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import { readFileSync } from "fs";
+import { resolve } from "path";
+import packageJson from "./package.json";
 
 /**
  * XOR-obfuscate the Gemini key so it doesn't appear as plain text in the
@@ -21,6 +24,11 @@ function obfuscateKey(key: string): string {
 const rawKey = process.env.VITE_GEMINI_KEY || "";
 const proxyUrl = process.env.VITE_AI_PROXY_URL || "";
 
+const changelog = (() => {
+  try { return readFileSync(resolve(__dirname, "CHANGELOG.md"), "utf-8"); }
+  catch { return "# Changelog\n\nNo changelog available."; }
+})();
+
 export default defineConfig({
   base: process.env.BASE_PATH || "/",
   plugins: [
@@ -35,6 +43,8 @@ export default defineConfig({
     __BUILD_VERSION__: JSON.stringify(
       process.env.BUILD_VERSION || Math.floor(Date.now() / 1000).toString()
     ),
+    __APP_VERSION__: JSON.stringify(packageJson.version),
+    __CHANGELOG__: JSON.stringify(changelog),
     __GEMINI_KEY_OBF__: JSON.stringify(rawKey ? obfuscateKey(rawKey) : ""),
     __AI_PROXY_URL__: JSON.stringify(proxyUrl),
   },
