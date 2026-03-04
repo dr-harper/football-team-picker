@@ -238,7 +238,14 @@ const AuthPage: React.FC = () => {
                         </button>
                     </p>
 
-                    <div className="text-center mt-4">
+                    <div className="text-center mt-4 flex items-center justify-center gap-4">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="text-sm text-gray-500 dark:text-gray-400 hover:underline"
+                        >
+                            ← Back
+                        </button>
+                        <span className="text-gray-300 dark:text-gray-600">·</span>
                         <button
                             onClick={() => navigate('/')}
                             className="text-sm text-gray-500 dark:text-gray-400 hover:underline"
