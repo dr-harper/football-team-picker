@@ -79,8 +79,8 @@ exports.joinOg = onRequest(
         const safeDesc = escapeAttr(ogDescription);
 
         // Try to fetch the SPA's index.html so the page also works for real users
-        // Use the request's own host so preview channels serve their own assets
-        const host = req.headers.host || new URL(SITE_URL).host;
+        // Firebase Hosting rewrites pass the original hostname in x-forwarded-host
+        const host = req.headers['x-forwarded-host'] || req.headers.host || new URL(SITE_URL).host;
         let html = await getIndexHtml(host);
 
         if (html) {
