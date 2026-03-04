@@ -148,7 +148,9 @@ const AuthPage: React.FC = () => {
                     )}
 
                     <h2 className="text-2xl font-bold text-center mb-6 text-green-900 dark:text-white">
-                        {isLogin ? 'Sign In' : 'Create Account'}
+                        {pendingLeagueName
+                            ? (isLogin ? 'Sign in to join' : 'Create account to join')
+                            : (isLogin ? 'Sign In' : 'Create Account')}
                     </h2>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -245,13 +247,17 @@ const AuthPage: React.FC = () => {
                         >
                             ← Back
                         </button>
-                        <span className="text-gray-300 dark:text-gray-600">·</span>
-                        <button
-                            onClick={() => navigate('/')}
-                            className="text-sm text-gray-500 dark:text-gray-400 hover:underline"
-                        >
-                            Use without an account
-                        </button>
+                        {!pendingLeagueName && (
+                            <>
+                                <span className="text-gray-300 dark:text-gray-600">·</span>
+                                <button
+                                    onClick={() => navigate('/')}
+                                    className="text-sm text-gray-500 dark:text-gray-400 hover:underline"
+                                >
+                                    Use without an account
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
 
