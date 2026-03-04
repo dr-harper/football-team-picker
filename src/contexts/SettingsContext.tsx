@@ -81,7 +81,10 @@ export const SettingsProvider: React.FC<{
     const [aiOn, setAiOnState] = useState(() => localStorage.getItem('aiOn') !== 'false');
 
     // Theme
-    const [theme, setThemeState] = useState(() => localStorage.getItem('theme') || 'dark');
+    const [theme, setThemeState] = useState(() => {
+        const stored = localStorage.getItem('theme');
+        return (!stored || stored === 'default') ? 'dark' : stored;
+    });
 
     // --- localStorage persistence ---
     useEffect(() => { localStorage.setItem('selectedLocation', selectedLocation); }, [selectedLocation]);
