@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { ArrowLeftRight } from 'lucide-react';
 import PlayerIcon from './PlayerIcon';
 import { Team, PositionedPlayer } from '../types';
 import { positionsByTeamSizeAndSide } from '../constants/positionsConstants';
@@ -66,7 +67,7 @@ const PitchRenderer: React.FC<PitchRendererProps> = React.memo(({
                     tabIndex={0}
                     role="button"
                     aria-label={`${position.player.name}${position.player.isGoalkeeper ? ', Goalkeeper' : ''}. Click to select for swap`}
-                    className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center ${playerRingClass(selectedPlayer, setupIndex, teamIndex, position.playerIndex)}`}
+                    className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform ${playerRingClass(selectedPlayer, setupIndex, teamIndex, position.playerIndex)}`}
                 >
                     <PlayerIcon
                         color={team.color}
@@ -87,6 +88,11 @@ const PitchRenderer: React.FC<PitchRendererProps> = React.memo(({
             <div className="absolute top-1/2 right-0 w-1 h-12 sm:w-2 sm:h-16 bg-white transform -translate-y-1/2"></div>
             <div className="absolute top-1/2 left-0 w-8 h-24 sm:w-12 sm:h-32 border-2 border-white border-l-0 transform -translate-y-1/2"></div>
             <div className="absolute top-1/2 right-0 w-8 h-24 sm:w-12 sm:h-32 border-2 border-white border-r-0 transform -translate-y-1/2"></div>
+
+            {/* Swap hint icon */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                <ArrowLeftRight className="w-4 h-4 sm:w-5 sm:h-5 text-white/30" />
+            </div>
 
             {renderTeamPlayers(teams[0], 0, true)}
             {renderTeamPlayers(teams[1], 1, false)}

@@ -847,9 +847,6 @@ const GamePage: React.FC = () => {
                                         selectedPlayer={selectedPlayer}
                                         onPlayerClick={(_, tIdx, pIdx) => handlePlayerClick(0, tIdx, pIdx)}
                                     />
-                                    <p className="text-center text-green-300 text-xs mt-3 mb-4">
-                                        Click any two players to swap their positions
-                                    </p>
                                 </div>{/* end team-setup-0 */}
                                 {(isPast || game.status === 'in_progress') && isAdmin && (
                                     <div className="border-t border-white/10 pt-4">

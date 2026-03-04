@@ -208,11 +208,7 @@ const FootballTeamPickerInner = () => {
                     </div>
                 )}
 
-                <p className="text-center text-green-300 text-sm mb-6 mt-4">
-                    Click any two players to swap their positions on the pitch
-                </p>
-
-                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 foldable-grid">
+                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 foldable-grid mt-4">
                     <div className="space-y-4">
                         <PlayerInput
                             playersText={playersText}
