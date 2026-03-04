@@ -13,7 +13,7 @@ interface NextGame {
 const formatGameDate = (timestamp: number): string => {
     const d = new Date(timestamp);
     const day = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-    const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     return `${day}, ${time}`;
 };
 
