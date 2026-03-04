@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ArrowLeftRight } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import Notification from './components/Notification';
 import Footer from './components/Footer';
@@ -233,6 +234,11 @@ const FootballTeamPickerInner = () => {
                         {teamSetups.length === 0 ? (
                             <PlaceholderPitch />
                         ) : (
+                            <>
+                                <p className="text-center text-green-300/70 text-xs mb-3 flex items-center justify-center gap-1.5">
+                                    <ArrowLeftRight className="w-3 h-3" />
+                                    Click any two players to swap their positions
+                                </p>
                             <AnimatePresence>
                                 {teamSetups.map((setup, setupIndex) => (
                                     <TeamSetupCard
@@ -247,6 +253,7 @@ const FootballTeamPickerInner = () => {
                                     />
                                 ))}
                             </AnimatePresence>
+                            </>
                         )}
                     </div>
                 </div>

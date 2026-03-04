@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, XCircle, HelpCircle, Shuffle, Trophy, Users, Check, UserPlus, Star, Goal, Plus, Minus, Award, Download, Share2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, CheckCircle, XCircle, HelpCircle, Shuffle, Trophy, Users, Check, UserPlus, Star, Goal, Plus, Minus, Award, Download, Share2, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -841,6 +841,12 @@ const GamePage: React.FC = () => {
                                             {generatedTeams[1].name}
                                         </h3>
                                     </div>
+                                    {!isCompleted && (
+                                        <p className="text-center text-green-300/70 text-xs mb-3 flex items-center justify-center gap-1.5">
+                                            <ArrowLeftRight className="w-3 h-3" />
+                                            Click any two players to swap their positions
+                                        </p>
+                                    )}
                                     <PitchRenderer
                                         teams={generatedTeams}
                                         setupIndex={0}
