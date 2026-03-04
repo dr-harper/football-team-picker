@@ -11,8 +11,7 @@ initializeApp();
 const SITE_URL = 'https://teamshuffle.app';
 const OG_IMAGE = `${SITE_URL}/teamshuffle-preview.jpg`;
 
-let indexHtmlCache = null;
-let cacheTime = 0;
+const indexHtmlCache = new Map(); // host → { html, time }
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 function escapeAttr(str) {
@@ -23,16 +22,17 @@ function escapeAttr(str) {
         .replace(/>/g, '&gt;');
 }
 
-async function getIndexHtml() {
-    if (indexHtmlCache && Date.now() - cacheTime < CACHE_TTL_MS) {
-        return indexHtmlCache;
+async function getIndexHtml(host) {
+    const cached = indexHtmlCache.get(host);
+    if (cached && Date.now() - cached.time < CACHE_TTL_MS) {
+        return cached.html;
     }
     try {
-        const res = await fetch(`${SITE_URL}/index.html`);
+        const res = await fetch(`https://${host}/index.html`);
         if (!res.ok) return null;
-        indexHtmlCache = await res.text();
-        cacheTime = Date.now();
-        return indexHtmlCache;
+        const html = await res.text();
+        indexHtmlCache.set(host, { html, time: Date.now() });
+        return html;
     } catch {
         return null;
     }
@@ -79,7 +79,9 @@ exports.joinOg = onRequest(
         const safeDesc = escapeAttr(ogDescription);
 
         // Try to fetch the SPA's index.html so the page also works for real users
-        let html = await getIndexHtml();
+        // Use the request's own host so preview channels serve their own assets
+        const host = req.headers.host || new URL(SITE_URL).host;
+        let html = await getIndexHtml(host);
 
         if (html) {
             // Replace static OG tags with dynamic ones
