@@ -44,8 +44,9 @@ const JoinPage: React.FC = () => {
         }
 
         // Already a member — redirect straight to league
-        if (league.memberIds.includes(user.uid)) {
-            navigate(`/league/${league.joinCode}`);
+        const memberIds = league.memberIds ?? [];
+        if (memberIds.includes(user.uid)) {
+            navigate(`/league/${league.joinCode ?? league.id}`);
         }
     }, [authLoading, fetchingLeague, user, league, code, navigate]);
 
@@ -76,7 +77,8 @@ const JoinPage: React.FC = () => {
     }
 
     // Confirmation card — shown when logged in and not yet a member
-    const awaitingConfirm = !authLoading && !fetchingLeague && !!user && !!league && !league.memberIds.includes(user.uid) && !joining;
+    const memberIds = league?.memberIds ?? [];
+    const awaitingConfirm = !authLoading && !fetchingLeague && !!user && !!league && !memberIds.includes(user.uid) && !joining;
 
     if (awaitingConfirm) {
         return (

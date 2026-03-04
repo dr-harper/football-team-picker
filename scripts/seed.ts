@@ -38,6 +38,7 @@ const auth = getAuth();
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const ADMIN_EMAIL = 'test@teamshuffle.app';
+const EXTRA_MEMBER_EMAILS = ['mikeylharper@gmail.com'];
 const LEAGUE_NAME = '⚽ Dev League';
 
 const FAKE_PLAYERS = [
@@ -136,12 +137,24 @@ async function main() {
         console.log('   Cleaned up. Re-creating …');
     }
 
+    // Resolve extra member UIDs
+    const extraUids: string[] = [];
+    for (const email of EXTRA_MEMBER_EMAILS) {
+        try {
+            const u = await auth.getUserByEmail(email);
+            extraUids.push(u.uid);
+            console.log(`✅  Found extra member: ${email} (${u.uid})`);
+        } catch {
+            console.warn(`⚠️   Extra member not found (skipping): ${email}`);
+        }
+    }
+
     // Create league
     const leagueRef = await db.collection('leagues').add({
         name: LEAGUE_NAME,
         joinCode: joinCode(),
         createdBy: adminUser.uid,
-        memberIds: [adminUser.uid],
+        memberIds: [adminUser.uid, ...extraUids],
         createdAt: Date.now(),
     });
     console.log(`✅  Created league: ${leagueRef.id}`);

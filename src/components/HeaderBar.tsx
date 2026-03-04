@@ -9,7 +9,7 @@ const HeaderBar: React.FC = () => {
     const navigate = useNavigate();
 
     return (
-        <header className="bg-green-900 text-white px-4 py-3 flex items-center justify-between relative z-10">
+        <header className="bg-green-900 dark:bg-green-950 text-white px-4 py-3 flex items-center justify-between relative z-10">
             <div className="flex items-center gap-2">
                 <img src="/logo.png" alt="Team Shuffle Logo" className="w-8 h-8" />
                 <span className="font-bold text-xl">Team Shuffle</span>
