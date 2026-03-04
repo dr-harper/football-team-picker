@@ -90,7 +90,7 @@ const PitchRenderer: React.FC<PitchRendererProps> = React.memo(({
             <div className="absolute top-1/2 right-0 w-8 h-24 sm:w-12 sm:h-32 border-2 border-white border-r-0 transform -translate-y-1/2"></div>
 
             {/* Swap hint icon */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+            <div className="swap-hint absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
                 <ArrowLeftRight className="w-4 h-4 sm:w-5 sm:h-5 text-white/30" />
             </div>
 
