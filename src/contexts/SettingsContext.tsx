@@ -81,12 +81,13 @@ export const SettingsProvider: React.FC<{
     const [aiOn, setAiOnState] = useState(() => localStorage.getItem('aiOn') !== 'false');
 
     // Theme
-    const [theme, setThemeState] = useState(() => localStorage.getItem('theme') || 'default');
+    const [theme, setThemeState] = useState(() => localStorage.getItem('theme') || 'dark');
 
     // --- localStorage persistence ---
     useEffect(() => { localStorage.setItem('selectedLocation', selectedLocation); }, [selectedLocation]);
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.classList.toggle('dark', theme === 'dark');
         localStorage.setItem('theme', theme);
     }, [theme]);
     useEffect(() => { localStorage.setItem('aiCustomInstructions', aiCustomInstructions); }, [aiCustomInstructions]);
