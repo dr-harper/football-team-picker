@@ -5,6 +5,7 @@ import Notification from './components/Notification';
 import Footer from './components/Footer';
 import FloatingFooter from './components/FloatingFooter';
 import HeaderBar from './components/HeaderBar';
+import HomeBanner from './components/HomeBanner';
 import PlayerInput from './components/PlayerInput';
 import PlaceholderPitch from './components/PlaceholderPitch';
 import TeamSetupCard from './components/TeamSetupCard';
@@ -200,6 +201,7 @@ const FootballTeamPickerInner = () => {
     return (
         <>
             <HeaderBar />
+            <HomeBanner />
             <div className="flex-grow p-4 sm:p-6">
                 {notifications.length > 0 && (
                     <div aria-live="polite" className="fixed bottom-24 right-4 flex flex-col items-end space-y-2 z-50">
