@@ -60,7 +60,7 @@ export default function TermsPage() {
 
                     <section>
                         <h2 className="text-white font-semibold text-base mb-2">Contact</h2>
-                        <p>Questions about these terms: <a href="mailto:mikeylharper@gmail.com" className="text-green-400 hover:text-white transition-colors">mikeylharper@gmail.com</a></p>
+                        <p>Questions about these terms: <a href="mailto:teamshuffle@mlharper.co.uk" className="text-green-400 hover:text-white transition-colors">teamshuffle@mlharper.co.uk</a></p>
                     </section>
                 </div>
             </div>
