@@ -1736,11 +1736,15 @@ const LeaguePage: React.FC = () => {
                         return `${((hi / range) * 100).toFixed(1)}%`;
                     };
 
+                    // Negate aggregate series: up = collected/good, down = outstanding/bad
+                    const negateSeries = (series: { date: number; balance: number }[]) =>
+                        series.map(p => ({ ...p, balance: -p.balance }));
+
                     // Last 20 completed games window
                     const last20Start = completedGames.length > 0
                         ? completedGames[Math.min(completedGames.length - 1, 19)].date
                         : undefined;
-                    const aggregateSeries = buildWeeklySeries(undefined, last20Start);
+                    const aggregateSeries = negateSeries(buildWeeklySeries(undefined, last20Start));
 
                     return (
                         <div className="space-y-4">
@@ -1765,17 +1769,17 @@ const LeaguePage: React.FC = () => {
                                             </div>
                                         </div>
                                         <div className="px-4 pt-3 pb-1">
-                                            <div className="text-[9px] text-white/25 uppercase tracking-wide mb-1">Outstanding balance — last 20 games</div>
+                                            <div className="text-[9px] text-white/25 uppercase tracking-wide mb-1">Balance — up = collected · down = outstanding</div>
                                             <ResponsiveContainer width="100%" height={90}>
                                                 <AreaChart data={aggregateSeries} margin={{ top: 6, right: 6, bottom: 0, left: 6 }}>
                                                     <defs>
                                                         <linearGradient id="aggLineGrad" x1="0" y1="0" x2="0" y2="1">
-                                                            <stop offset={aggZeroPct} stopColor="#ef4444" />
                                                             <stop offset={aggZeroPct} stopColor="#22c55e" />
+                                                            <stop offset={aggZeroPct} stopColor="#ef4444" />
                                                         </linearGradient>
                                                         <linearGradient id="aggAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                                                            <stop offset={aggZeroPct} stopColor="#ef4444" stopOpacity={0.2} />
-                                                            <stop offset={aggZeroPct} stopColor="#22c55e" stopOpacity={0.08} />
+                                                            <stop offset={aggZeroPct} stopColor="#22c55e" stopOpacity={0.15} />
+                                                            <stop offset={aggZeroPct} stopColor="#ef4444" stopOpacity={0.15} />
                                                         </linearGradient>
                                                     </defs>
                                                     <XAxis dataKey="date" hide />
@@ -1788,7 +1792,9 @@ const LeaguePage: React.FC = () => {
                                                             return (
                                                                 <div className="bg-black/80 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs">
                                                                     <div className="text-white/40 mb-0.5">{new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div>
-                                                                    <div className={v <= 0 ? 'text-green-400' : 'text-red-400'}>£{Math.abs(v).toFixed(2)} outstanding</div>
+                                                                    <div className={v >= 0 ? 'text-green-400' : 'text-red-400'}>
+                                                                        £{Math.abs(v).toFixed(2)} {v >= 0 ? 'collected' : 'outstanding'}
+                                                                    </div>
                                                                 </div>
                                                             );
                                                         }}
@@ -1800,13 +1806,13 @@ const LeaguePage: React.FC = () => {
                                                         stroke="url(#aggLineGrad)"
                                                         strokeWidth={1.8}
                                                         fill="url(#aggAreaGrad)"
-                                                        dot={{ r: 2.5, fill: '#ef4444', strokeWidth: 0 }}
+                                                        dot={{ r: 2.5, fill: 'url(#aggLineGrad)', strokeWidth: 0 }}
                                                         activeDot={{ r: 4, strokeWidth: 0 }}
                                                     />
                                                 </AreaChart>
                                             </ResponsiveContainer>
                                             <div className="flex justify-end text-[9px] text-white/30 pb-2 pr-1">
-                                                <span>£{currentBalance.toFixed(0)} outstanding now</span>
+                                                <span>£{Math.abs(currentBalance).toFixed(0)} {currentBalance >= 0 ? 'ahead' : 'outstanding'}</span>
                                             </div>
                                         </div>
                                     </div>
