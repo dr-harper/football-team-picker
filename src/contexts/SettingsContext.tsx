@@ -30,10 +30,6 @@ interface SettingsContextValue {
     aiInputRef: React.RefObject<HTMLInputElement | null>;
     handleGeminiKeySave: () => Promise<void>;
 
-    // Theme
-    theme: string;
-    setTheme: (theme: string) => void;
-
     // Notifications
     notifications: { id: number; message: string }[];
     removeNotification: (id: number) => void;
@@ -80,19 +76,8 @@ export const SettingsProvider: React.FC<{
     // AI on/off toggle
     const [aiOn, setAiOnState] = useState(() => localStorage.getItem('aiOn') !== 'false');
 
-    // Theme
-    const [theme, setThemeState] = useState(() => {
-        const stored = localStorage.getItem('theme');
-        return (!stored || stored === 'default') ? 'dark' : stored;
-    });
-
     // --- localStorage persistence ---
     useEffect(() => { localStorage.setItem('selectedLocation', selectedLocation); }, [selectedLocation]);
-    useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-        document.documentElement.classList.toggle('dark', theme === 'dark');
-        localStorage.setItem('theme', theme);
-    }, [theme]);
     useEffect(() => { localStorage.setItem('aiCustomInstructions', aiCustomInstructions); }, [aiCustomInstructions]);
     useEffect(() => { localStorage.setItem('aiOn', String(aiOn)); }, [aiOn]);
 
@@ -132,8 +117,6 @@ export const SettingsProvider: React.FC<{
     const setAICustomInstructions = (instructions: string) => {
         setAICustomInstructionsState(instructions);
     };
-
-    const setTheme = (t: string) => setThemeState(t);
 
     // --- Throttle guards ---
     const locationThrottleRef = useRef(0);
@@ -220,8 +203,6 @@ export const SettingsProvider: React.FC<{
         geminiKeyError,
         aiInputRef,
         handleGeminiKeySave,
-        theme,
-        setTheme,
         notifications,
         removeNotification,
         addNotification,

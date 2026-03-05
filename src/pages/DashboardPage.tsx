@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Plus, Users, Calendar, LogOut, Trophy, ArrowRight, Copy, Check, Trash2, Goal, Star } from 'lucide-react';
+import { Plus, Users, Calendar, Trophy, ArrowRight, Copy, Check, Trash2, Goal, Star, Pencil } from 'lucide-react';
+import AppHeader from '../components/AppHeader';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserLeagues, createLeague, joinLeagueByCode, deleteLeague } from '../utils/firestore';
 import { League, Game } from '../types';
 import { getLeagueGames } from '../utils/firestore';
 import { geocodeLocation, GeoResult } from '../utils/weather';
+import { PLAYER_POSITIONS } from '../constants/playerPositions';
+import { PLAYER_TAGS } from '../constants/playerTags';
+
+const MAX_TAGS = 3;
 
 interface LeagueStats {
     topScorer: { name: string; goals: number } | null;
@@ -15,13 +22,21 @@ interface LeagueStats {
 }
 
 const DashboardPage: React.FC = () => {
-    const { user, logout } = useAuth();
+    const { user, needsPlayerTags, updatePlayerTags, updateBio } = useAuth();
     const navigate = useNavigate();
     const [leagues, setLeagues] = useState<League[]>([]);
     const [upcomingGames, setUpcomingGames] = useState<Game[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showJoinModal, setShowJoinModal] = useState(false);
+    const [playerProfile, setPlayerProfile] = useState<{ tags: string[]; positions: string[]; hasSetTags: boolean; bio: string } | null>(null);
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [editPositions, setEditPositions] = useState<string[]>([]);
+    const [editTags, setEditTags] = useState<string[]>([]);
+    const [editBio, setEditBio] = useState('');
+    const [savingProfile, setSavingProfile] = useState(false);
+    const [playerStats, setPlayerStats] = useState<{ goals: number; assists: number; motm: number; games: number } | null>(null);
+    const [playerBadges, setPlayerBadges] = useState<{ emoji: string; label: string }[]>([]);
     const [newLeagueName, setNewLeagueName] = useState('');
     const [newLeagueVenue, setNewLeagueVenue] = useState('');
     const [verifiedVenue, setVerifiedVenue] = useState<GeoResult | null>(null);
@@ -35,7 +50,51 @@ const DashboardPage: React.FC = () => {
     useEffect(() => {
         if (!user) return;
         loadData();
+        loadPlayerProfile();
     }, [user]);
+
+    useEffect(() => {
+        if (needsPlayerTags) setIsEditingProfile(true);
+    }, [needsPlayerTags]);
+
+    const openEditProfile = (profile: { tags: string[]; positions: string[]; bio: string }) => {
+        setEditPositions(profile.positions);
+        setEditTags(profile.tags);
+        setEditBio(profile.bio);
+        setIsEditingProfile(true);
+    };
+
+    const handleSaveProfile = async () => {
+        if (editTags.length !== MAX_TAGS || editPositions.length === 0) return;
+        setSavingProfile(true);
+        try {
+            await updatePlayerTags(editTags, editPositions);
+            await updateBio(editBio.trim());
+            setPlayerProfile(prev => prev ? { ...prev, tags: editTags, positions: editPositions, bio: editBio.trim(), hasSetTags: true } : prev);
+            setIsEditingProfile(false);
+        } catch (err) {
+            console.error('[saveProfile]', err);
+        }
+        setSavingProfile(false);
+    };
+
+    const loadPlayerProfile = async () => {
+        if (!user) return;
+        try {
+            const snap = await getDoc(doc(db, 'users', user.uid));
+            if (snap.exists()) {
+                const data = snap.data();
+                setPlayerProfile({
+                    tags: data.playerTags ?? [],
+                    positions: data.preferredPositions ?? [],
+                    hasSetTags: data.hasSetTags === true,
+                    bio: data.bio ?? '',
+                });
+            }
+        } catch (err) {
+            console.error('[loadPlayerProfile]', err);
+        }
+    };
 
     const loadData = async () => {
         if (!user) return;
@@ -44,15 +103,18 @@ const DashboardPage: React.FC = () => {
             const userLeagues = await getUserLeagues(user.uid);
             setLeagues(userLeagues);
 
-            const allGames: Game[] = [];
+            const upcomingList: Game[] = [];
+            const allCompleted: Game[] = [];
             const statsMap = new Map<string, LeagueStats>();
 
             for (const league of userLeagues) {
                 const games = await getLeagueGames(league.id);
-                allGames.push(...games.filter(g => g.status !== 'completed'));
+                upcomingList.push(...games.filter(g => g.status !== 'completed'));
 
                 // Aggregate stats from completed games
                 const completed = games.filter(g => g.status === 'completed');
+                allCompleted.push(...completed);
+
                 const goalTotals = new Map<string, number>();
                 const motmTotals = new Map<string, number>();
                 for (const g of completed) {
@@ -72,9 +134,59 @@ const DashboardPage: React.FC = () => {
                 });
             }
 
-            allGames.sort((a, b) => a.date - b.date);
-            setUpcomingGames(allGames.slice(0, 5));
+            upcomingList.sort((a, b) => a.date - b.date);
+            setUpcomingGames(upcomingList.slice(0, 5));
             setLeagueStats(statsMap);
+
+            // Compute personal stats from all completed games
+            const displayName = user.displayName ?? '';
+            let goals = 0, assists = 0, motm = 0, gamesPlayed = 0;
+            for (const g of allCompleted) {
+                const inGame = g.teams?.some(t => t.players.some(p => p.name === displayName));
+                if (inGame) gamesPlayed++;
+                const scorerEntry = g.goalScorers?.find(s => s.name === displayName);
+                if (scorerEntry) goals += scorerEntry.goals;
+                const assisterEntry = g.assisters?.find(a => a.name === displayName);
+                if (assisterEntry) assists += assisterEntry.goals;
+                if (g.manOfTheMatch === displayName) motm++;
+            }
+            const stats = { goals, assists, motm, games: gamesPlayed };
+            setPlayerStats(stats);
+
+            // Compute badges
+            const badges: { emoji: string; label: string }[] = [];
+
+            const hasHatTrick = allCompleted.some(g =>
+                (g.goalScorers?.find(s => s.name === displayName)?.goals ?? 0) >= 3
+            );
+            if (hasHatTrick) badges.push({ emoji: '🎯', label: 'Hat-trick Hero' });
+            if (motm >= 5) badges.push({ emoji: '⭐', label: 'MOTM Machine' });
+            if (allCompleted.length > 0 && gamesPlayed / allCompleted.length >= 0.8) {
+                badges.push({ emoji: '📅', label: 'Ever Present' });
+            }
+            if (goals >= 10) badges.push({ emoji: '⚽', label: '10 Club' });
+
+            let wins = 0;
+            for (const g of allCompleted) {
+                if (!g.score || !g.teams) continue;
+                const inTeam1 = g.teams[0]?.players.some(p => p.name === displayName);
+                const inTeam2 = g.teams[1]?.players.some(p => p.name === displayName);
+                if (inTeam1 && g.score.team1 > g.score.team2) wins++;
+                else if (inTeam2 && g.score.team2 > g.score.team1) wins++;
+            }
+            if (wins >= 10) badges.push({ emoji: '🏆', label: 'Winner' });
+
+            const recentGamesPlayed = allCompleted
+                .filter(g => g.teams?.some(t => t.players.some(p => p.name === displayName)))
+                .sort((a, b) => b.date - a.date)
+                .slice(0, 3);
+            if (recentGamesPlayed.length === 3 && recentGamesPlayed.every(g =>
+                (g.goalScorers?.find(s => s.name === displayName)?.goals ?? 0) > 0
+            )) {
+                badges.push({ emoji: '🔥', label: 'On Fire' });
+            }
+
+            setPlayerBadges(badges);
         } catch (err) {
             console.error('[loadData]', err);
         }
@@ -154,11 +266,6 @@ const DashboardPage: React.FC = () => {
         }
     };
 
-    const handleLogout = async () => {
-        await logout();
-        navigate('/');
-    };
-
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
@@ -170,27 +277,7 @@ const DashboardPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
             {/* Header */}
-            <header className="bg-green-900 dark:bg-green-950 text-white p-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Link to="/" className="flex items-center gap-2">
-                        <img src="/logo.png" alt="Team Shuffle Logo" className="w-8 h-8" />
-                        <span className="font-bold text-xl">Team Shuffle</span>
-                    </Link>
-                </div>
-                <div className="flex items-center gap-3">
-                    <span className="text-sm text-green-300 hidden sm:inline">
-                        {user?.displayName || user?.email}
-                    </span>
-                    <Link to="/">
-                        <Button variant="ghost" size="sm" className="text-white text-xs">
-                            Quick Play
-                        </Button>
-                    </Link>
-                    <Button onClick={handleLogout} variant="ghost" size="icon" className="text-white">
-                        <LogOut className="w-5 h-5" />
-                    </Button>
-                </div>
-            </header>
+            <AppHeader />
 
             <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
                 {/* Welcome + Actions */}
@@ -213,6 +300,168 @@ const DashboardPage: React.FC = () => {
                         </Button>
                     </div>
                 </div>
+
+                {/* Player Profile Card */}
+                {playerProfile && (
+                    <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">My Profile</span>
+                            {!isEditingProfile && playerProfile.hasSetTags && (
+                                <button
+                                    onClick={() => openEditProfile(playerProfile)}
+                                    className="text-white/40 hover:text-white/70 transition-colors"
+                                    title="Edit player profile"
+                                >
+                                    <Pencil className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+
+                        {isEditingProfile ? (
+                            <div className="space-y-4">
+                                {/* Bio */}
+                                <div>
+                                    <p className="text-xs text-white/50 mb-2">Bio <span className="text-white/30">(optional, max 50 chars)</span></p>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={editBio}
+                                            onChange={e => setEditBio(e.target.value.slice(0, 50))}
+                                            placeholder='e.g. "Sunday league since 2015"'
+                                            className="w-full bg-white/10 border border-white/20 text-white placeholder-white/30 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-green-400 pr-12"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/30">{editBio.length}/50</span>
+                                    </div>
+                                </div>
+
+                                {/* Positions */}
+                                <div>
+                                    <p className="text-xs text-white/50 mb-2">Where do you prefer to play?</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {PLAYER_POSITIONS.map(({ emoji, label }) => {
+                                            const selected = editPositions.includes(label);
+                                            return (
+                                                <button
+                                                    key={label}
+                                                    onClick={() => setEditPositions(prev => selected ? prev.filter(p => p !== label) : [...prev, label])}
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
+                                                        selected
+                                                            ? 'bg-green-500 border-green-400 text-white ring-2 ring-green-400'
+                                                            : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/15'
+                                                    }`}
+                                                >
+                                                    <span>{emoji}</span><span>{label}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Tags */}
+                                <div>
+                                    <p className="text-xs text-white/50 mb-2">Pick {MAX_TAGS} tags that describe you <span className="text-green-400">({editTags.length}/{MAX_TAGS})</span></p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {PLAYER_TAGS.map(({ emoji, label }) => {
+                                            const selected = editTags.includes(label);
+                                            const atMax = editTags.length >= MAX_TAGS && !selected;
+                                            return (
+                                                <button
+                                                    key={label}
+                                                    onClick={() => {
+                                                        if (selected) setEditTags(prev => prev.filter(t => t !== label));
+                                                        else if (!atMax) setEditTags(prev => [...prev, label]);
+                                                    }}
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
+                                                        selected
+                                                            ? 'bg-green-500 border-green-400 text-white ring-2 ring-green-400'
+                                                            : atMax
+                                                            ? 'bg-white/5 border-white/10 text-white/25'
+                                                            : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/15'
+                                                    }`}
+                                                >
+                                                    <span>{emoji}</span><span>{label}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex items-center gap-3 pt-1">
+                                    <button
+                                        onClick={handleSaveProfile}
+                                        disabled={savingProfile || editTags.length !== MAX_TAGS || editPositions.length === 0}
+                                        className="bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                                    >
+                                        {savingProfile ? 'Saving…' : 'Save'}
+                                    </button>
+                                    {playerProfile.hasSetTags && (
+                                        <button
+                                            onClick={() => setIsEditingProfile(false)}
+                                            className="text-white/40 hover:text-white/60 text-sm transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ) : playerProfile.hasSetTags && playerProfile.tags.length > 0 ? (
+                            <div className="space-y-2.5">
+                                {playerProfile.positions.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {playerProfile.positions.map(pos => {
+                                            const posData = PLAYER_POSITIONS.find(p => p.label === pos);
+                                            return (
+                                                <span key={pos} className="inline-flex items-center gap-1 text-xs bg-green-600/40 border border-green-500/40 text-green-200 px-2.5 py-1 rounded-full">
+                                                    {posData?.emoji} {pos}
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                <div className="flex flex-wrap gap-1.5">
+                                    {playerProfile.tags.map(tag => {
+                                        const tagData = PLAYER_TAGS.find(t => t.label === tag);
+                                        return (
+                                            <span key={tag} className="inline-flex items-center gap-1 text-xs bg-white/10 border border-white/15 text-white/80 px-2.5 py-1 rounded-full">
+                                                {tagData?.emoji} {tag}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                                {playerProfile.bio && (
+                                    <p className="text-sm italic text-white/60">"{playerProfile.bio}"</p>
+                                )}
+                                {playerStats && playerStats.games > 0 ? (
+                                    <div className="flex flex-wrap gap-3 pt-0.5">
+                                        <span className="text-sm text-white/70">⚽ {playerStats.goals}</span>
+                                        <span className="text-sm text-white/70">🅰️ {playerStats.assists}</span>
+                                        <span className="text-sm text-white/70">⭐ {playerStats.motm}</span>
+                                        <span className="text-sm text-white/70">🎮 {playerStats.games}</span>
+                                    </div>
+                                ) : playerStats !== null ? (
+                                    <p className="text-xs text-white/35 italic">Play some games to earn stats</p>
+                                ) : null}
+                                {playerBadges.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                        {playerBadges.map(badge => (
+                                            <span key={badge.label} className="inline-flex items-center gap-1 text-xs bg-yellow-500/15 border border-yellow-500/25 text-yellow-300 px-2.5 py-1 rounded-full">
+                                                {badge.emoji} {badge.label}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => openEditProfile({ tags: [], positions: [], bio: '' })}
+                                className="text-sm text-green-400 hover:text-green-300 transition-colors"
+                            >
+                                Set up your player profile →
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 {/* Upcoming Games */}
                 {upcomingGames.length > 0 && (

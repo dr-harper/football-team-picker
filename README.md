@@ -1,4 +1,4 @@
-# TeamShuffle
+The# TeamShuffle
 
 A React web app built to simplify picking 5-a-side football teams. The app ensures balanced teams by considering player roles and provides fun, shareable outputs.
 

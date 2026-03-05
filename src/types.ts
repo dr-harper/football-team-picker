@@ -30,6 +30,20 @@ export interface PositionedPlayer {
 
 // --- Firebase / League types ---
 
+export interface PaymentRecord {
+    amount: number;
+    date: number; // timestamp
+}
+
+export interface LeagueExpense {
+    id: string;
+    playerName: string;
+    amount: number;
+    description: string;
+    date: number;
+    status: 'pending' | 'approved' | 'rejected';
+}
+
 export interface League {
     id: string;
     name: string;
@@ -40,6 +54,10 @@ export interface League {
     defaultVenue?: string;
     defaultVenueLat?: number;
     defaultVenueLon?: number;
+    adminIds?: string[];               // promoted admins (subset of memberIds, excludes owner)
+    defaultCostPerPerson?: number;
+    payments?: Record<string, PaymentRecord[]>; // playerName → dated payment history
+    expenses?: LeagueExpense[];                 // player-submitted expenses awaiting admin approval
 }
 
 export type GameStatus = 'scheduled' | 'in_progress' | 'completed';
@@ -74,6 +92,8 @@ export interface Game {
     assisters?: GoalScorer[];      // assist tally per player (reuses GoalScorer shape)
     manOfTheMatch?: string;        // player name picked by admin
     gameCode?: string;             // short 6-char shareable code
+    costPerPerson?: number;        // overrides league default; undefined = use league default
+    attendees?: string[];          // player names who actually attended; set by admin post-game
     createdBy: string;
     createdAt: number;
 }

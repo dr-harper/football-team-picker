@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const SetNameModal: React.FC = () => {
-    const { user, needsDisplayName, updateDisplayName } = useAuth();
+    const { user, needsDisplayName, needsPlayerTags, updateDisplayName } = useAuth();
+    const navigate = useNavigate();
     const [name, setName] = useState(user?.displayName || '');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -17,6 +19,9 @@ const SetNameModal: React.FC = () => {
         setSaving(true);
         try {
             await updateDisplayName(trimmed);
+            if (needsPlayerTags) {
+                navigate('/profile/setup');
+            }
         } catch {
             setError('Something went wrong — please try again');
         }

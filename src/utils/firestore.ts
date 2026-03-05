@@ -14,7 +14,7 @@ import {
     Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { League, Game, PlayerAvailability, GameStatus, GameScore, Team, GoalScorer } from '../types';
+import { League, Game, PlayerAvailability, GameStatus, GameScore, Team, GoalScorer, PaymentRecord, LeagueExpense } from '../types';
 
 // ---- Leagues ----
 
@@ -132,6 +132,7 @@ export async function createGame(
     location?: string,
     locationLat?: number,
     locationLon?: number,
+    costPerPerson?: number,
 ): Promise<Game> {
     const gameCode = generateJoinCode();
     const data: Omit<Game, 'id'> = {
@@ -145,6 +146,7 @@ export async function createGame(
         ...(location ? { location } : {}),
         ...(locationLat !== undefined ? { locationLat } : {}),
         ...(locationLon !== undefined ? { locationLon } : {}),
+        ...(costPerPerson !== undefined ? { costPerPerson } : {}),
     };
     const ref = await addDoc(collection(db, 'games'), data);
     return { id: ref.id, ...data };
@@ -234,6 +236,30 @@ export async function updateGameAssisters(gameId: string, assisters: GoalScorer[
 
 export async function updateGameMotm(gameId: string, manOfTheMatch: string | null): Promise<void> {
     await updateDoc(doc(db, 'games', gameId), { manOfTheMatch: manOfTheMatch ?? '' });
+}
+
+export async function updateLeagueAdmins(leagueId: string, adminIds: string[]): Promise<void> {
+    await updateDoc(doc(db, 'leagues', leagueId), { adminIds });
+}
+
+export async function updateLeagueDefaultCost(leagueId: string, cost: number | null): Promise<void> {
+    await updateDoc(doc(db, 'leagues', leagueId), { defaultCostPerPerson: cost ?? null });
+}
+
+export async function updateLeaguePayments(leagueId: string, payments: Record<string, PaymentRecord[]>): Promise<void> {
+    await updateDoc(doc(db, 'leagues', leagueId), { payments });
+}
+
+export async function updateLeagueExpenses(leagueId: string, expenses: LeagueExpense[]): Promise<void> {
+    await updateDoc(doc(db, 'leagues', leagueId), { expenses });
+}
+
+export async function updateGameCost(gameId: string, cost: number | null): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { costPerPerson: cost ?? null });
+}
+
+export async function updateGameAttendees(gameId: string, attendees: string[]): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { attendees });
 }
 
 // ---- Availability ----

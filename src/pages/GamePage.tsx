@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowLeftRight, CheckCircle, XCircle, HelpCircle, Shuffle, Trophy, Users, Check, UserPlus, Star, Goal, Plus, Minus, Award, Download, Share2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, CheckCircle, XCircle, HelpCircle, Shuffle, Trophy, Users, Check, UserPlus, Star, Goal, Plus, Minus, Award, Download, Share2, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
+import AppHeader from '../components/AppHeader';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -17,7 +18,10 @@ import {
     updateGameGoalScorers,
     updateGameAssisters,
     updateGameMotm,
+    updateGameCost,
+    updateGameAttendees,
     getLeague,
+    getLeagueMembers,
     getGameByCode,
 } from '../utils/firestore';
 import { Game, PlayerAvailability, AvailabilityStatus, League, Team, TeamSetup, WeatherForecast, GoalScorer } from '../types';
@@ -55,12 +59,16 @@ const GamePage: React.FC = () => {
     const nextSetupIdRef = useRef(0);
     const [weather, setWeather] = useState<WeatherForecast | null>(null);
     const [weatherLoading, setWeatherLoading] = useState(false);
+    const [leagueMembers, setLeagueMembers] = useState<{ id: string; displayName: string; email: string }[]>([]);
     const [newGuestName, setNewGuestName] = useState('');
     const [goalScorers, setGoalScorers] = useState<GoalScorer[]>([]);
     const [assisters, setAssisters] = useState<GoalScorer[]>([]);
     const [motm, setMotm] = useState('');
     const [isExporting, setIsExporting] = useState(false);
     const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
+    const [attendees, setAttendees] = useState<string[] | null>(null);
+    const [editingCost, setEditingCost] = useState(false);
+    const [costInput, setCostInput] = useState('');
     const [showTextarea, setShowTextarea] = useState(false);
     const didSetInitialStep = useRef(false);
 
@@ -79,6 +87,9 @@ const GamePage: React.FC = () => {
             if (g?.leagueId) {
                 const l = await getLeague(g.leagueId);
                 setLeague(l);
+                if (l) {
+                    getLeagueMembers(l.memberIds).then(setLeagueMembers);
+                }
             }
             if (g?.playersText) setPlayersText(g.playersText);
             if (g?.teams) setGeneratedTeams(g.teams);
@@ -90,6 +101,7 @@ const GamePage: React.FC = () => {
             if (g?.goalScorers) setGoalScorers(g.goalScorers);
             if (g?.assisters) setAssisters(g.assisters);
             if (g?.manOfTheMatch) setMotm(g.manOfTheMatch);
+            if (g?.attendees !== undefined) setAttendees(g.attendees);
             setLoading(false);
         });
         const unsubAvail = subscribeToGameAvailability(gameDocId, setAvailabilityState);
@@ -288,6 +300,27 @@ const GamePage: React.FC = () => {
         await updateGameStatus(gameDocId, 'in_progress');
     };
 
+    const handleToggleAttendee = async (name: string) => {
+        if (!gameDocId || !game) return;
+        const defaultList = [
+            ...availability.filter(a => a.status === 'available').map(a => a.displayName),
+            ...(game.guestPlayers ?? []).filter(n => (game.guestAvailability ?? {})[n] === 'available' || !(game.guestAvailability ?? {})[n]),
+        ];
+        const current = new Set(attendees ?? defaultList);
+        if (current.has(name)) current.delete(name);
+        else current.add(name);
+        const updated = [...current];
+        setAttendees(updated);
+        await updateGameAttendees(gameDocId, updated);
+    };
+
+    const handleSaveGameCost = async () => {
+        if (!gameDocId) return;
+        const cost = parseFloat(costInput);
+        await updateGameCost(gameDocId, isNaN(cost) || costInput.trim() === '' ? null : cost);
+        setEditingCost(false);
+    };
+
     const handlePlayerClick = (setupIndex: number, teamIndex: number, playerIndex: number) => {
         const clicked = { setupIndex, teamIndex, playerIndex };
         if (!selectedPlayer || selectedPlayer.setupIndex !== setupIndex) {
@@ -447,6 +480,85 @@ const GamePage: React.FC = () => {
         </div>
     );
 
+    // Admin attendance + cost section (shown for in_progress and completed games)
+    const renderAttendanceSection = () => {
+        const effectiveCost = game!.costPerPerson ?? league?.defaultCostPerPerson ?? 0;
+        const defaultList = [
+            ...availability.filter(a => a.status === 'available').map(a => a.displayName),
+            ...(game!.guestPlayers ?? []).filter(n => (game!.guestAvailability ?? {})[n] === 'available' || !(game!.guestAvailability ?? {})[n]),
+        ];
+        const effectiveAttendees = attendees ?? defaultList;
+        const allPossible = [
+            ...availability.map(a => a.displayName),
+            ...(game!.guestPlayers ?? []),
+        ];
+        const pot = effectiveAttendees.length * effectiveCost;
+        return (
+            <div className="border-t border-white/10 pt-4 mt-4">
+                <h4 className="text-white font-semibold mb-3 flex items-center gap-2 text-sm">
+                    <Users className="w-4 h-4 text-green-400" /> Attendance
+                </h4>
+                {/* Cost per person */}
+                <div className="flex items-center gap-2 mb-3">
+                    <span className="text-white/60 text-sm">Cost per person:</span>
+                    {editingCost ? (
+                        <div className="flex items-center gap-2">
+                            <span className="text-white/60 text-sm">£</span>
+                            <input
+                                type="number"
+                                value={costInput}
+                                onChange={e => setCostInput(e.target.value)}
+                                placeholder="0.00"
+                                min="0"
+                                step="0.5"
+                                autoFocus
+                                className="w-20 bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white text-sm"
+                            />
+                            <button onClick={handleSaveGameCost} className="text-green-400 hover:text-green-300 text-xs px-2 py-1 bg-green-600/20 rounded">Save</button>
+                            <button onClick={() => setEditingCost(false)} className="text-white/40 hover:text-white text-xs">Cancel</button>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            <span className="text-white font-semibold text-sm">
+                                {effectiveCost > 0 ? `£${effectiveCost.toFixed(2)}` : 'Free'}
+                            </span>
+                            {league?.defaultCostPerPerson !== undefined && game!.costPerPerson === undefined && (
+                                <span className="text-white/30 text-xs">(league default)</span>
+                            )}
+                            <button
+                                onClick={() => { setCostInput(String(game!.costPerPerson ?? league?.defaultCostPerPerson ?? '')); setEditingCost(true); }}
+                                className="text-white/40 hover:text-white/70 transition-colors"
+                            >
+                                <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    )}
+                </div>
+                {/* Attendee checkboxes */}
+                <div className="space-y-1.5 mb-3">
+                    {allPossible.map(name => (
+                        <label key={name} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-white/8 transition-colors">
+                            <input
+                                type="checkbox"
+                                checked={effectiveAttendees.includes(name)}
+                                onChange={() => handleToggleAttendee(name)}
+                                className="w-4 h-4 accent-green-500 shrink-0"
+                            />
+                            <span className="text-white text-sm flex-1">{name}</span>
+                            {(game!.guestPlayers ?? []).includes(name) && (
+                                <span className="text-white/40 text-xs">guest</span>
+                            )}
+                        </label>
+                    ))}
+                </div>
+                {/* Summary */}
+                <div className="text-xs text-white/50">
+                    {effectiveAttendees.length} attended · Total pot: £{pot.toFixed(2)}
+                </div>
+            </div>
+        );
+    };
+
     // Reusable availability list (step 1 + completed view player lookup)
     const renderAvailabilityList = () => (
         <div className="space-y-1">
@@ -511,36 +623,54 @@ const GamePage: React.FC = () => {
                     </div>
                 );
             })}
+            {leagueMembers
+                .filter(m => !availability.find(a => a.userId === m.id))
+                .map(member => (
+                    <div key={member.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5 opacity-50">
+                        <span className="text-white/60 text-sm truncate flex-1">{member.displayName}</span>
+                        <span className="text-white/30 text-xs mr-1">no response</span>
+                        {isAdmin && (
+                            <div className="flex gap-1 shrink-0">
+                                <button
+                                    onClick={() => gameDocId && setAvailability(gameDocId, member.id, member.displayName, 'available')}
+                                    className="p-0.5 transition-colors text-white/20 hover:text-green-400"
+                                    title="Mark available"
+                                ><CheckCircle className="w-4 h-4" /></button>
+                                <button
+                                    onClick={() => gameDocId && setAvailability(gameDocId, member.id, member.displayName, 'maybe')}
+                                    className="p-0.5 transition-colors text-white/20 hover:text-yellow-400"
+                                    title="Mark maybe"
+                                ><HelpCircle className="w-4 h-4" /></button>
+                                <button
+                                    onClick={() => gameDocId && setAvailability(gameDocId, member.id, member.displayName, 'unavailable')}
+                                    className="p-0.5 transition-colors text-white/20 hover:text-red-400"
+                                    title="Mark unavailable"
+                                ><XCircle className="w-4 h-4" /></button>
+                            </div>
+                        )}
+                    </div>
+                ))
+            }
         </div>
     );
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
-            <header className="bg-green-900 dark:bg-green-950 text-white p-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Button
-                        onClick={() => league ? navigate(`/league/${league.joinCode}`) : navigate('/dashboard')}
-                        variant="ghost"
-                        size="icon"
-                        className="text-white"
-                    >
-                        <ArrowLeft className="w-5 h-5" />
-                    </Button>
-                    <div>
-                        <span className="font-bold text-xl">{game.title}</span>
-                        {league && (
-                            <div className="text-green-300 text-xs">{league.name}</div>
-                        )}
-                    </div>
-                </div>
-                <span className={`text-xs px-3 py-1 rounded-full ${
-                    game.status === 'scheduled' ? 'bg-blue-500/20 text-blue-300' :
-                    game.status === 'in_progress' ? 'bg-yellow-500/20 text-yellow-300' :
-                    'bg-green-500/20 text-green-300'
-                }`}>
-                    {game.status === 'in_progress' ? 'In Progress' : game.status.charAt(0).toUpperCase() + game.status.slice(1)}
-                </span>
-            </header>
+            <AppHeader
+                title={game.title}
+                subtitle={league?.name}
+                onBack={() => league ? navigate(`/league/${league.joinCode}`) : navigate('/dashboard')}
+                showDashboardLink
+                titleExtra={
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        game.status === 'scheduled' ? 'bg-blue-500/20 text-blue-300' :
+                        game.status === 'in_progress' ? 'bg-yellow-500/20 text-yellow-300' :
+                        'bg-green-500/20 text-green-300'
+                    }`}>
+                        {game.status === 'in_progress' ? 'In Progress' : game.status.charAt(0).toUpperCase() + game.status.slice(1)}
+                    </span>
+                }
+            />
 
             <div className="p-4 sm:p-6 space-y-4">
                 {/* Date + location + weather */}
@@ -892,6 +1022,7 @@ const GamePage: React.FC = () => {
                                     </div>
                                 )}
                                 {(isPast || game.status === 'in_progress') && isAdmin && allPlayerNames.length > 0 && renderScoringControls()}
+                                {(isPast || game.status === 'in_progress') && isAdmin && renderAttendanceSection()}
                             </div>
                         ) : (
                             <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
@@ -958,6 +1089,7 @@ const GamePage: React.FC = () => {
                                 </div>
                             )}
                             {isAdmin && allPlayerNames.length > 0 && renderScoringControls()}
+                            {isAdmin && renderAttendanceSection()}
                             {!isAdmin && (goalScorers.length > 0 || assisters.length > 0 || motm) && (
                                 <div className="border-t border-white/10 pt-4 mt-4 space-y-3">
                                     {goalScorers.length > 0 && (

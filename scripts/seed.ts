@@ -37,8 +37,8 @@ const auth = getAuth();
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const ADMIN_EMAIL = 'test@teamshuffle.app';
-const EXTRA_MEMBER_EMAILS = ['mikeylharper@gmail.com'];
+const ADMIN_EMAIL = 'mikeylharper@gmail.com';
+const EXTRA_MEMBER_EMAILS = ['test@teamshuffle.app'];
 const LEAGUE_NAME = '⚽ Dev League';
 
 const FAKE_PLAYERS = [
@@ -121,10 +121,9 @@ async function main() {
         process.exit(1);
     }
 
-    // Check if Dev League already exists
+    // Check if Dev League already exists (any creator)
     const existingLeagues = await db.collection('leagues')
         .where('name', '==', LEAGUE_NAME)
-        .where('createdBy', '==', adminUser.uid)
         .get();
 
     if (!existingLeagues.empty) {
@@ -150,18 +149,27 @@ async function main() {
     }
 
     // Create league
+    const DEFAULT_COST = 5;
     const leagueRef = await db.collection('leagues').add({
         name: LEAGUE_NAME,
         joinCode: joinCode(),
         createdBy: adminUser.uid,
         memberIds: [adminUser.uid, ...extraUids],
         createdAt: Date.now(),
+        defaultCostPerPerson: DEFAULT_COST,
     });
-    console.log(`✅  Created league: ${leagueRef.id}`);
+    const leagueData = (await leagueRef.get()).data()!;
+    console.log(`✅  Created league: ${leagueRef.id} (join code: ${leagueData.joinCode})`);
 
     // ── 10 completed historical games ──────────────────────────────────────────
     const historyDates = pastSundays(10);
     const adminName = adminUser.displayName || ADMIN_EMAIL.split('@')[0];
+
+    // Track games played per player to compute payments afterwards
+    const gamesPlayedByPlayer = new Map<string, number>();
+    const recordAttendance = (names: string[]) => {
+        names.forEach(n => gamesPlayedByPlayer.set(n, (gamesPlayedByPlayer.get(n) ?? 0) + 1));
+    };
 
     for (let i = 0; i < 10; i++) {
         const [team1Name, team2Name] = TEAM_NAMES[i];
@@ -231,6 +239,9 @@ async function main() {
         const color1 = TEAM_COLORS[i % TEAM_COLORS.length];
         const color2 = TEAM_COLORS[(i + 3) % TEAM_COLORS.length];
 
+        const attendeeNames = [...team1Players, ...team2Players].map(p => p.name);
+        recordAttendance(attendeeNames);
+
         await db.collection('games').add({
             leagueId: leagueRef.id,
             title: GAME_TITLES[i],
@@ -247,9 +258,58 @@ async function main() {
             goalScorers,
             assisters,
             manOfTheMatch,
+            attendees: attendeeNames,
         });
         console.log(`✅  Created completed game: "${GAME_TITLES[i]}" — ${team1Name} ${score1}–${score2} ${team2Name} (MOTM: ${manOfTheMatch})`);
     }
+
+    // ── Payments: settled, partial, and in-debt players ────────────────────────
+    const allPlayerNames = [...gamesPlayedByPlayer.keys()];
+    // Shuffle to assign payment tiers randomly
+    const shuffledNames = [...allPlayerNames].sort(() => Math.random() - 0.5);
+    const third = Math.floor(shuffledNames.length / 3);
+
+    // Spread payment dates across the history period (last 10 weeks)
+    const now = Date.now();
+    const tenWeeksAgo = now - 10 * 7 * 24 * 60 * 60 * 1000;
+    function randomPaymentDate(): number {
+        return Math.floor(tenWeeksAgo + Math.random() * (now - tenWeeksAgo));
+    }
+
+    const payments: Record<string, { amount: number; date: number }[]> = {};
+    shuffledNames.forEach((name, idx) => {
+        const owed = (gamesPlayedByPlayer.get(name) ?? 0) * DEFAULT_COST;
+        if (idx < third) {
+            // Fully paid — 1 or 2 payments spread out
+            const split = Math.random() < 0.5 && owed >= DEFAULT_COST * 2;
+            if (split) {
+                const half = Math.floor(owed / 2 / DEFAULT_COST) * DEFAULT_COST;
+                const d1 = randomPaymentDate();
+                const d2 = randomPaymentDate();
+                payments[name] = [
+                    { amount: half, date: Math.min(d1, d2) },
+                    { amount: owed - half, date: Math.max(d1, d2) },
+                ];
+            } else {
+                payments[name] = [{ amount: owed, date: randomPaymentDate() }];
+            }
+        } else if (idx < third * 2) {
+            // Partially paid (50–90%) — single payment
+            const fraction = 0.5 + Math.random() * 0.4;
+            const partialAmount = Math.floor(owed * fraction / DEFAULT_COST) * DEFAULT_COST;
+            if (partialAmount > 0) {
+                payments[name] = [{ amount: partialAmount, date: randomPaymentDate() }];
+            }
+        }
+        // Remaining third: no payment recorded (omit from map)
+    });
+
+    await leagueRef.update({ payments });
+    const totalPaid = (name: string) => (payments[name] ?? []).reduce((s, r) => s + r.amount, 0);
+    const settled = allPlayerNames.filter(n => totalPaid(n) >= (gamesPlayedByPlayer.get(n) ?? 0) * DEFAULT_COST && totalPaid(n) > 0).length;
+    const partial = allPlayerNames.filter(n => { const p = totalPaid(n); return p > 0 && p < (gamesPlayedByPlayer.get(n) ?? 0) * DEFAULT_COST; }).length;
+    const none = allPlayerNames.length - settled - partial;
+    console.log(`✅  Payments seeded: ${settled} settled · ${partial} partial · ${none} unpaid`);
 
     // ── 3 upcoming games ────────────────────────────────────────────────────────
     const gameNames = ['Sunday Kickabout', 'Mid-week Session', 'Big Match'];
