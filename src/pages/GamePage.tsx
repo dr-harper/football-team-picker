@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowLeftRight, CheckCircle, XCircle, HelpCircle, Shuffle, Trophy, Users, Check, UserPlus, Star, Goal, Plus, Minus, Award, Download, Share2, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
+import { ArrowLeftRight, CheckCircle, XCircle, HelpCircle, Shuffle, Trophy, Users, Check, UserPlus, Star, Goal, Plus, Minus, Award, Download, Share2, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
