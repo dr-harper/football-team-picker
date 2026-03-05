@@ -1754,22 +1754,20 @@ const LeaguePage: React.FC = () => {
                                 const currentBalance = aggregateSeries[aggregateSeries.length - 1].balance;
                                 return (
                                     <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
-                                        <div className="grid grid-cols-3 divide-x divide-white/10 border-b border-white/8">
-                                            <div className="px-4 py-3 text-center">
-                                                <div className="text-lg font-bold text-white tabular-nums">£{totalOwed.toFixed(2)}</div>
-                                                <div className="text-[10px] text-white/40 uppercase tracking-wide mt-0.5">Total owed</div>
-                                            </div>
-                                            <div className="px-4 py-3 text-center">
-                                                <div className="text-lg font-bold text-green-400 tabular-nums">£{totalPaid.toFixed(2)}</div>
-                                                <div className="text-[10px] text-white/40 uppercase tracking-wide mt-0.5">Collected</div>
-                                            </div>
-                                            <div className="px-4 py-3 text-center">
-                                                <div className="text-lg font-bold text-red-400 tabular-nums">£{totalOutstanding.toFixed(2)}</div>
+                                        <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
+                                            <div>
+                                                <div className={`text-2xl font-bold tabular-nums ${totalOutstanding <= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                    £{totalOutstanding.toFixed(2)}
+                                                </div>
                                                 <div className="text-[10px] text-white/40 uppercase tracking-wide mt-0.5">Outstanding</div>
+                                            </div>
+                                            <div className="text-right text-[11px] text-white/40">
+                                                <div>£{totalPaid.toFixed(0)} collected</div>
+                                                <div>£{totalOwed.toFixed(0)} owed</div>
                                             </div>
                                         </div>
                                         <div className="px-4 pt-3 pb-1">
-                                            <div className="text-[9px] text-white/25 uppercase tracking-wide mb-1">Balance — up = collected · down = outstanding</div>
+                                            <div className="text-[9px] text-white/25 uppercase tracking-wide mb-1">Running balance — last 20 games</div>
                                             <ResponsiveContainer width="100%" height={90}>
                                                 <AreaChart data={aggregateSeries} margin={{ top: 6, right: 6, bottom: 0, left: 6 }}>
                                                     <defs>
