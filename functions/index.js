@@ -152,7 +152,7 @@ exports.joinOg = onRequest(
 // ── Push Notification Helpers ────────────────────────────────────────────────
 
 const vapidPrivateKey = defineSecret('VAPID_PRIVATE_KEY');
-const VAPID_PUBLIC_KEY = 'BIkWh3RNU2iU_rqIaEwwsKvynL_3dK4H3Db0gdvakUsLjukL5zC_FNOHxB0z-DuuOJ-Y9UQTitKELKNQS5oIuKs';
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BIkWh3RNU2iU_rqIaEwwsKvynL_3dK4H3Db0gdvakUsLjukL5zC_FNOHxB0z-DuuOJ-Y9UQTitKELKNQS5oIuKs';
 const VAPID_EMAIL = 'mailto:teamshuffle@mlharper.co.uk';
 
 const DEFAULT_PREFS = {
@@ -163,11 +163,13 @@ const DEFAULT_PREFS = {
     paymentReminder: false,
 };
 
+function initVapid() {
+    webpush.setVapidDetails(VAPID_EMAIL, VAPID_PUBLIC_KEY, vapidPrivateKey.value());
+}
+
 async function sendPushToUser(db, userId, payload) {
     const subsSnap = await db.collection('users').doc(userId).collection('pushSubscriptions').get();
     if (subsSnap.empty) return;
-
-    webpush.setVapidDetails(VAPID_EMAIL, VAPID_PUBLIC_KEY, vapidPrivateKey.value());
 
     const stale = [];
     await Promise.all(subsSnap.docs.map(async (subDoc) => {
@@ -180,6 +182,8 @@ async function sendPushToUser(db, userId, payload) {
         } catch (err) {
             if (err.statusCode === 404 || err.statusCode === 410) {
                 stale.push(subDoc.ref);
+            } else {
+                console.error(`Failed to send push to user ${userId}:`, err);
             }
         }
     }));
@@ -217,6 +221,7 @@ async function notifyLeagueMembers(db, leagueId, prefKey, payload, excludeUserId
 exports.onGameCreated = onDocumentCreated(
     { document: 'games/{gameId}', region: 'europe-west2', secrets: [vapidPrivateKey] },
     async (event) => {
+        initVapid();
         const db = getFirestore();
         const game = event.data.data();
         const code = await getLeagueJoinCode(db, game.leagueId);
@@ -239,6 +244,7 @@ exports.onGameCreated = onDocumentCreated(
 exports.onGameUpdated = onDocumentUpdated(
     { document: 'games/{gameId}', region: 'europe-west2', secrets: [vapidPrivateKey] },
     async (event) => {
+        initVapid();
         const db = getFirestore();
         const before = event.data.before.data();
         const after = event.data.after.data();
@@ -279,6 +285,7 @@ exports.onGameUpdated = onDocumentUpdated(
 exports.availabilityReminder = onSchedule(
     { schedule: 'every day 18:00', timeZone: 'Europe/London', region: 'europe-west2', secrets: [vapidPrivateKey] },
     async () => {
+        initVapid();
         const db = getFirestore();
         const now = new Date();
         const tomorrow = new Date(now);
@@ -328,6 +335,7 @@ exports.availabilityReminder = onSchedule(
 exports.paymentReminder = onSchedule(
     { schedule: 'every monday 09:00', timeZone: 'Europe/London', region: 'europe-west2', secrets: [vapidPrivateKey] },
     async () => {
+        initVapid();
         const db = getFirestore();
         const leaguesSnap = await db.collection('leagues').get();
 
@@ -343,27 +351,27 @@ exports.paymentReminder = onSchedule(
                 .where('status', '==', 'completed')
                 .get();
 
-            // Calculate per-player attendance counts
-            const attendanceCounts = {};
+            // Calculate per-player attendance costs
+            const attendanceCosts = {};
             for (const gameDoc of gamesSnap.docs) {
                 const game = gameDoc.data();
                 const gameCost = game.costPerPerson ?? costPerPerson;
                 for (const name of (game.attendees || [])) {
-                    attendanceCounts[name] = (attendanceCounts[name] || 0) + gameCost;
+                    attendanceCosts[name] = (attendanceCosts[name] || 0) + gameCost;
                 }
             }
 
-            // Resolve member display names to user IDs
+            // Notify members with outstanding debt (parallelised)
             const memberIds = league.memberIds || [];
-            for (const uid of memberIds) {
+            await Promise.all(memberIds.map(async (uid) => {
                 const userDoc = await db.collection('users').doc(uid).get();
-                if (!userDoc.exists) continue;
+                if (!userDoc.exists) return;
                 const displayName = userDoc.data().displayName || '';
-                const owed = attendanceCounts[displayName] || 0;
+                const owed = attendanceCosts[displayName] || 0;
                 const paid = (payments[displayName] || []).reduce((sum, p) => sum + (p.amount || 0), 0);
                 const balance = paid - owed;
 
-                if (balance >= 0) continue; // No debt
+                if (balance >= 0) return; // No debt
 
                 const wantsPush = await getUserPref(db, uid, 'paymentReminder');
                 if (!wantsPush) return;
@@ -374,7 +382,7 @@ exports.paymentReminder = onSchedule(
                     url: `/league/${league.joinCode}`,
                     icon: '/logo.png',
                 });
-            }
+            }));
         }
     },
 );

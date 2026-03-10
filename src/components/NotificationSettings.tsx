@@ -44,7 +44,7 @@ const NotificationSettings: React.FC = () => {
             setPermissionDenied(getPermissionState() === 'denied');
         };
 
-        load().catch(() => {});
+        load().catch((err) => console.error('Failed to load notification settings:', err));
     }, [user, supported]);
 
     if (!user || !supported) return null;
@@ -153,10 +153,10 @@ const NotificationSettings: React.FC = () => {
                     <label
                         key={key}
                         className="flex items-start gap-3 cursor-pointer group"
+                        onClick={() => handleToggle(key)}
                     >
                         <div className="pt-0.5 shrink-0">
                             <div
-                                onClick={() => handleToggle(key)}
                                 className={`w-9 h-5 rounded-full transition-colors relative ${
                                     prefs[key] ? 'bg-green-500' : 'bg-white/15'
                                 }`}
@@ -168,7 +168,7 @@ const NotificationSettings: React.FC = () => {
                                 />
                             </div>
                         </div>
-                        <div className="flex-1 min-w-0" onClick={() => handleToggle(key)}>
+                        <div className="flex-1 min-w-0">
                             <div className="text-white text-sm">{label}</div>
                             <div className="text-white/40 text-xs">{description}</div>
                         </div>
