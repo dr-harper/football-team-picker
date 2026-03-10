@@ -387,6 +387,105 @@ exports.paymentReminder = onSchedule(
     },
 );
 
+// ── Display Name Cascade ─────────────────────────────────────────────────────
+
+exports.onUserUpdated = onDocumentUpdated(
+    { document: 'users/{userId}', region: 'europe-west2' },
+    async (event) => {
+        const before = event.data.before.data();
+        const after = event.data.after.data();
+
+        const oldName = before.displayName;
+        const newName = after.displayName;
+        if (!oldName || !newName || oldName === newName) return;
+
+        const db = getFirestore();
+        const userId = event.params.userId;
+
+        // Find all leagues this user belongs to
+        const leaguesSnap = await db.collection('leagues')
+            .where('memberIds', 'array-contains', userId)
+            .get();
+
+        for (const leagueDoc of leaguesSnap.docs) {
+            const league = leagueDoc.data();
+
+            // Rename payment history key if present
+            const payments = league.payments || {};
+            if (payments[oldName]) {
+                payments[newName] = payments[oldName];
+                delete payments[oldName];
+                await leagueDoc.ref.update({ payments });
+            }
+
+            // Update all games in this league
+            const gamesSnap = await db.collection('games')
+                .where('leagueId', '==', leagueDoc.id)
+                .get();
+
+            for (const gameDoc of gamesSnap.docs) {
+                const game = gameDoc.data();
+                const updates = {};
+
+                // Attendees array
+                if (game.attendees && game.attendees.includes(oldName)) {
+                    updates.attendees = game.attendees.map(n => n === oldName ? newName : n);
+                }
+
+                // Goal scorers
+                if (game.goalScorers) {
+                    const renamed = game.goalScorers.map(s =>
+                        s.name === oldName ? { ...s, name: newName } : s
+                    );
+                    if (JSON.stringify(renamed) !== JSON.stringify(game.goalScorers)) {
+                        updates.goalScorers = renamed;
+                    }
+                }
+
+                // Assisters
+                if (game.assisters) {
+                    const renamed = game.assisters.map(s =>
+                        s.name === oldName ? { ...s, name: newName } : s
+                    );
+                    if (JSON.stringify(renamed) !== JSON.stringify(game.assisters)) {
+                        updates.assisters = renamed;
+                    }
+                }
+
+                // Man of the match
+                if (game.manOfTheMatch === oldName) {
+                    updates.manOfTheMatch = newName;
+                }
+
+                // Player positions (keyed by name)
+                if (game.playerPositions && game.playerPositions[oldName] !== undefined) {
+                    const positions = { ...game.playerPositions };
+                    positions[newName] = positions[oldName];
+                    delete positions[oldName];
+                    updates.playerPositions = positions;
+                }
+
+                if (Object.keys(updates).length > 0) {
+                    await gameDoc.ref.update(updates);
+                }
+            }
+        }
+
+        // Update availability records
+        const availSnap = await db.collection('availability')
+            .where('userId', '==', userId)
+            .get();
+
+        await Promise.all(availSnap.docs.map(async (availDoc) => {
+            if (availDoc.data().displayName === oldName) {
+                await availDoc.ref.update({ displayName: newName });
+            }
+        }));
+
+        console.log(`Cascaded displayName change: "${oldName}" → "${newName}" for user ${userId}`);
+    },
+);
+
 const geminiKey = defineSecret('GEMINI_KEY');
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';

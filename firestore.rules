@@ -16,10 +16,13 @@ service cloud.firestore {
       // Public read allows the join landing page to show league name before sign-up
       allow read:   if true;
       allow create: if request.auth != null;
-      // Allow update if already a member OR if user is adding only themselves to memberIds (join flow)
+      // Owner or admins can update any field
+      // Regular members can ONLY add themselves to memberIds (join flow)
       allow update: if request.auth != null && (
-        request.auth.uid in resource.data.memberIds ||
+        request.auth.uid == resource.data.createdBy ||
+        (resource.data.adminIds != null && request.auth.uid in resource.data.adminIds) ||
         (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds']) &&
           request.resource.data.memberIds.hasAll(resource.data.memberIds) &&
           request.resource.data.memberIds.hasOnly(resource.data.memberIds.concat([request.auth.uid]))
         )
