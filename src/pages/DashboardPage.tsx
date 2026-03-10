@@ -22,7 +22,7 @@ interface LeagueStats {
 }
 
 const DashboardPage: React.FC = () => {
-    const { user, needsPlayerTags, updatePlayerTags, updateBio } = useAuth();
+    const { user, updatePlayerTags, updateBio } = useAuth();
     const navigate = useNavigate();
     const [leagues, setLeagues] = useState<League[]>([]);
     const [upcomingGames, setUpcomingGames] = useState<Game[]>([]);
@@ -52,10 +52,6 @@ const DashboardPage: React.FC = () => {
         loadData();
         loadPlayerProfile();
     }, [user]);
-
-    useEffect(() => {
-        if (needsPlayerTags) setIsEditingProfile(true);
-    }, [needsPlayerTags]);
 
     const openEditProfile = (profile: { tags: string[]; positions: string[]; bio: string }) => {
         setEditPositions(profile.positions);
