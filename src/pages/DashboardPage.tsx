@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserLeagues, createLeague, joinLeagueByCode } from '../utils/firestore';
 import { League, Game } from '../types';
+import NotificationSettings from '../components/NotificationSettings';
 import { getLeagueGames } from '../utils/firestore';
 import { geocodeLocation, GeoResult } from '../utils/weather';
 import { PLAYER_POSITIONS } from '../constants/playerPositions';
@@ -447,6 +448,9 @@ const DashboardPage: React.FC = () => {
                         )}
                     </div>
                 )}
+
+                {/* Notification Settings */}
+                <NotificationSettings />
 
                 {/* Upcoming Games */}
                 {upcomingGames.length > 0 && (

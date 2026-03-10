@@ -1,8 +1,11 @@
 const { onRequest } = require('firebase-functions/v2/https');
+const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { defineSecret } = require('firebase-functions/params');
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 const { getFirestore } = require('firebase-admin/firestore');
+const webpush = require('web-push');
 
 initializeApp();
 
@@ -143,6 +146,236 @@ exports.joinOg = onRequest(
 
         res.set('Cache-Control', 'public, max-age=300, s-maxage=600');
         return res.status(200).send(html);
+    },
+);
+
+// ── Push Notification Helpers ────────────────────────────────────────────────
+
+const vapidPrivateKey = defineSecret('VAPID_PRIVATE_KEY');
+const VAPID_PUBLIC_KEY = 'BIkWh3RNU2iU_rqIaEwwsKvynL_3dK4H3Db0gdvakUsLjukL5zC_FNOHxB0z-DuuOJ-Y9UQTitKELKNQS5oIuKs';
+const VAPID_EMAIL = 'mailto:teamshuffle@mlharper.co.uk';
+
+const DEFAULT_PREFS = {
+    gameScheduled: true,
+    availabilityReminder: true,
+    teamsGenerated: true,
+    resultRecorded: false,
+    paymentReminder: false,
+};
+
+async function sendPushToUser(db, userId, payload) {
+    const subsSnap = await db.collection('users').doc(userId).collection('pushSubscriptions').get();
+    if (subsSnap.empty) return;
+
+    webpush.setVapidDetails(VAPID_EMAIL, VAPID_PUBLIC_KEY, vapidPrivateKey.value());
+
+    const stale = [];
+    await Promise.all(subsSnap.docs.map(async (subDoc) => {
+        const sub = subDoc.data();
+        try {
+            await webpush.sendNotification(
+                { endpoint: sub.endpoint, keys: sub.keys },
+                JSON.stringify(payload),
+            );
+        } catch (err) {
+            if (err.statusCode === 404 || err.statusCode === 410) {
+                stale.push(subDoc.ref);
+            }
+        }
+    }));
+
+    // Clean up stale subscriptions
+    await Promise.all(stale.map(ref => ref.delete()));
+}
+
+async function getUserPref(db, userId, prefKey) {
+    const userDoc = await db.collection('users').doc(userId).get();
+    const prefs = userDoc.data()?.notificationPreferences || {};
+    return prefs[prefKey] ?? DEFAULT_PREFS[prefKey] ?? false;
+}
+
+async function getLeagueJoinCode(db, leagueId) {
+    const leagueDoc = await db.collection('leagues').doc(leagueId).get();
+    return leagueDoc.data()?.joinCode || '';
+}
+
+async function notifyLeagueMembers(db, leagueId, prefKey, payload, excludeUserId) {
+    const leagueDoc = await db.collection('leagues').doc(leagueId).get();
+    if (!leagueDoc.exists) return;
+    const memberIds = leagueDoc.data().memberIds || [];
+
+    await Promise.all(memberIds.map(async (uid) => {
+        if (uid === excludeUserId) return;
+        const wantsPush = await getUserPref(db, uid, prefKey);
+        if (!wantsPush) return;
+        await sendPushToUser(db, uid, payload);
+    }));
+}
+
+// ── Game Scheduled notification ─────────────────────────────────────────────
+
+exports.onGameCreated = onDocumentCreated(
+    { document: 'games/{gameId}', region: 'europe-west2', secrets: [vapidPrivateKey] },
+    async (event) => {
+        const db = getFirestore();
+        const game = event.data.data();
+        const code = await getLeagueJoinCode(db, game.leagueId);
+        const dateStr = new Date(game.date).toLocaleDateString('en-GB', {
+            weekday: 'short', day: 'numeric', month: 'short',
+            hour: '2-digit', minute: '2-digit',
+        });
+
+        await notifyLeagueMembers(db, game.leagueId, 'gameScheduled', {
+            title: 'New Game Scheduled',
+            body: `${game.title} — ${dateStr}`,
+            url: `/league/${code}/game/${event.params.gameId}`,
+            icon: '/logo.png',
+        }, game.createdBy);
+    },
+);
+
+// ── Teams Generated + Result Recorded notifications ─────────────────────────
+
+exports.onGameUpdated = onDocumentUpdated(
+    { document: 'games/{gameId}', region: 'europe-west2', secrets: [vapidPrivateKey] },
+    async (event) => {
+        const db = getFirestore();
+        const before = event.data.before.data();
+        const after = event.data.after.data();
+        const code = await getLeagueJoinCode(db, after.leagueId);
+        const gameUrl = `/league/${code}/game/${event.params.gameId}`;
+
+        // Teams generated: teams went from empty to populated
+        const hadTeams = before.teams && before.teams.length > 0;
+        const hasTeams = after.teams && after.teams.length > 0;
+        if (!hadTeams && hasTeams) {
+            await notifyLeagueMembers(db, after.leagueId, 'teamsGenerated', {
+                title: 'Teams Are Out!',
+                body: `${after.title} — check your team`,
+                url: gameUrl,
+                icon: '/logo.png',
+            }, after.createdBy);
+        }
+
+        // Result recorded: status changed to completed
+        if (before.status !== 'completed' && after.status === 'completed') {
+            const score = after.score || {};
+            const teams = after.teams || [];
+            const t1 = teams[0]?.name || 'Team 1';
+            const t2 = teams[1]?.name || 'Team 2';
+
+            await notifyLeagueMembers(db, after.leagueId, 'resultRecorded', {
+                title: 'Result Recorded',
+                body: `${t1} ${score.team1 ?? '?'} - ${score.team2 ?? '?'} ${t2}`,
+                url: gameUrl,
+                icon: '/logo.png',
+            }, after.createdBy);
+        }
+    },
+);
+
+// ── Availability Reminder (daily at 18:00 UK time) ──────────────────────────
+
+exports.availabilityReminder = onSchedule(
+    { schedule: 'every day 18:00', timeZone: 'Europe/London', region: 'europe-west2', secrets: [vapidPrivateKey] },
+    async () => {
+        const db = getFirestore();
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        const dayAfter = new Date(tomorrow);
+        dayAfter.setDate(dayAfter.getDate() + 1);
+
+        // Find games happening tomorrow
+        const gamesSnap = await db.collection('games')
+            .where('date', '>=', tomorrow.getTime())
+            .where('date', '<', dayAfter.getTime())
+            .where('status', '==', 'scheduled')
+            .get();
+
+        for (const gameDoc of gamesSnap.docs) {
+            const game = gameDoc.data();
+            const code = await getLeagueJoinCode(db, game.leagueId);
+            const leagueDoc = await db.collection('leagues').doc(game.leagueId).get();
+            if (!leagueDoc.exists) continue;
+            const memberIds = leagueDoc.data().memberIds || [];
+
+            // Find who has already responded
+            const availSnap = await db.collection('availability')
+                .where('gameId', '==', gameDoc.id)
+                .get();
+            const respondedUserIds = new Set(availSnap.docs.map(d => d.data().userId));
+
+            // Notify members who haven't responded
+            await Promise.all(memberIds.map(async (uid) => {
+                if (respondedUserIds.has(uid)) return;
+                const wantsPush = await getUserPref(db, uid, 'availabilityReminder');
+                if (!wantsPush) return;
+                await sendPushToUser(db, uid, {
+                    title: 'Are You Playing Tomorrow?',
+                    body: `${game.title} — tap to respond`,
+                    url: `/league/${code}/game/${gameDoc.id}`,
+                    icon: '/logo.png',
+                });
+            }));
+        }
+    },
+);
+
+// ── Payment Reminder (weekly on Monday at 09:00 UK time) ────────────────────
+
+exports.paymentReminder = onSchedule(
+    { schedule: 'every monday 09:00', timeZone: 'Europe/London', region: 'europe-west2', secrets: [vapidPrivateKey] },
+    async () => {
+        const db = getFirestore();
+        const leaguesSnap = await db.collection('leagues').get();
+
+        for (const leagueDoc of leaguesSnap.docs) {
+            const league = leagueDoc.data();
+            const payments = league.payments || {};
+            const costPerPerson = league.defaultCostPerPerson || 0;
+            if (costPerPerson === 0) continue;
+
+            // Get completed games to calculate what each player owes
+            const gamesSnap = await db.collection('games')
+                .where('leagueId', '==', leagueDoc.id)
+                .where('status', '==', 'completed')
+                .get();
+
+            // Calculate per-player attendance counts
+            const attendanceCounts = {};
+            for (const gameDoc of gamesSnap.docs) {
+                const game = gameDoc.data();
+                const gameCost = game.costPerPerson ?? costPerPerson;
+                for (const name of (game.attendees || [])) {
+                    attendanceCounts[name] = (attendanceCounts[name] || 0) + gameCost;
+                }
+            }
+
+            // Resolve member display names to user IDs
+            const memberIds = league.memberIds || [];
+            for (const uid of memberIds) {
+                const userDoc = await db.collection('users').doc(uid).get();
+                if (!userDoc.exists) continue;
+                const displayName = userDoc.data().displayName || '';
+                const owed = attendanceCounts[displayName] || 0;
+                const paid = (payments[displayName] || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+                const balance = paid - owed;
+
+                if (balance >= 0) continue; // No debt
+
+                const wantsPush = await getUserPref(db, uid, 'paymentReminder');
+                if (!wantsPush) return;
+
+                await sendPushToUser(db, uid, {
+                    title: 'Payment Due',
+                    body: `You owe £${Math.abs(balance).toFixed(2)} in ${league.name}`,
+                    url: `/league/${league.joinCode}`,
+                    icon: '/logo.png',
+                });
+            }
+        }
     },
 );
 

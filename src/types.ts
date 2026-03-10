@@ -98,6 +98,22 @@ export interface Game {
     createdAt: number;
 }
 
+export interface NotificationPreferences {
+    gameScheduled: boolean;
+    availabilityReminder: boolean;
+    teamsGenerated: boolean;
+    resultRecorded: boolean;
+    paymentReminder: boolean;
+}
+
+export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+    gameScheduled: true,
+    availabilityReminder: true,
+    teamsGenerated: true,
+    resultRecorded: false,
+    paymentReminder: false,
+};
+
 export interface WeatherForecast {
     temperature: number;
     rainMm: number;
