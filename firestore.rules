@@ -6,6 +6,10 @@ service cloud.firestore {
       // Any authenticated user can read profiles (needed to display member names in leagues)
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
+
+      match /pushSubscriptions/{subId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
 
     match /leagues/{leagueId} {

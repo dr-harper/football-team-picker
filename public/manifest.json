@@ -1,0 +1,17 @@
+{
+  "name": "Team Shuffle",
+  "short_name": "Team Shuffle",
+  "description": "Split your squad in seconds. Balanced teams, league stats, and finance tracking.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#14532d",
+  "theme_color": "#14532d",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
