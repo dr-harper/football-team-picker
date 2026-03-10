@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeftRight, CheckCircle, XCircle, HelpCircle, Shuffle, Trophy, Users, Check, UserPlus, Star, Goal, Plus, Minus, Award, Download, Share2, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
+import { ArrowLeftRight, CheckCircle, XCircle, HelpCircle, Shuffle, Trophy, Users, Check, UserPlus, Plus, Goal, Award, Download, Share2, ChevronRight, ChevronLeft } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,6 +33,9 @@ import PlaceholderPitch from '../components/PlaceholderPitch';
 import { fetchWeather, describeWeatherCode } from '../utils/weather';
 import { exportImage, shareImage, ImageHeader } from '../utils/imageExport';
 import LocationMap from '../components/LocationMap';
+import ScoringControls from './game/ScoringControls';
+import AttendanceSection from './game/AttendanceSection';
+import AvailabilityList from './game/AvailabilityList';
 
 const GamePage: React.FC = () => {
     const { id: rawId } = useParams<{ id: string }>();
@@ -415,243 +418,32 @@ const GamePage: React.FC = () => {
         { num: 3 as const, label: 'Match' },
     ];
 
-    // Reusable tally row used for both goals and assists
-    const renderTallyRows = (
-        tally: GoalScorer[],
-        onChange: (name: string, delta: number) => void,
-        accentClass: string,
-    ) => (
-        <div className="space-y-1.5">
-            {allPlayerNames.map(name => {
-                const count = tally.find(t => t.name === name)?.goals ?? 0;
-                return (
-                    <div key={name} className="flex items-center justify-between gap-2 bg-white/5 rounded-lg px-3 py-1.5">
-                        <span className="text-white text-sm truncate">{name}</span>
-                        <div className="flex items-center gap-2 shrink-0">
-                            <button onClick={() => onChange(name, -1)} disabled={count === 0} className="text-white/40 hover:text-white disabled:opacity-20 p-0.5">
-                                <Minus className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="text-white font-bold text-sm w-4 text-center">{count}</span>
-                            <button onClick={() => onChange(name, 1)} className={`${accentClass} p-0.5`}>
-                                <Plus className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
+    const scoringControlsElement = (
+        <ScoringControls
+            allPlayerNames={allPlayerNames}
+            goalScorers={goalScorers}
+            assisters={assisters}
+            motm={motm}
+            onGoalChange={handleGoalChange}
+            onAssistChange={handleAssistChange}
+            onSetMotm={handleSetMotm}
+        />
     );
 
-    // Reusable goal scorers + assists + MoTM editor (used in both step 3 and completed view)
-    const renderScoringControls = () => (
-        <div className="border-t border-white/10 pt-4 mt-4 space-y-4">
-            <div>
-                <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
-                    <Goal className="w-4 h-4 text-green-400" /> Goal Scorers
-                </h4>
-                {renderTallyRows(goalScorers, handleGoalChange, 'text-green-400 hover:text-green-300')}
-            </div>
-            <div>
-                <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
-                    <span className="text-blue-400 font-bold text-xs bg-blue-400/20 px-1.5 py-0.5 rounded">A</span> Assists
-                </h4>
-                {renderTallyRows(assisters, handleAssistChange, 'text-blue-400 hover:text-blue-300')}
-            </div>
-            <div>
-                <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
-                    <Award className="w-4 h-4 text-yellow-400" /> Man of the Match
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                    {allPlayerNames.map(name => (
-                        <button
-                            key={name}
-                            onClick={() => handleSetMotm(name)}
-                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                                motm === name
-                                    ? 'bg-yellow-500 text-green-900'
-                                    : 'bg-white/10 text-white hover:bg-white/20'
-                            }`}
-                        >
-                            {motm === name && <Star className="w-3 h-3 inline mr-1" />}{name}
-                        </button>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-
-    // Admin attendance + cost section (shown for in_progress and completed games)
-    const renderAttendanceSection = () => {
-        const effectiveCost = game!.costPerPerson ?? league?.defaultCostPerPerson ?? 0;
-        const defaultList = [
-            ...availability.filter(a => a.status === 'available').map(a => a.displayName),
-            ...(game!.guestPlayers ?? []).filter(n => (game!.guestAvailability ?? {})[n] === 'available' || !(game!.guestAvailability ?? {})[n]),
-        ];
-        const effectiveAttendees = attendees ?? defaultList;
-        const allPossible = [
-            ...availability.map(a => a.displayName),
-            ...(game!.guestPlayers ?? []),
-        ];
-        const pot = effectiveAttendees.length * effectiveCost;
-        return (
-            <div className="border-t border-white/10 pt-4 mt-4">
-                <h4 className="text-white font-semibold mb-3 flex items-center gap-2 text-sm">
-                    <Users className="w-4 h-4 text-green-400" /> Attendance
-                </h4>
-                {/* Cost per person */}
-                <div className="flex items-center gap-2 mb-3">
-                    <span className="text-white/60 text-sm">Cost per person:</span>
-                    {editingCost ? (
-                        <div className="flex items-center gap-2">
-                            <span className="text-white/60 text-sm">£</span>
-                            <input
-                                type="number"
-                                value={costInput}
-                                onChange={e => setCostInput(e.target.value)}
-                                placeholder="0.00"
-                                min="0"
-                                step="0.5"
-                                autoFocus
-                                className="w-20 bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white text-sm"
-                            />
-                            <button onClick={handleSaveGameCost} className="text-green-400 hover:text-green-300 text-xs px-2 py-1 bg-green-600/20 rounded">Save</button>
-                            <button onClick={() => setEditingCost(false)} className="text-white/40 hover:text-white text-xs">Cancel</button>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-2">
-                            <span className="text-white font-semibold text-sm">
-                                {effectiveCost > 0 ? `£${effectiveCost.toFixed(2)}` : 'Free'}
-                            </span>
-                            {league?.defaultCostPerPerson !== undefined && game!.costPerPerson === undefined && (
-                                <span className="text-white/30 text-xs">(league default)</span>
-                            )}
-                            <button
-                                onClick={() => { setCostInput(String(game!.costPerPerson ?? league?.defaultCostPerPerson ?? '')); setEditingCost(true); }}
-                                className="text-white/40 hover:text-white/70 transition-colors"
-                            >
-                                <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
-                    )}
-                </div>
-                {/* Attendee checkboxes */}
-                <div className="space-y-1.5 mb-3">
-                    {allPossible.map(name => (
-                        <label key={name} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-white/8 transition-colors">
-                            <input
-                                type="checkbox"
-                                checked={effectiveAttendees.includes(name)}
-                                onChange={() => handleToggleAttendee(name)}
-                                className="w-4 h-4 accent-green-500 shrink-0"
-                            />
-                            <span className="text-white text-sm flex-1">{name}</span>
-                            {(game!.guestPlayers ?? []).includes(name) && (
-                                <span className="text-white/40 text-xs">guest</span>
-                            )}
-                        </label>
-                    ))}
-                </div>
-                {/* Summary */}
-                <div className="text-xs text-white/50">
-                    {effectiveAttendees.length} attended · Total pot: £{pot.toFixed(2)}
-                </div>
-            </div>
-        );
-    };
-
-    // Reusable availability list (step 1 + completed view player lookup)
-    const renderAvailabilityList = () => (
-        <div className="space-y-1">
-            {[...availablePlayers, ...maybePlayers, ...unavailablePlayers].map(a => {
-                const isMe = a.userId === user?.uid;
-                const s = a.status;
-                const pos = positionMap[a.displayName];
-                return (
-                    <div key={a.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5">
-                        <span className="text-white text-sm truncate flex-1">{a.displayName}</span>
-                        {isAdmin && (
-                            <div className="flex gap-0.5 shrink-0">
-                                {(['g', 'd', 's'] as const).map(p => (
-                                    <button key={p} onClick={() => handlePositionToggle(a.displayName, p)}
-                                        className={`text-xs px-1.5 py-0.5 rounded font-mono transition-colors ${pos === p ? 'bg-white/25 text-white' : 'text-white/25 hover:text-white/60'}`}
-                                        title={p === 'g' ? 'Goalkeeper' : p === 'd' ? 'Defender' : 'Forward'}
-                                    >{p === 'g' ? 'GK' : p === 'd' ? 'DEF' : 'FWD'}</button>
-                                ))}
-                            </div>
-                        )}
-                        <div className="flex gap-1 shrink-0">
-                            <button onClick={() => isMe ? handleSetAvailability('available') : isAdmin ? handleAdminSetAvailability(a, 'available') : undefined}
-                                className={`p-0.5 transition-colors ${s === 'available' ? 'text-green-400' : (isMe || isAdmin) ? 'text-white/20 hover:text-green-400' : 'text-white/20 cursor-default'}`}
-                                title="Available"><CheckCircle className="w-4 h-4" /></button>
-                            <button onClick={() => isMe ? handleSetAvailability('maybe') : isAdmin ? handleAdminSetAvailability(a, 'maybe') : undefined}
-                                className={`p-0.5 transition-colors ${s === 'maybe' ? 'text-yellow-400' : (isMe || isAdmin) ? 'text-white/20 hover:text-yellow-400' : 'text-white/20 cursor-default'}`}
-                                title="Maybe"><HelpCircle className="w-4 h-4" /></button>
-                            <button onClick={() => isMe ? handleSetAvailability('unavailable') : isAdmin ? handleAdminSetAvailability(a, 'unavailable') : undefined}
-                                className={`p-0.5 transition-colors ${s === 'unavailable' ? 'text-red-400' : (isMe || isAdmin) ? 'text-white/20 hover:text-red-400' : 'text-white/20 cursor-default'}`}
-                                title="Can't make it"><XCircle className="w-4 h-4" /></button>
-                        </div>
-                    </div>
-                );
-            })}
-            {(game.guestPlayers ?? []).map(name => {
-                const s = guestStatusMap[name] ?? 'available';
-                const pos = positionMap[name];
-                return (
-                    <div key={name} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5">
-                        <span className="text-white text-sm truncate flex-1">{name} <span className="text-white/40 text-xs">guest</span></span>
-                        {isAdmin ? (
-                            <>
-                                <div className="flex gap-0.5 shrink-0">
-                                    {(['g', 'd', 's'] as const).map(p => (
-                                        <button key={p} onClick={() => handlePositionToggle(name, p)}
-                                            className={`text-xs px-1.5 py-0.5 rounded font-mono transition-colors ${pos === p ? 'bg-white/25 text-white' : 'text-white/25 hover:text-white/60'}`}
-                                            title={p === 'g' ? 'Goalkeeper' : p === 'd' ? 'Defender' : 'Forward'}
-                                        >{p === 'g' ? 'GK' : p === 'd' ? 'DEF' : 'FWD'}</button>
-                                    ))}
-                                </div>
-                                <div className="flex gap-1 shrink-0">
-                                    <button onClick={() => handleGuestStatusChange(name, 'available')} className={`p-0.5 transition-colors ${s === 'available' ? 'text-green-400' : 'text-white/20 hover:text-green-400'}`} title="Available"><CheckCircle className="w-4 h-4" /></button>
-                                    <button onClick={() => handleGuestStatusChange(name, 'maybe')} className={`p-0.5 transition-colors ${s === 'maybe' ? 'text-yellow-400' : 'text-white/20 hover:text-yellow-400'}`} title="Maybe"><HelpCircle className="w-4 h-4" /></button>
-                                    <button onClick={() => handleGuestStatusChange(name, 'unavailable')} className={`p-0.5 transition-colors ${s === 'unavailable' ? 'text-red-400' : 'text-white/20 hover:text-red-400'}`} title="Can't make it"><XCircle className="w-4 h-4" /></button>
-                                </div>
-                            </>
-                        ) : (
-                            <span className={`text-xs ${s === 'available' ? 'text-green-400' : s === 'maybe' ? 'text-yellow-400' : 'text-red-400'}`}>
-                                {s === 'available' ? 'in' : s === 'maybe' ? 'maybe' : 'out'}
-                            </span>
-                        )}
-                    </div>
-                );
-            })}
-            {leagueMembers
-                .filter(m => !availability.find(a => a.userId === m.id))
-                .map(member => (
-                    <div key={member.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5 opacity-50">
-                        <span className="text-white/60 text-sm truncate flex-1">{member.displayName}</span>
-                        <span className="text-white/30 text-xs mr-1">no response</span>
-                        {isAdmin && (
-                            <div className="flex gap-1 shrink-0">
-                                <button
-                                    onClick={() => gameDocId && setAvailability(gameDocId, member.id, member.displayName, 'available')}
-                                    className="p-0.5 transition-colors text-white/20 hover:text-green-400"
-                                    title="Mark available"
-                                ><CheckCircle className="w-4 h-4" /></button>
-                                <button
-                                    onClick={() => gameDocId && setAvailability(gameDocId, member.id, member.displayName, 'maybe')}
-                                    className="p-0.5 transition-colors text-white/20 hover:text-yellow-400"
-                                    title="Mark maybe"
-                                ><HelpCircle className="w-4 h-4" /></button>
-                                <button
-                                    onClick={() => gameDocId && setAvailability(gameDocId, member.id, member.displayName, 'unavailable')}
-                                    className="p-0.5 transition-colors text-white/20 hover:text-red-400"
-                                    title="Mark unavailable"
-                                ><XCircle className="w-4 h-4" /></button>
-                            </div>
-                        )}
-                    </div>
-                ))
-            }
-        </div>
+    const attendanceSectionElement = (
+        <AttendanceSection
+            game={game}
+            league={league}
+            availability={availability}
+            attendees={attendees}
+            editingCost={editingCost}
+            costInput={costInput}
+            onCostInputChange={setCostInput}
+            onEditCost={() => { setCostInput(String(game.costPerPerson ?? league?.defaultCostPerPerson ?? '')); setEditingCost(true); }}
+            onSaveCost={handleSaveGameCost}
+            onCancelCost={() => setEditingCost(false)}
+            onToggleAttendee={handleToggleAttendee}
+        />
     );
 
     return (
@@ -805,7 +597,24 @@ const GamePage: React.FC = () => {
                                 <span className="text-yellow-400">{maybePlayers.length + guestsMaybe.length} maybe</span>
                                 <span className="text-red-400">{unavailablePlayers.length + guestsUnavailable.length} out</span>
                             </div>
-                            {renderAvailabilityList()}
+                            <AvailabilityList
+                                availablePlayers={availablePlayers}
+                                maybePlayers={maybePlayers}
+                                unavailablePlayers={unavailablePlayers}
+                                guestPlayers={game.guestPlayers ?? []}
+                                guestStatusMap={guestStatusMap}
+                                positionMap={positionMap}
+                                leagueMembers={leagueMembers}
+                                availability={availability}
+                                isAdmin={isAdmin}
+                                currentUserId={user?.uid}
+                                gameDocId={gameDocId}
+                                onSetAvailability={handleSetAvailability}
+                                onAdminSetAvailability={handleAdminSetAvailability}
+                                onGuestStatusChange={handleGuestStatusChange}
+                                onPositionToggle={handlePositionToggle}
+                                onSetMemberAvailability={setAvailability}
+                            />
                             {isAdmin && (
                                 <div className="mt-3 pt-3 border-t border-white/10">
                                     <div className="text-xs text-green-300/70 mb-2 flex items-center gap-1">
@@ -1021,8 +830,8 @@ const GamePage: React.FC = () => {
                                         </Button>
                                     </div>
                                 )}
-                                {(isPast || game.status === 'in_progress') && isAdmin && allPlayerNames.length > 0 && renderScoringControls()}
-                                {(isPast || game.status === 'in_progress') && isAdmin && renderAttendanceSection()}
+                                {(isPast || game.status === 'in_progress') && isAdmin && allPlayerNames.length > 0 && scoringControlsElement}
+                                {(isPast || game.status === 'in_progress') && isAdmin && attendanceSectionElement}
                             </div>
                         ) : (
                             <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
@@ -1088,8 +897,8 @@ const GamePage: React.FC = () => {
                                     )}
                                 </div>
                             )}
-                            {isAdmin && allPlayerNames.length > 0 && renderScoringControls()}
-                            {isAdmin && renderAttendanceSection()}
+                            {isAdmin && allPlayerNames.length > 0 && scoringControlsElement}
+                            {isAdmin && attendanceSectionElement}
                             {!isAdmin && (goalScorers.length > 0 || assisters.length > 0 || motm) && (
                                 <div className="border-t border-white/10 pt-4 mt-4 space-y-3">
                                     {goalScorers.length > 0 && (

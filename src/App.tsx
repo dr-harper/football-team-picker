@@ -180,17 +180,6 @@ const FootballTeamPickerInner = () => {
         setIsFixingWithAI(false);
     };
 
-    const waitForTaglines = (timeoutMs = 6000): Promise<void> =>
-        new Promise(resolve => {
-            const start = Date.now();
-            const check = () => {
-                const allReady = teamSetups.every(s => setupTaglinesRef.current[s.id]);
-                if (allReady || Date.now() - start > timeoutMs) resolve();
-                else setTimeout(check, 200);
-            };
-            check();
-        });
-
     const handleReset = () => {
         setTeamSetups([]);
         setErrorMessage('');
@@ -269,7 +258,6 @@ const FootballTeamPickerInner = () => {
                 isExporting={isExporting}
                 onExport={async () => {
                     setIsExporting(true);
-                    await waitForTaglines();
                     const taglines = teamSetups.map(s => setupTaglinesRef.current[s.id] || '');
                     const result = await exportImage(teamSetups.length, taglines);
                     setIsExporting(false);
@@ -279,7 +267,6 @@ const FootballTeamPickerInner = () => {
                 }}
                 onShare={async () => {
                     setIsExporting(true);
-                    await waitForTaglines();
                     const taglines = teamSetups.map(s => setupTaglinesRef.current[s.id] || '');
                     const result = await shareImage(teamSetups.length, taglines);
                     setIsExporting(false);

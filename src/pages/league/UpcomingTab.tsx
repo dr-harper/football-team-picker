@@ -1,0 +1,432 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { Plus, Trash2, ArrowRight, CheckCircle, HelpCircle, XCircle } from 'lucide-react';
+import { Button } from '../../components/ui/button';
+import { League, Game, PlayerAvailability, AvailabilityStatus } from '../../types';
+import {
+    createGame,
+    deleteGame,
+    setAvailability,
+    subscribeToGameAvailability,
+} from '../../utils/firestore';
+import CalendarPicker from '../../components/CalendarPicker';
+import { geocodeLocation, GeoResult } from '../../utils/weather';
+import type { User } from 'firebase/auth';
+import type { PersonalStats } from './statsUtils';
+
+interface Member {
+    id: string;
+    displayName: string;
+    email: string;
+}
+
+interface UpcomingTabProps {
+    leagueId: string;
+    league: League;
+    code: string;
+    user: User;
+    members: Member[];
+    upcomingGames: Game[];
+    isAdmin: boolean;
+    myStats: PersonalStats;
+    hasCompletedGames: boolean;
+    onNavigateToStats: () => void;
+}
+
+const UpcomingTab: React.FC<UpcomingTabProps> = ({
+    leagueId, league, code, user, members, upcomingGames, isAdmin,
+    myStats, hasCompletedGames, onNavigateToStats,
+}) => {
+    const today = new Date().toISOString().split('T')[0];
+    const [showNewGame, setShowNewGame] = useState(false);
+    const [newGameTitle, setNewGameTitle] = useState('');
+    const [newGameDate, setNewGameDate] = useState(today);
+    const [newGameTime, setNewGameTime] = useState('19:00');
+    const [newGameLocation, setNewGameLocation] = useState('');
+    const [verifiedLocation, setVerifiedLocation] = useState<GeoResult | null>(null);
+    const [verifyingLocation, setVerifyingLocation] = useState(false);
+    const [repeatWeeks, setRepeatWeeks] = useState(1);
+    const [newGameCost, setNewGameCost] = useState('');
+    const [scheduleAvailability, setScheduleAvailability] = useState<Map<string, PlayerAvailability[]>>(new Map());
+    const [expandedAvailGame, setExpandedAvailGame] = useState<string | null>(null);
+
+    const handleSetAvailability = useCallback(async (gameId: string, status: AvailabilityStatus) => {
+        if (!user) return;
+        await setAvailability(gameId, user.uid, user.displayName || user.email?.split('@')[0] || 'Player', status);
+    }, [user]);
+
+    // Subscribe to availability for all upcoming games
+    useEffect(() => {
+        if (!user || upcomingGames.length === 0) return;
+        const unsubs = upcomingGames.map(game =>
+            subscribeToGameAvailability(game.id, (avail) => {
+                setScheduleAvailability(prev => {
+                    const next = new Map(prev);
+                    next.set(game.id, avail);
+                    return next;
+                });
+            })
+        );
+        return () => unsubs.forEach(u => u());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [upcomingGames.map(g => g.id).join(',')]);
+
+    const handleCreateGame = async () => {
+        if (!user || !leagueId || !newGameTitle.trim() || !newGameDate) return;
+        const base = new Date(`${newGameDate}T${newGameTime}`);
+        const locationName = verifiedLocation?.displayName || newGameLocation.trim() || undefined;
+        const parsedCost = parseFloat(newGameCost);
+        const costPerPerson = !isNaN(parsedCost) && newGameCost.trim() !== '' ? parsedCost : undefined;
+        await Promise.all(
+            Array.from({ length: repeatWeeks }, (_, i) => {
+                const date = new Date(base.getTime() + i * 7 * 24 * 60 * 60 * 1000);
+                return createGame(
+                    leagueId,
+                    newGameTitle.trim(),
+                    date.getTime(),
+                    user.uid,
+                    locationName,
+                    verifiedLocation?.lat,
+                    verifiedLocation?.lon,
+                    costPerPerson,
+                );
+            })
+        );
+        setNewGameTitle('');
+        setNewGameDate(today);
+        setNewGameLocation('');
+        setVerifiedLocation(null);
+        setRepeatWeeks(1);
+        setNewGameCost('');
+        setShowNewGame(false);
+    };
+
+    const handleDeleteGame = async (gameId: string, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (confirm('Are you sure you want to delete this game?')) {
+            await deleteGame(gameId);
+        }
+    };
+
+    return (
+        <div className="flex gap-4 items-start">
+            {/* Main game list */}
+            <div className="flex-1 min-w-0 space-y-3">
+
+            {!showNewGame ? (
+                <Button
+                    onClick={() => {
+                        setShowNewGame(true);
+                        if (league?.defaultVenue && !newGameLocation) {
+                            setNewGameLocation(league.defaultVenue);
+                            if (league.defaultVenueLat !== undefined && league.defaultVenueLon !== undefined) {
+                                setVerifiedLocation({ displayName: league.defaultVenue, lat: league.defaultVenueLat, lon: league.defaultVenueLon });
+                            }
+                        }
+                    }}
+                    className="w-full bg-green-600 hover:bg-green-500 text-white rounded-lg flex items-center justify-center gap-2 py-3"
+                >
+                    <Plus className="w-4 h-4" /> Schedule a Game
+                </Button>
+            ) : (
+                <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between mb-1">
+                        <span className="text-white font-semibold">Schedule a Game</span>
+                        <button onClick={() => setShowNewGame(false)} className="text-white/40 hover:text-white transition-colors text-xl leading-none">&times;</button>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-green-300 mb-1">Title</label>
+                        <input
+                            type="text"
+                            value={newGameTitle}
+                            onChange={e => setNewGameTitle(e.target.value)}
+                            placeholder="e.g. Weekly kickabout"
+                            className="w-full bg-white/10 border border-white/20 rounded-lg p-2.5 text-white placeholder-white/40 focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                            autoFocus
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-green-300 mb-1">Location <span className="text-white/30 font-normal">(optional)</span></label>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={newGameLocation}
+                                onChange={e => { setNewGameLocation(e.target.value); setVerifiedLocation(null); }}
+                                onKeyDown={async e => {
+                                    if (e.key === 'Enter' && newGameLocation.trim()) {
+                                        e.preventDefault();
+                                        setVerifyingLocation(true);
+                                        const result = await geocodeLocation(newGameLocation.trim());
+                                        setVerifiedLocation(result);
+                                        setVerifyingLocation(false);
+                                    }
+                                }}
+                                placeholder="e.g. Hackney Marshes, London"
+                                className="flex-1 bg-white/10 border border-white/20 rounded-lg p-2.5 text-white placeholder-white/40 focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                            />
+                            <button
+                                type="button"
+                                disabled={!newGameLocation.trim() || verifyingLocation}
+                                onClick={async () => {
+                                    setVerifyingLocation(true);
+                                    const result = await geocodeLocation(newGameLocation.trim());
+                                    setVerifiedLocation(result);
+                                    setVerifyingLocation(false);
+                                }}
+                                className="px-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white text-xs transition-colors disabled:opacity-40"
+                            >
+                                {verifyingLocation ? '…' : 'Verify'}
+                            </button>
+                        </div>
+                        {verifiedLocation && (
+                            <div className="mt-1.5 flex items-center gap-1.5 text-xs text-green-300">
+                                <span>📍</span>
+                                <span>{verifiedLocation.displayName}</span>
+                                <span className="text-green-400">✓</span>
+                            </div>
+                        )}
+                        {verifiedLocation === null && newGameLocation.trim() && !verifyingLocation && (
+                            <div className="mt-1 text-xs text-white/30">Press Verify or Enter to confirm location</div>
+                        )}
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-green-300 mb-1">Date</label>
+                        <CalendarPicker
+                            value={newGameDate}
+                            min={today}
+                            onChange={setNewGameDate}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-green-300 mb-1">Time</label>
+                        <input
+                            type="time"
+                            value={newGameTime}
+                            onChange={e => setNewGameTime(e.target.value)}
+                            className="w-full bg-white/10 border border-white/20 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-green-300 mb-1">
+                            Cost per person <span className="text-white/30 font-normal">(leave blank for league default{league.defaultCostPerPerson !== undefined ? ` · £${league.defaultCostPerPerson.toFixed(2)}` : ''})</span>
+                        </label>
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50 text-sm">£</span>
+                            <input
+                                type="number"
+                                value={newGameCost}
+                                onChange={e => setNewGameCost(e.target.value)}
+                                placeholder="e.g. 5"
+                                min="0"
+                                step="0.5"
+                                className="w-full bg-white/10 border border-white/20 rounded-lg p-2.5 pl-7 text-white placeholder-white/40 focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-green-300 mb-1">Repeat weekly</label>
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="range"
+                                min={1}
+                                max={20}
+                                value={repeatWeeks}
+                                onChange={e => setRepeatWeeks(Number(e.target.value))}
+                                className="flex-1 accent-green-500"
+                            />
+                            <span className="w-20 text-xs text-center font-medium text-white bg-white/10 rounded-lg px-2 py-1.5">
+                                {repeatWeeks === 1 ? 'Once' : `${repeatWeeks} weeks`}
+                            </span>
+                        </div>
+                        {repeatWeeks > 1 && newGameDate && (
+                            <p className="text-xs text-green-300/70 mt-1">
+                                Creates {repeatWeeks} games from {new Date(`${newGameDate}T${newGameTime}`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} to {new Date(new Date(`${newGameDate}T${newGameTime}`).getTime() + (repeatWeeks - 1) * 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                            </p>
+                        )}
+                    </div>
+                    <Button
+                        onClick={handleCreateGame}
+                        disabled={!newGameTitle.trim() || !newGameDate}
+                        className="w-full bg-green-600 hover:bg-green-500 text-white rounded-lg"
+                    >
+                        {repeatWeeks === 1 ? 'Schedule' : `Schedule ${repeatWeeks} games`}
+                    </Button>
+                </div>
+            )}
+
+            {upcomingGames.length === 0 ? (
+                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
+                    <p className="text-green-300">No upcoming games. Schedule one!</p>
+                </div>
+            ) : (
+                upcomingGames.map(game => {
+                    const avail = scheduleAvailability.get(game.id) ?? [];
+                    const myStatus = avail.find(a => a.userId === user?.uid)?.status;
+                    const guestStatusMap = game.guestAvailability ?? {};
+                    const inCount = avail.filter(a => a.status === 'available').length
+                        + (game.guestPlayers ?? []).filter(n => (guestStatusMap[n] ?? 'available') === 'available').length;
+                    const maybeCount = avail.filter(a => a.status === 'maybe').length;
+                    const noResponseCount = members.filter(m => !avail.find(a => a.userId === m.id)).length;
+                    const isExpanded = expandedAvailGame === game.id;
+                    return (
+                        <div key={game.id} className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                            <div className="flex items-center gap-3">
+                                <Link to={`/league/${code}/game/${game.gameCode || game.id}`} className="flex-1 min-w-0 hover:text-green-300 transition-colors">
+                                    <div className="text-white font-bold">{game.title}</div>
+                                    <div className="text-green-300 text-sm mt-0.5">
+                                        {new Date(game.date).toLocaleDateString('en-GB', {
+                                            weekday: 'long',
+                                            day: 'numeric',
+                                            month: 'long',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                        })}
+                                        {game.location && <span className="text-white/40 ml-2">· {game.location}</span>}
+                                    </div>
+                                    <div className="flex items-center gap-3 mt-1 text-xs">
+                                        <span className="text-green-400">{inCount} in</span>
+                                        {maybeCount > 0 && <span className="text-yellow-400">{maybeCount} maybe</span>}
+                                        {noResponseCount > 0 && (
+                                            <button
+                                                onClick={e => { e.preventDefault(); if (isAdmin) setExpandedAvailGame(isExpanded ? null : game.id); }}
+                                                className={`text-white/35 ${isAdmin ? 'hover:text-white/60 cursor-pointer' : ''}`}
+                                            >
+                                                {noResponseCount} no response
+                                            </button>
+                                        )}
+                                    </div>
+                                </Link>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {user && (
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => handleSetAvailability(game.id, 'available')}
+                                                title="I'm in"
+                                                className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
+                                                    myStatus === 'available'
+                                                        ? 'bg-green-600 text-white'
+                                                        : 'bg-white/10 text-white/50 hover:bg-white/20'
+                                                }`}
+                                            >
+                                                <CheckCircle className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleSetAvailability(game.id, 'maybe')}
+                                                title="Maybe"
+                                                className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
+                                                    myStatus === 'maybe'
+                                                        ? 'bg-yellow-600 text-white'
+                                                        : 'bg-white/10 text-white/50 hover:bg-white/20'
+                                                }`}
+                                            >
+                                                <HelpCircle className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleSetAvailability(game.id, 'unavailable')}
+                                                title="Can't make it"
+                                                className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
+                                                    myStatus === 'unavailable'
+                                                        ? 'bg-red-600 text-white'
+                                                        : 'bg-white/10 text-white/50 hover:bg-white/20'
+                                                }`}
+                                            >
+                                                <XCircle className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
+                                    {user && game.createdBy === user.uid && (
+                                        <button
+                                            onClick={(e) => handleDeleteGame(game.id, e)}
+                                            className="text-red-400/50 hover:text-red-400 transition-colors"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                    <ArrowRight className="w-4 h-4 text-white/40" />
+                                </div>
+                            </div>
+                            {/* Admin member availability panel */}
+                            {isAdmin && isExpanded && (
+                                <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
+                                    {members.map(member => {
+                                        const avails = scheduleAvailability.get(game.id) ?? [];
+                                        const memberStatus = avails.find(a => a.userId === member.id)?.status;
+                                        return (
+                                            <div key={member.id} className="flex items-center justify-between gap-2">
+                                                <span className={`text-sm truncate ${member.id === user?.uid ? 'text-green-300' : 'text-white/70'}`}>
+                                                    {member.displayName}
+                                                </span>
+                                                <div className="flex gap-1 shrink-0">
+                                                    <button
+                                                        onClick={() => setAvailability(game.id, member.id, member.displayName, 'available')}
+                                                        title="Mark in"
+                                                        className={`w-7 h-7 rounded flex items-center justify-center transition-colors text-xs ${memberStatus === 'available' ? 'bg-green-600 text-white' : 'bg-white/8 text-white/30 hover:bg-white/15 hover:text-white/60'}`}
+                                                    >
+                                                        <CheckCircle className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setAvailability(game.id, member.id, member.displayName, 'maybe')}
+                                                        title="Mark maybe"
+                                                        className={`w-7 h-7 rounded flex items-center justify-center transition-colors text-xs ${memberStatus === 'maybe' ? 'bg-yellow-600 text-white' : 'bg-white/8 text-white/30 hover:bg-white/15 hover:text-white/60'}`}
+                                                    >
+                                                        <HelpCircle className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setAvailability(game.id, member.id, member.displayName, 'unavailable')}
+                                                        title="Mark out"
+                                                        className={`w-7 h-7 rounded flex items-center justify-center transition-colors text-xs ${memberStatus === 'unavailable' ? 'bg-red-600 text-white' : 'bg-white/8 text-white/30 hover:bg-white/15 hover:text-white/60'}`}
+                                                    >
+                                                        <XCircle className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })
+            )}
+            </div>{/* end main game list */}
+
+            {/* My Stats sidebar */}
+            {hasCompletedGames && (
+                <div className="w-36 shrink-0 bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4 space-y-4">
+                    <div className="text-xs font-semibold text-green-300 uppercase tracking-wide">My Stats</div>
+                    <div className="space-y-3">
+                        <div>
+                            <div className="text-2xl font-bold text-white">{myStats.gamesPlayed}</div>
+                            <div className="text-xs text-white/50 mt-0.5">Games</div>
+                        </div>
+                        <div>
+                            <div className="text-2xl font-bold text-white">{myStats.wins}</div>
+                            <div className="text-xs text-white/50 mt-0.5">Wins</div>
+                        </div>
+                        <div>
+                            <div className="text-2xl font-bold text-white">{myStats.goals}</div>
+                            <div className="text-xs text-white/50 mt-0.5">Goals</div>
+                        </div>
+                        <div>
+                            <div className="text-2xl font-bold text-white">{myStats.assists}</div>
+                            <div className="text-xs text-white/50 mt-0.5">Assists</div>
+                        </div>
+                        <div>
+                            <div className="text-2xl font-bold text-white">{myStats.motm}</div>
+                            <div className="text-xs text-white/50 mt-0.5">MOTM</div>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onNavigateToStats}
+                        className="text-xs text-green-300 hover:text-white transition-colors flex items-center gap-1"
+                    >
+                        View more <ArrowRight className="w-3 h-3" />
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default UpcomingTab;

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Plus, Users, Calendar, Trophy, ArrowRight, Copy, Check, Trash2, Goal, Star, Pencil } from 'lucide-react';
+import { Plus, Users, Calendar, Trophy, ArrowRight, Copy, Check, Goal, Star, Pencil } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserLeagues, createLeague, joinLeagueByCode, deleteLeague } from '../utils/firestore';
+import { getUserLeagues, createLeague, joinLeagueByCode } from '../utils/firestore';
 import { League, Game } from '../types';
 import { getLeagueGames } from '../utils/firestore';
 import { geocodeLocation, GeoResult } from '../utils/weather';
@@ -44,7 +44,7 @@ const DashboardPage: React.FC = () => {
     const [joinCode, setJoinCode] = useState('');
     const [error, setError] = useState('');
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
-    const [deletingLeagueId, setDeletingLeagueId] = useState<string | null>(null);
+
     const [leagueStats, setLeagueStats] = useState<Map<string, LeagueStats>>(new Map());
 
     useEffect(() => {
@@ -254,17 +254,6 @@ const DashboardPage: React.FC = () => {
 
     const getLeagueName = (leagueId: string) => leagues.find(l => l.id === leagueId)?.name || 'Unknown League';
     const getLeagueCode = (leagueId: string) => leagues.find(l => l.id === leagueId)?.joinCode;
-
-    const handleDeleteLeague = async (league: League, e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (confirm(`Delete "${league.name}"? This will permanently remove all games and cannot be undone.`)) {
-            setDeletingLeagueId(league.id);
-            await deleteLeague(league.id);
-            await loadData();
-            setDeletingLeagueId(null);
-        }
-    };
 
     if (loading) {
         return (
@@ -567,25 +556,7 @@ const DashboardPage: React.FC = () => {
                                             );
                                         })()}
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        {user && league.createdBy === user.uid && (
-                                            <button
-                                                onClick={(e) => handleDeleteLeague(league, e)}
-                                                disabled={deletingLeagueId === league.id}
-                                                className="text-red-400/50 hover:text-red-400 transition-colors p-1 disabled:opacity-50"
-                                            >
-                                                {deletingLeagueId === league.id ? (
-                                                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                                                    </svg>
-                                                ) : (
-                                                    <Trash2 className="w-4 h-4" />
-                                                )}
-                                            </button>
-                                        )}
-                                        <ArrowRight className="w-5 h-5 text-white/40" />
-                                    </div>
+                                    <ArrowRight className="w-5 h-5 text-white/40" />
                                 </Link>
                             ))}
                         </div>
