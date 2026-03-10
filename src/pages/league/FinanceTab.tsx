@@ -17,7 +17,7 @@ interface FinanceTabProps {
 }
 
 const FinanceTab: React.FC<FinanceTabProps> = ({
-    league, leagueId, completedGames, myName, isAdmin,
+    league, completedGames, myName, isAdmin,
     onRecordPayment, onApproveExpense, onRejectExpense, onSaveDefaultCost,
 }) => {
     const [editingDefaultCost, setEditingDefaultCost] = useState(false);

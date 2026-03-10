@@ -26,7 +26,7 @@ interface ProfileTabProps {
 }
 
 const ProfileTab: React.FC<ProfileTabProps> = ({
-    user, league, leagueId, completedGames, myName, myStats,
+    user, league, completedGames, myName, myStats,
     updatePlayerTags, updateBio, onSubmitPayment, onOpenExpenseForm,
 }) => {
     const [leagueProfile, setLeagueProfile] = useState<{ tags: string[]; positions: string[]; bio: string; hasSetTags: boolean } | null>(null);

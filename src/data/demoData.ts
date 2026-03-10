@@ -7,10 +7,6 @@ const PLAYERS = [
     'Ezri',
 ];
 
-// Rosters vary per game — these are just defaults for the helper
-const CORE_A = ['Jamie', 'Reece', 'Marcus', 'Declan', 'Bukayo', 'Mason', 'Jude', 'Phil'];
-const CORE_B = ['Kyle', 'Harry', 'Ollie', 'Trent', 'Jordan', 'Jack', 'Cole', 'Ezri'];
-
 function makeTeams(teamAName: string, teamBName: string, teamA: string[], teamB: string[], colA = '#3b82f6', colB = '#ef4444') {
     const toPlayer = (name: string, idx: number) => ({
         name,

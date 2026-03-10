@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, Calendar, Trophy, PlusCircle } from 'lucide-react';
+import { Calendar, Trophy, PlusCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserLeagues, getLeagueGames } from '../utils/firestore';
 

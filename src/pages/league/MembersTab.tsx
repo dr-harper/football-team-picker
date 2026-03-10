@@ -27,7 +27,7 @@ interface MembersTabProps {
 }
 
 const MembersTab: React.FC<MembersTabProps> = ({
-    league, leagueId, user, members, isOwner, isAdmin, code,
+    league, leagueId, user, members, isOwner, isAdmin,
     copiedCode, onCopyCode, onLeaveLeague, onDeleteLeague, onMembersChanged,
 }) => {
     const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
