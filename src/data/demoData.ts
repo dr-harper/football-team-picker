@@ -1,4 +1,4 @@
-import { Game, League } from '../types';
+import { Game, League, PlayerAvailability, TeamSetup } from '../types';
 
 const PLAYERS = [
     'Jamie', 'Reece', 'Marcus', 'Declan', 'Bukayo',
@@ -218,6 +218,13 @@ export const demoUpcomingGames: Game[] = [
         status: 'scheduled', createdBy: 'demo-admin', createdAt: now - DAY,
         location: 'Powerleague Shoreditch',
         costPerPerson: 7.50,
+        guestPlayers: ['Dan'],
+        guestAvailability: { Dan: 'available' },
+        playerPositions: {
+            Jamie: 'g', Kyle: 'g',
+            Reece: 'd', Declan: 'd', Jordan: 'd', Trent: 'd',
+            Bukayo: 's', Harry: 's', Jude: 's', Dan: 's',
+        },
     },
     {
         id: 'demo-upcoming-2', leagueId: 'demo-league', title: 'Week 12',
@@ -227,3 +234,42 @@ export const demoUpcomingGames: Game[] = [
         costPerPerson: 7.50,
     },
 ];
+
+// --- Demo availability for the upcoming game (Week 11) ---
+const makeAvail = (name: string, status: 'available' | 'maybe' | 'unavailable'): PlayerAvailability => ({
+    id: `demo-upcoming-1_demo-${name.toLowerCase()}`,
+    gameId: 'demo-upcoming-1',
+    userId: `demo-${name.toLowerCase()}`,
+    displayName: name,
+    status,
+    updatedAt: now - Math.floor(Math.random() * 2 * DAY),
+});
+
+export const demoAvailability: PlayerAvailability[] = [
+    makeAvail('Jamie', 'available'),
+    makeAvail('Reece', 'available'),
+    makeAvail('Marcus', 'available'),
+    makeAvail('Declan', 'available'),
+    makeAvail('Bukayo', 'available'),
+    makeAvail('Jude', 'available'),
+    makeAvail('Kyle', 'available'),
+    makeAvail('Harry', 'available'),
+    makeAvail('Ollie', 'available'),
+    makeAvail('Trent', 'available'),
+    makeAvail('Jordan', 'available'),
+    makeAvail('Jack', 'available'),
+    makeAvail('Mason', 'maybe'),
+    makeAvail('Phil', 'maybe'),
+    makeAvail('Cole', 'unavailable'),
+    makeAvail('Ezri', 'unavailable'),
+];
+
+// --- Pre-generated teams for the demo "Generate teams" step ---
+const demoTeamA = ['Jamie', 'Reece', 'Declan', 'Marcus', 'Bukayo', 'Jude', 'Dan'];
+const demoTeamB = ['Kyle', 'Trent', 'Jordan', 'Ollie', 'Harry', 'Jack'];
+
+export const demoGeneratedTeams: TeamSetup = {
+    id: 'demo-setup-1',
+    playersInput: '',
+    teams: makeTeams('Hackney Reds', 'Shoreditch Blues', demoTeamA, demoTeamB),
+};
