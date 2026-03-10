@@ -93,9 +93,15 @@ const HomeBanner: React.FC = () => {
                         </button>
                     </div>
                 </div>
-                <p className="text-white/30 text-xs mt-2">
-                    Sign in to create leagues, schedule games, track stats, and manage finances.
-                </p>
+                <div className="flex items-center gap-3 mt-2 text-xs">
+                    <button onClick={() => navigate('/demo')} className="text-green-300/70 hover:text-green-300 transition-colors">
+                        🏟️ Try demo league
+                    </button>
+                    <span className="text-white/15">&middot;</span>
+                    <button onClick={() => navigate('/features')} className="text-green-300/70 hover:text-green-300 transition-colors">
+                        ✨ See all features
+                    </button>
+                </div>
             </div>
         );
     }
