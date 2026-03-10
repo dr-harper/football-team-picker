@@ -15,6 +15,8 @@ import TermsPage from './pages/TermsPage'
 import SetNameModal from './components/SetNameModal'
 import PlayerProfilePage from './pages/PlayerProfilePage'
 import ProtectedRoute from './components/ProtectedRoute'
+import DemoLeaguePage from './pages/DemoLeaguePage'
+import FeaturesPage from './pages/FeaturesPage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -29,6 +31,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/league/:code/game/:id" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
           <Route path="/game/:id" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
           <Route path="/profile/setup" element={<ProtectedRoute><PlayerProfilePage /></ProtectedRoute>} />
+          <Route path="/demo" element={<DemoLeaguePage />} />
+          <Route path="/features" element={<FeaturesPage />} />
           <Route path="/join/:code" element={<JoinPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
