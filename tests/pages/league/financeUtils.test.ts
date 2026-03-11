@@ -10,14 +10,16 @@ describe('buildFinanceLedger', () => {
         expect(buildFinanceLedger([], league)).toEqual([]);
     });
 
-    it('skips games without attendees', () => {
+    it('falls back to team players when attendees not set', () => {
         const game = makeCompletedGame({
             team1Players: [{ playerId: 'p1', name: 'Alice' }],
             team2Players: [{ playerId: 'p2', name: 'Bob' }],
             score: { team1: 1, team2: 0 },
         });
-        const league = makeLeague();
-        expect(buildFinanceLedger([game], league)).toEqual([]);
+        const league = makeLeague({ defaultCostPerPerson: 10 });
+        const ledger = buildFinanceLedger([game], league);
+        expect(ledger).toHaveLength(2);
+        expect(ledger[0].owed).toBe(10);
     });
 
     it('computes owed from attended games', () => {
@@ -175,14 +177,17 @@ describe('buildWeeklySeries', () => {
         expect(buildWeeklySeries([], {}, 10)).toEqual([]);
     });
 
-    it('returns empty for games without attendees', () => {
+    it('falls back to team players when attendees not set', () => {
         const game = makeCompletedGame({
             team1Players: [{ playerId: 'p1', name: 'Alice' }],
             team2Players: [{ playerId: 'p2', name: 'Bob' }],
             score: { team1: 1, team2: 0 },
             date: Date.now() - 14 * 86400000,
         });
-        expect(buildWeeklySeries([game], {}, 10)).toEqual([]);
+        const series = buildWeeklySeries([game], {}, 10);
+        expect(series.length).toBeGreaterThan(0);
+        const lastPoint = series[series.length - 1];
+        expect(lastPoint.balance).toBe(20); // both team players owe 10 each
     });
 
     it('returns weekly data points with correct balance', () => {
