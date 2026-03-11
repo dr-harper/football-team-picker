@@ -28,6 +28,7 @@ interface UpcomingTabProps {
     user: User;
     members: Member[];
     upcomingGames: Game[];
+    allGames: Game[];
     isAdmin: boolean;
     myStats: PersonalStats;
     hasCompletedGames: boolean;
@@ -36,7 +37,7 @@ interface UpcomingTabProps {
 }
 
 const UpcomingTab: React.FC<UpcomingTabProps> = ({
-    leagueId, league, code, user, members, upcomingGames, isAdmin,
+    leagueId, league, code, user, members, upcomingGames, allGames, isAdmin,
     myStats, hasCompletedGames, enableAssists, onNavigateToStats,
 }) => {
     const today = new Date().toISOString().split('T')[0];
@@ -315,6 +316,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
             {viewMode === 'grid' && isAdmin && upcomingGames.length > 0 ? (
                 <AvailabilityGrid
                     upcomingGames={upcomingGames}
+                    allGames={allGames}
                     members={members}
                     scheduleAvailability={scheduleAvailability}
                     currentUserId={user.uid}

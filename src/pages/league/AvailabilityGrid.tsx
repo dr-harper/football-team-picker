@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, HelpCircle, XCircle } from 'lucide-react';
+import { CheckCircle, HelpCircle, XCircle, UserPlus } from 'lucide-react';
 import { Game, PlayerAvailability, AvailabilityStatus } from '../../types';
-import { setAvailability, updateGuestAvailability } from '../../utils/firestore';
+import { setAvailability, updateGuestAvailability, updateGameGuests } from '../../utils/firestore';
 
 interface Member {
     id: string;
@@ -12,6 +12,7 @@ interface Member {
 
 interface AvailabilityGridProps {
     upcomingGames: Game[];
+    allGames: Game[];
     members: Member[];
     scheduleAvailability: Map<string, PlayerAvailability[]>;
     currentUserId: string;
@@ -55,24 +56,21 @@ function ThreeButtonCell({
     );
 }
 
-function getGuestStatus(game: Game, guestName: string): AvailabilityStatus | undefined {
-    if (!game.guestPlayers?.includes(guestName)) return undefined;
-    return (game.guestAvailability?.[guestName] as AvailabilityStatus) ?? 'available';
-}
-
 const AvailabilityGrid: React.FC<AvailabilityGridProps> = ({
-    upcomingGames, members, scheduleAvailability, currentUserId, code,
+    upcomingGames, allGames, members, scheduleAvailability, currentUserId, code,
 }) => {
-    // Collect all unique guests across upcoming games
+    const [newGuestName, setNewGuestName] = useState('');
+
+    // Collect all unique guests across ALL games (completed + upcoming)
     const allGuests = useMemo(() => {
         const guestSet = new Set<string>();
-        for (const game of upcomingGames) {
+        for (const game of allGames) {
             for (const name of game.guestPlayers ?? []) {
                 guestSet.add(name);
             }
         }
         return [...guestSet].sort((a, b) => a.localeCompare(b));
-    }, [upcomingGames]);
+    }, [allGames]);
 
     // Build row list: current user first, then members sorted, then guests
     const rows: GridRow[] = useMemo(() => {
@@ -98,9 +96,29 @@ const AvailabilityGrid: React.FC<AvailabilityGridProps> = ({
 
     const gameCount = upcomingGames.length;
 
+    /** Set guest status, auto-adding them to the game's guestPlayers if not already there */
     const handleSetGuestStatus = async (game: Game, guestName: string, status: AvailabilityStatus) => {
-        const current = game.guestAvailability ?? {};
-        await updateGuestAvailability(game.id, { ...current, [guestName]: status });
+        const currentGuests = game.guestPlayers ?? [];
+        if (!currentGuests.includes(guestName)) {
+            await updateGameGuests(game.id, [...currentGuests, guestName]);
+        }
+        const currentAvail = game.guestAvailability ?? {};
+        await updateGuestAvailability(game.id, { ...currentAvail, [guestName]: status });
+    };
+
+    const handleAddGuest = async () => {
+        const name = newGuestName.trim();
+        if (!name) return;
+        // Add guest to all upcoming games as available
+        for (const game of upcomingGames) {
+            const currentGuests = game.guestPlayers ?? [];
+            if (!currentGuests.includes(name)) {
+                await updateGameGuests(game.id, [...currentGuests, name]);
+                const currentAvail = game.guestAvailability ?? {};
+                await updateGuestAvailability(game.id, { ...currentAvail, [name]: 'available' });
+            }
+        }
+        setNewGuestName('');
     };
 
     return (
@@ -179,10 +197,9 @@ const AvailabilityGrid: React.FC<AvailabilityGridProps> = ({
                                             if (row.isGuest) {
                                                 const guestName = row.displayName;
                                                 const inThisGame = game.guestPlayers?.includes(guestName);
-                                                if (!inThisGame) {
-                                                    return <td key={game.id} className="p-1 text-center"><span className="text-white/10">—</span></td>;
-                                                }
-                                                const status = getGuestStatus(game, guestName);
+                                                const status = inThisGame
+                                                    ? (game.guestAvailability?.[guestName] as AvailabilityStatus) ?? 'available'
+                                                    : undefined;
                                                 return (
                                                     <td key={game.id} className="p-1 text-center">
                                                         <ThreeButtonCell
@@ -209,6 +226,32 @@ const AvailabilityGrid: React.FC<AvailabilityGridProps> = ({
                                 </React.Fragment>
                             );
                         })}
+                        {/* Add guest row */}
+                        <tr className="border-t border-white/8">
+                            <td colSpan={gameCount + 1} className="px-3 py-2">
+                                <form
+                                    onSubmit={e => { e.preventDefault(); handleAddGuest(); }}
+                                    className="flex items-center gap-2"
+                                >
+                                    <UserPlus className="w-4 h-4 text-orange-400 shrink-0" />
+                                    <input
+                                        type="text"
+                                        value={newGuestName}
+                                        onChange={e => setNewGuestName(e.target.value)}
+                                        placeholder="Add guest..."
+                                        maxLength={30}
+                                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-white text-sm placeholder-white/25 focus:outline-none focus:ring-1 focus:ring-green-400 max-w-[200px]"
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={!newGuestName.trim()}
+                                        className="text-xs text-green-400 hover:text-green-300 disabled:opacity-30 transition-colors px-2 py-1"
+                                    >
+                                        Add
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>

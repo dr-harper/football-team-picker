@@ -325,6 +325,7 @@ const LeaguePage: React.FC = () => {
                         user={user}
                         members={members}
                         upcomingGames={upcomingGames}
+                        allGames={games}
                         isAdmin={isAdmin}
                         myStats={myStats}
                         hasCompletedGames={completedGames.length > 0}
