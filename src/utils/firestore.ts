@@ -298,6 +298,11 @@ export async function setAvailability(
     });
 }
 
+export async function clearAvailability(gameId: string, userId: string): Promise<void> {
+    const id = `${gameId}_${userId}`;
+    await deleteDoc(doc(db, 'availability', id));
+}
+
 export async function getGameAvailability(gameId: string): Promise<PlayerAvailability[]> {
     const q = query(collection(db, 'availability'), where('gameId', '==', gameId));
     const snap = await getDocs(q);

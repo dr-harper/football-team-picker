@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle, HelpCircle, XCircle, UserPlus } from 'lucide-react';
 import { Game, PlayerAvailability, AvailabilityStatus } from '../../types';
-import { setAvailability, updateGuestAvailability, updateGameGuests } from '../../utils/firestore';
+import { setAvailability, clearAvailability, updateGuestAvailability, updateGameGuests } from '../../utils/firestore';
 
 interface Member {
     id: string;
@@ -29,16 +29,18 @@ interface GridRow {
 function ThreeButtonCell({
     status,
     onSet,
+    onClear,
 }: {
     status?: AvailabilityStatus;
     onSet: (s: AvailabilityStatus) => void;
+    onClear?: () => void;
 }) {
     return (
         <div className="flex items-center justify-center gap-0.5">
             {(['available', 'maybe', 'unavailable'] as AvailabilityStatus[]).map(s => (
                 <button
                     key={s}
-                    onClick={() => onSet(s)}
+                    onClick={() => status === s && onClear ? onClear() : onSet(s)}
                     className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${
                         status === s
                             ? s === 'available' ? 'bg-green-600 text-white'
@@ -104,6 +106,17 @@ const AvailabilityGrid: React.FC<AvailabilityGridProps> = ({
         }
         const currentAvail = game.guestAvailability ?? {};
         await updateGuestAvailability(game.id, { ...currentAvail, [guestName]: status });
+    };
+
+    /** Clear guest status — remove from guestAvailability and guestPlayers */
+    const handleClearGuestStatus = async (game: Game, guestName: string) => {
+        const currentGuests = game.guestPlayers ?? [];
+        if (currentGuests.includes(guestName)) {
+            await updateGameGuests(game.id, currentGuests.filter(n => n !== guestName));
+        }
+        const { [guestName]: _removed, ...rest } = game.guestAvailability ?? {};
+        void _removed;
+        await updateGuestAvailability(game.id, rest);
     };
 
     const handleAddGuest = async () => {
@@ -205,6 +218,7 @@ const AvailabilityGrid: React.FC<AvailabilityGridProps> = ({
                                                         <ThreeButtonCell
                                                             status={status}
                                                             onSet={s => handleSetGuestStatus(game, guestName, s)}
+                                                            onClear={() => handleClearGuestStatus(game, guestName)}
                                                         />
                                                     </td>
                                                 );
@@ -218,6 +232,7 @@ const AvailabilityGrid: React.FC<AvailabilityGridProps> = ({
                                                     <ThreeButtonCell
                                                         status={status}
                                                         onSet={s => setAvailability(game.id, row.id, member?.displayName ?? row.displayName, s)}
+                                                        onClear={() => clearAvailability(game.id, row.id)}
                                                     />
                                                 </td>
                                             );
