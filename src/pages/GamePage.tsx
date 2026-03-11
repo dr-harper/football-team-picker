@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeftRight, CheckCircle, XCircle, HelpCircle, Shuffle, Trophy, Users, Check, UserPlus, Plus, Goal, Award, Download, Share2, ChevronRight, ChevronLeft } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
-import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import {
     subscribeToGame,
@@ -27,17 +25,24 @@ import {
 import { Game, PlayerAvailability, AvailabilityStatus, League, Team, TeamSetup, WeatherForecast, GoalScorer } from '../types';
 import { generateTeamsFromText } from '../utils/teamGenerator';
 import { useSettings } from '../contexts/SettingsContext';
-import PitchRenderer from '../components/PitchRenderer';
-import TeamSetupCard from '../components/TeamSetupCard';
-import PlaceholderPitch from '../components/PlaceholderPitch';
-import { fetchWeather, describeWeatherCode } from '../utils/weather';
+import { fetchWeather } from '../utils/weather';
 import { exportImage, shareImage, ImageHeader } from '../utils/imageExport';
-import LocationMap from '../components/LocationMap';
+import { describeWeatherCode } from '../utils/weather';
 import ScoringControls from './game/ScoringControls';
 import AttendanceSection from './game/AttendanceSection';
-import AvailabilityList from './game/AvailabilityList';
+import GameHeader from './game/GameHeader';
+import WizardProgressBar from './game/WizardProgressBar';
+import AvailabilityStep from './game/AvailabilityStep';
+import TeamsStep from './game/TeamsStep';
+import MatchStep from './game/MatchStep';
+import CompletedGameView from './game/CompletedGameView';
 import { buildLookup, makeGuestId } from '../utils/playerLookup';
-import PlayerName from '../components/PlayerName';
+
+const WIZARD_STEPS = [
+    { num: 1 as const, label: 'Availability' },
+    { num: 2 as const, label: 'Teams' },
+    { num: 3 as const, label: 'Match' },
+];
 
 const GamePage: React.FC = () => {
     const { id: rawId } = useParams<{ id: string }>();
@@ -122,7 +127,6 @@ const GamePage: React.FC = () => {
         } else if (game.status === 'in_progress') {
             setWizardStep(game.teams?.length ? 3 : 2);
         }
-        // 'scheduled' stays at step 1
     }, [game]);
 
     useEffect(() => {
@@ -144,7 +148,6 @@ const GamePage: React.FC = () => {
     }, [game?.location, game?.date, game?.locationLat, game?.locationLon]);
 
     const lookup = buildLookup(leagueMembers);
-
     const myAvailability = availability.find(a => a.userId === user?.uid);
     const availablePlayers = availability.filter(a => a.status === 'available');
     const maybePlayers = availability.filter(a => a.status === 'maybe');
@@ -185,7 +188,6 @@ const GamePage: React.FC = () => {
     };
 
     const addSetup = useCallback((text: string, count = 1) => {
-        // Build name → playerId map for stamping generated Player objects
         const nameToId: Record<string, string> = {};
         for (const a of availability) {
             nameToId[a.displayName] = a.userId;
@@ -201,7 +203,6 @@ const GamePage: React.FC = () => {
             const result = generateTeamsFromText(text, places, lastNumbers);
             if (result.error) { setGenError(result.error); hasError = true; break; }
             lastNumbers = result.playerNumbers;
-            // Stamp playerId on each generated Player
             const teams = result.teams.map(t => ({
                 ...t,
                 players: t.players.map(p => ({ ...p, playerId: nameToId[p.name] ?? p.name })),
@@ -377,6 +378,22 @@ const GamePage: React.FC = () => {
         }
     };
 
+    const handleGuestStatusChange = async (name: string, status: AvailabilityStatus) => {
+        if (!gameDocId || !game) return;
+        const updated = { ...(game.guestAvailability ?? {}), [name]: status };
+        await updateGuestAvailability(gameDocId, updated);
+    };
+
+    const handlePositionToggle = async (playerId: string, pos: 'g' | 'd' | 's') => {
+        if (!gameDocId) return;
+        const positionMap = game?.playerPositions ?? {};
+        const current = positionMap[playerId];
+        const updated = current === pos
+            ? Object.fromEntries(Object.entries(positionMap).filter(([k]) => k !== playerId))
+            : { ...positionMap, [playerId]: pos };
+        await updatePlayerPositions(gameDocId, updated);
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
@@ -404,36 +421,13 @@ const GamePage: React.FC = () => {
     const guestsAvailable = (game.guestPlayers ?? []).filter(n => (guestStatusMap[n] ?? 'available') === 'available');
     const guestsMaybe = (game.guestPlayers ?? []).filter(n => guestStatusMap[n] === 'maybe');
     const guestsUnavailable = (game.guestPlayers ?? []).filter(n => guestStatusMap[n] === 'unavailable');
-
-    const handleGuestStatusChange = async (name: string, status: AvailabilityStatus) => {
-        if (!gameDocId || !game) return;
-        const updated = { ...guestStatusMap, [name]: status };
-        await updateGuestAvailability(gameDocId, updated);
-    };
-
     const positionMap = game.playerPositions ?? {};
-
-    const handlePositionToggle = async (playerId: string, pos: 'g' | 'd' | 's') => {
-        if (!gameDocId) return;
-        const current = positionMap[playerId];
-        const updated = current === pos
-            ? Object.fromEntries(Object.entries(positionMap).filter(([k]) => k !== playerId))
-            : { ...positionMap, [playerId]: pos };
-        await updatePlayerPositions(gameDocId, updated);
-    };
+    const totalAvailable = availablePlayers.length + guestsAvailable.length;
 
     const allPlayerIds = [
         ...availablePlayers.map(a => a.userId),
         ...guestsAvailable.map(makeGuestId),
         ...guestsMaybe.map(makeGuestId),
-    ];
-
-    const totalAvailable = availablePlayers.length + guestsAvailable.length;
-
-    const wizardSteps = [
-        { num: 1 as const, label: 'Availability' },
-        { num: 2 as const, label: 'Teams' },
-        { num: 3 as const, label: 'Match' },
     ];
 
     const scoringControlsElement = (
@@ -485,480 +479,114 @@ const GamePage: React.FC = () => {
             />
 
             <div className="p-4 sm:p-6 space-y-4">
-                {/* Date + location + weather */}
-                <div className="max-w-4xl mx-auto bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                    <div className="text-center text-white font-medium">
-                        {new Date(game.date).toLocaleDateString('en-GB', {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                        })}
-                    </div>
-                    {game.location && (
-                        <div className="text-center text-green-300 text-sm mt-1">
-                            📍 {game.location}
-                        </div>
-                    )}
-                    {game.locationLat !== undefined && game.locationLon !== undefined && (
-                        <div className="mt-3 rounded-lg overflow-hidden border border-white/10" style={{ height: 140 }}>
-                            <LocationMap lat={game.locationLat} lon={game.locationLon} height={140} />
-                        </div>
-                    )}
-                    {game.location && !isCompleted && (
-                        <div className="mt-3 pt-3 border-t border-white/10">
-                            {weatherLoading && (
-                                <div className="text-center text-green-300/60 text-xs">Fetching forecast…</div>
-                            )}
-                            {!weatherLoading && weather && (() => {
-                                const { emoji, label } = describeWeatherCode(weather.weatherCode);
-                                return (
-                                    <div className="flex items-center justify-center gap-6 text-sm">
-                                        <span className="text-2xl">{emoji}</span>
-                                        <div className="text-center">
-                                            <div className="text-white font-semibold">{weather.temperature}°C</div>
-                                            <div className="text-green-300 text-xs">{label}</div>
-                                        </div>
-                                        <div className="text-center">
-                                            <div className="text-white font-semibold">{weather.rainProbability}%</div>
-                                            <div className="text-green-300 text-xs">rain chance</div>
-                                        </div>
-                                        <div className="text-center">
-                                            <div className="text-white font-semibold">{weather.windSpeed} mph</div>
-                                            <div className="text-green-300 text-xs">wind</div>
-                                        </div>
-                                    </div>
-                                );
-                            })()}
-                            {!weatherLoading && !weather && (
-                                <div className="text-center text-green-300/60 text-xs">No forecast available</div>
-                            )}
-                        </div>
-                    )}
-                </div>
+                <GameHeader
+                    game={game}
+                    weather={weather}
+                    weatherLoading={weatherLoading}
+                    isCompleted={isCompleted}
+                />
 
-                {/* Wizard progress bar */}
                 {!isCompleted && (
-                    <div className="max-w-2xl mx-auto">
-                        <div className="flex items-center w-full">
-                            {wizardSteps.map((step, idx) => (
-                                <React.Fragment key={step.num}>
-                                    <button
-                                        onClick={() => { if (wizardStep > step.num) setWizardStep(step.num); }}
-                                        className={`flex flex-col items-center gap-1 shrink-0 ${wizardStep > step.num ? 'cursor-pointer' : 'cursor-default'}`}
-                                    >
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                                            wizardStep > step.num ? 'bg-green-500 text-white' :
-                                            wizardStep === step.num ? 'bg-white text-green-900' :
-                                            'bg-white/20 text-white/40'
-                                        }`}>
-                                            {wizardStep > step.num ? <Check className="w-4 h-4" /> : step.num}
-                                        </div>
-                                        <span className={`text-xs whitespace-nowrap ${
-                                            wizardStep === step.num ? 'text-white font-semibold' :
-                                            wizardStep > step.num ? 'text-green-400' :
-                                            'text-white/40'
-                                        }`}>{step.label}</span>
-                                    </button>
-                                    {idx < wizardSteps.length - 1 && (
-                                        <div className={`flex-1 h-0.5 mx-3 mb-4 transition-colors ${wizardStep > step.num ? 'bg-green-500' : 'bg-white/20'}`} />
-                                    )}
-                                </React.Fragment>
-                            ))}
-                        </div>
-                    </div>
+                    <WizardProgressBar
+                        steps={WIZARD_STEPS}
+                        currentStep={wizardStep}
+                        onStepClick={setWizardStep}
+                    />
                 )}
 
-                {/* ── Step 1: Availability & Positions ── */}
                 {!isCompleted && wizardStep === 1 && (
-                    <div className="max-w-2xl mx-auto space-y-4">
-                        <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-5">
-                            <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-                                <Users className="w-5 h-5" /> Availability
-                            </h2>
-                            {user && (
-                                <div className="flex gap-2 mb-4">
-                                    <Button
-                                        onClick={() => handleSetAvailability('available')}
-                                        className={`flex-1 rounded-lg flex items-center justify-center gap-2 py-3 ${
-                                            myAvailability?.status === 'available'
-                                                ? 'bg-green-600 text-white'
-                                                : 'bg-white/5 text-white/60 hover:bg-white/10'
-                                        }`}
-                                    >
-                                        <CheckCircle className="w-4 h-4" /> I'm in
-                                    </Button>
-                                    <Button
-                                        onClick={() => handleSetAvailability('maybe')}
-                                        className={`flex-1 rounded-lg flex items-center justify-center gap-2 py-3 ${
-                                            myAvailability?.status === 'maybe'
-                                                ? 'bg-yellow-600 text-white'
-                                                : 'bg-white/5 text-white/60 hover:bg-white/10'
-                                        }`}
-                                    >
-                                        <HelpCircle className="w-4 h-4" /> Maybe
-                                    </Button>
-                                    <Button
-                                        onClick={() => handleSetAvailability('unavailable')}
-                                        className={`flex-1 rounded-lg flex items-center justify-center gap-2 py-3 ${
-                                            myAvailability?.status === 'unavailable'
-                                                ? 'bg-red-600 text-white'
-                                                : 'bg-white/5 text-white/60 hover:bg-white/10'
-                                        }`}
-                                    >
-                                        <XCircle className="w-4 h-4" /> Can't make it
-                                    </Button>
-                                </div>
-                            )}
-                            <div className="flex gap-4 text-xs mb-2">
-                                <span className="text-green-400">{availablePlayers.length + guestsAvailable.length} in</span>
-                                <span className="text-yellow-400">{maybePlayers.length + guestsMaybe.length} maybe</span>
-                                <span className="text-red-400">{unavailablePlayers.length + guestsUnavailable.length} out</span>
-                            </div>
-                            <AvailabilityList
-                                availablePlayers={availablePlayers}
-                                maybePlayers={maybePlayers}
-                                unavailablePlayers={unavailablePlayers}
-                                guestPlayers={game.guestPlayers ?? []}
-                                guestStatusMap={guestStatusMap}
-                                positionMap={positionMap}
-                                leagueMembers={leagueMembers}
-                                availability={availability}
-                                isAdmin={isAdmin}
-                                currentUserId={user?.uid}
-                                gameDocId={gameDocId}
-                                onSetAvailability={handleSetAvailability}
-                                onAdminSetAvailability={handleAdminSetAvailability}
-                                onGuestStatusChange={handleGuestStatusChange}
-                                onPositionToggle={handlePositionToggle}
-                                onSetMemberAvailability={setAvailability}
-                            />
-                            {isAdmin && (
-                                <div className="mt-3 pt-3 border-t border-white/10">
-                                    <div className="text-xs text-green-300/70 mb-2 flex items-center gap-1">
-                                        <UserPlus className="w-3.5 h-3.5" /> Add ringer (no account needed)
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={newGuestName}
-                                            onChange={e => setNewGuestName(e.target.value)}
-                                            onKeyDown={e => e.key === 'Enter' && handleAddGuest()}
-                                            placeholder="Player name"
-                                            className="flex-1 border border-white/10 rounded-lg px-3 py-1.5 bg-white/5 text-white placeholder-white/30 text-sm focus:ring-1 focus:ring-green-500 focus:outline-none"
-                                        />
-                                        <Button
-                                            onClick={handleAddGuest}
-                                            disabled={!newGuestName.trim()}
-                                            className="bg-green-600 hover:bg-green-500 text-white rounded-lg px-3"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <Button
-                            onClick={() => setWizardStep(2)}
-                            disabled={totalAvailable === 0}
-                            className="w-full bg-green-600 hover:bg-green-500 text-white rounded-lg flex items-center justify-center gap-2 py-3 disabled:opacity-40"
-                        >
-                            Next: Generate Teams <ChevronRight className="w-4 h-4" />
-                        </Button>
-                    </div>
+                    <AvailabilityStep
+                        game={game}
+                        gameDocId={gameDocId}
+                        user={user}
+                        availability={availability}
+                        myAvailability={myAvailability}
+                        availablePlayers={availablePlayers}
+                        maybePlayers={maybePlayers}
+                        unavailablePlayers={unavailablePlayers}
+                        guestsAvailable={guestsAvailable}
+                        guestsMaybe={guestsMaybe}
+                        guestsUnavailable={guestsUnavailable}
+                        guestStatusMap={guestStatusMap}
+                        positionMap={positionMap}
+                        leagueMembers={leagueMembers}
+                        isAdmin={isAdmin}
+                        totalAvailable={totalAvailable}
+                        newGuestName={newGuestName}
+                        onNewGuestNameChange={setNewGuestName}
+                        onAddGuest={handleAddGuest}
+                        onSetAvailability={handleSetAvailability}
+                        onAdminSetAvailability={handleAdminSetAvailability}
+                        onGuestStatusChange={handleGuestStatusChange}
+                        onPositionToggle={handlePositionToggle}
+                        onNextStep={() => setWizardStep(2)}
+                    />
                 )}
 
-                {/* ── Step 2: Generate Teams ── */}
                 {!isCompleted && wizardStep === 2 && (
-                    <div className="max-w-4xl mx-auto space-y-4">
-                        <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-5">
-                            <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-                                <Shuffle className="w-5 h-5" /> Generate Teams
-                            </h2>
-                            {totalAvailable >= 4 && (
-                                <Button
-                                    onClick={() => generateFromAvailable(3)}
-                                    className="w-full bg-green-600 hover:bg-green-500 text-white rounded-lg flex items-center justify-center gap-2 py-3 mb-3"
-                                >
-                                    <Shuffle className="w-4 h-4" /> Generate 3 options from available ({totalAvailable})
-                                </Button>
-                            )}
-                            <button
-                                onClick={() => setShowTextarea(t => !t)}
-                                className="text-xs text-green-300/70 hover:text-green-300 transition-colors flex items-center gap-1 mb-2"
-                            >
-                                {showTextarea ? '▲' : '▼'} Enter players manually
-                            </button>
-                            {showTextarea && (
-                                <div>
-                                    <textarea
-                                        value={playersText}
-                                        onChange={e => setPlayersText(e.target.value)}
-                                        className="w-full h-32 border border-white/10 rounded-lg p-3 bg-white/5 text-white placeholder-white/30 focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-                                        placeholder={"Player 1\nPlayer 2 #g\nPlayer 3 #d\n..."}
-                                    />
-                                    <div className="flex gap-2 mt-2">
-                                        <Button
-                                            onClick={() => handleGenerateFromText(1)}
-                                            className="flex-1 bg-green-600 hover:bg-green-500 text-white rounded-lg flex items-center justify-center gap-2"
-                                        >
-                                            <Shuffle className="w-4 h-4" /> Create Teams
-                                        </Button>
-                                        <Button
-                                            onClick={() => handleGenerateFromText(3)}
-                                            className="bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg px-4"
-                                        >
-                                            ×3
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
-                            {genError && (
-                                <div className="text-red-400 text-sm bg-red-500/10 p-3 rounded-lg mt-3">
-                                    {genError}
-                                </div>
-                            )}
-                        </div>
-
-                        {pendingSetups.length === 0 && <PlaceholderPitch />}
-
-                        {pendingSetups.length > 0 && (
-                            <>
-                                <div className="flex items-center justify-between">
-                                    <p className="text-green-300 text-sm">
-                                        {pendingSetups.length} draft{pendingSetups.length !== 1 ? 's' : ''} — pick the setup you want
-                                    </p>
-                                    {isAdmin && (
-                                        <div className="flex gap-2">
-                                            <Button onClick={() => handleShare(pendingSetups.length)} disabled={isExporting} className="bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg px-3 py-1.5 text-xs flex items-center gap-1.5">
-                                                <Share2 className="w-3.5 h-3.5" /> Share
-                                            </Button>
-                                            <Button onClick={() => handleExport(pendingSetups.length)} disabled={isExporting} className="bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg px-3 py-1.5 text-xs flex items-center gap-1.5">
-                                                <Download className="w-3.5 h-3.5" /> Save
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                                {pendingSetups.map((setup, idx) => (
-                                    <div key={setup.id} className="flex flex-col">
-                                        <TeamSetupCard
-                                            setup={setup}
-                                            setupIndex={idx}
-                                            totalSetups={pendingSetups.length}
-                                            selectedPlayer={selectedPlayer}
-                                            onPlayerClick={handlePlayerClick}
-                                            onDelete={() => handleDeleteSetup(setup.id)}
-                                            onColorChange={handleColorChange}
-                                            aiEnabled={false}
-                                            onGenerateSummary={() => {}}
-                                        />
-                                        <Button
-                                            onClick={() => handlePickSetup(setup)}
-                                            className="mt-2 bg-green-600 hover:bg-green-500 text-white rounded-lg flex items-center justify-center gap-2"
-                                        >
-                                            <Check className="w-4 h-4" /> Use these teams
-                                        </Button>
-                                    </div>
-                                ))}
-                            </>
-                        )}
-
-                        <Button
-                            onClick={() => setWizardStep(1)}
-                            variant="ghost"
-                            className="text-white/60 hover:text-white flex items-center gap-1 text-sm"
-                        >
-                            <ChevronLeft className="w-4 h-4" /> Back to Availability
-                        </Button>
-                    </div>
+                    <TeamsStep
+                        totalAvailable={totalAvailable}
+                        playersText={playersText}
+                        showTextarea={showTextarea}
+                        genError={genError}
+                        pendingSetups={pendingSetups}
+                        isExporting={isExporting}
+                        isAdmin={isAdmin}
+                        selectedPlayer={selectedPlayer}
+                        onPlayersTextChange={setPlayersText}
+                        onToggleTextarea={() => setShowTextarea(t => !t)}
+                        onGenerateFromAvailable={generateFromAvailable}
+                        onGenerateFromText={handleGenerateFromText}
+                        onPickSetup={handlePickSetup}
+                        onDeleteSetup={handleDeleteSetup}
+                        onColorChange={handleColorChange}
+                        onPlayerClick={handlePlayerClick}
+                        onShare={handleShare}
+                        onExport={handleExport}
+                        onBack={() => setWizardStep(1)}
+                    />
                 )}
 
-                {/* ── Step 3: Match (active game with committed teams) ── */}
                 {!isCompleted && wizardStep === 3 && (
-                    <div className="max-w-4xl mx-auto space-y-4">
-                        {generatedTeams && generatedTeams.length === 2 ? (
-                            <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-5">
-                                {isAdmin && (
-                                    <div className="flex justify-end gap-2 mb-3">
-                                        <Button onClick={() => handleShare(1)} disabled={isExporting} className="bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg px-3 py-1.5 text-xs flex items-center gap-1.5">
-                                            <Share2 className="w-3.5 h-3.5" /> Share
-                                        </Button>
-                                        <Button onClick={() => handleExport(1)} disabled={isExporting} className="bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg px-3 py-1.5 text-xs flex items-center gap-1.5">
-                                            <Download className="w-3.5 h-3.5" /> Save
-                                        </Button>
-                                    </div>
-                                )}
-                                <div id="team-setup-0">
-                                    <div className="flex justify-around mb-2">
-                                        <h3 className="font-bold text-lg" style={{ color: generatedTeams[0].color }}>
-                                            {generatedTeams[0].name}
-                                        </h3>
-                                        <h3 className="font-bold text-lg" style={{ color: generatedTeams[1].color }}>
-                                            {generatedTeams[1].name}
-                                        </h3>
-                                    </div>
-                                    {!isCompleted && (
-                                        <p className="text-center text-green-300/70 text-xs mb-3 flex items-center justify-center gap-1.5">
-                                            <ArrowLeftRight className="w-3 h-3" />
-                                            Click any two players to swap their positions
-                                        </p>
-                                    )}
-                                    <PitchRenderer
-                                        teams={generatedTeams}
-                                        setupIndex={0}
-                                        selectedPlayer={selectedPlayer}
-                                        onPlayerClick={(_, tIdx, pIdx) => handlePlayerClick(0, tIdx, pIdx)}
-                                    />
-                                </div>{/* end team-setup-0 */}
-                                {(isPast || game.status === 'in_progress') && isAdmin && (
-                                    <div className="border-t border-white/10 pt-4">
-                                        <h3 className="text-white font-bold text-center mb-3 flex items-center justify-center gap-2">
-                                            <Trophy className="w-4 h-4" /> Record Score
-                                        </h3>
-                                        <div className="flex items-center justify-center gap-3">
-                                            <div className="text-center">
-                                                <div className="text-sm text-green-300 mb-1">{generatedTeams[0]?.name}</div>
-                                                <input
-                                                    type="number"
-                                                    value={score1}
-                                                    onChange={e => setScore1(e.target.value)}
-                                                    className="w-16 text-center text-2xl font-bold border border-white/10 rounded-lg p-2 bg-white/5 text-white"
-                                                    min="0"
-                                                />
-                                            </div>
-                                            <span className="text-white text-2xl font-bold">-</span>
-                                            <div className="text-center">
-                                                <div className="text-sm text-green-300 mb-1">{generatedTeams[1]?.name}</div>
-                                                <input
-                                                    type="number"
-                                                    value={score2}
-                                                    onChange={e => setScore2(e.target.value)}
-                                                    className="w-16 text-center text-2xl font-bold border border-white/10 rounded-lg p-2 bg-white/5 text-white"
-                                                    min="0"
-                                                />
-                                            </div>
-                                        </div>
-                                        <Button
-                                            onClick={handleSaveScore}
-                                            disabled={score1 === '' || score2 === ''}
-                                            className="mt-3 w-full bg-green-600 hover:bg-green-500 text-white rounded-lg"
-                                        >
-                                            Save Final Score
-                                        </Button>
-                                    </div>
-                                )}
-                                {(isPast || game.status === 'in_progress') && isAdmin && allPlayerIds.length > 0 && scoringControlsElement}
-                                {(isPast || game.status === 'in_progress') && isAdmin && attendanceSectionElement}
-                            </div>
-                        ) : (
-                            <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
-                                <p className="text-green-300 mb-3">No teams committed yet.</p>
-                                <Button
-                                    onClick={() => setWizardStep(2)}
-                                    className="bg-green-600 hover:bg-green-500 text-white rounded-lg"
-                                >
-                                    Go to Generate Teams
-                                </Button>
-                            </div>
-                        )}
-
-                        <Button
-                            onClick={() => setWizardStep(2)}
-                            variant="ghost"
-                            className="text-white/60 hover:text-white flex items-center gap-1 text-sm"
-                        >
-                            <ChevronLeft className="w-4 h-4" /> Back to Teams
-                        </Button>
-                    </div>
+                    <MatchStep
+                        game={game}
+                        generatedTeams={generatedTeams}
+                        isAdmin={isAdmin}
+                        isPast={isPast}
+                        score1={score1}
+                        score2={score2}
+                        isExporting={isExporting}
+                        selectedPlayer={selectedPlayer}
+                        allPlayerIds={allPlayerIds}
+                        scoringControlsElement={scoringControlsElement}
+                        attendanceSectionElement={attendanceSectionElement}
+                        onScore1Change={setScore1}
+                        onScore2Change={setScore2}
+                        onSaveScore={handleSaveScore}
+                        onPlayerClick={handlePlayerClick}
+                        onShare={handleShare}
+                        onExport={handleExport}
+                        onBack={() => setWizardStep(2)}
+                        onGoToTeams={() => setWizardStep(2)}
+                    />
                 )}
 
-                {/* ── Completed game — results view (no wizard) ── */}
                 {isCompleted && generatedTeams && generatedTeams.length === 2 && (
-                    <div className="max-w-4xl mx-auto">
-                        <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-5">
-                            <div className="flex justify-around mb-2">
-                                <h3 className="font-bold text-lg" style={{ color: generatedTeams[0].color }}>
-                                    {generatedTeams[0].name}
-                                </h3>
-                                <h3 className="font-bold text-lg" style={{ color: generatedTeams[1].color }}>
-                                    {generatedTeams[1].name}
-                                </h3>
-                            </div>
-                            <PitchRenderer
-                                teams={generatedTeams}
-                                setupIndex={0}
-                                selectedPlayer={selectedPlayer}
-                                onPlayerClick={(_, tIdx, pIdx) => handlePlayerClick(0, tIdx, pIdx)}
-                            />
-                            {game.score && (
-                                <div className="border-t border-white/10 pt-4 mt-4">
-                                    <h3 className="text-white font-bold text-center mb-2">Final Score</h3>
-                                    <div className="flex items-center justify-center gap-4 text-white">
-                                        <div className="text-center">
-                                            <div className="text-sm text-green-300">{generatedTeams[0]?.name}</div>
-                                            <div className="text-4xl font-bold">{game.score.team1}</div>
-                                        </div>
-                                        <span className="text-2xl">-</span>
-                                        <div className="text-center">
-                                            <div className="text-sm text-green-300">{generatedTeams[1]?.name}</div>
-                                            <div className="text-4xl font-bold">{game.score.team2}</div>
-                                        </div>
-                                    </div>
-                                    {isAdmin && (
-                                        <Button
-                                            onClick={handleReopen}
-                                            className="mt-3 w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg text-sm"
-                                        >
-                                            Edit Score
-                                        </Button>
-                                    )}
-                                </div>
-                            )}
-                            {isAdmin && allPlayerIds.length > 0 && scoringControlsElement}
-                            {isAdmin && attendanceSectionElement}
-                            {!isAdmin && (goalScorers.length > 0 || assisters.length > 0 || motm) && (
-                                <div className="border-t border-white/10 pt-4 mt-4 space-y-3">
-                                    {goalScorers.length > 0 && (
-                                        <div>
-                                            <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
-                                                <Goal className="w-4 h-4 text-green-400" /> Goal Scorers
-                                            </h4>
-                                            <div className="flex flex-wrap gap-2">
-                                                {[...goalScorers].sort((a, b) => b.goals - a.goals).map(gs => (
-                                                    <span key={gs.playerId} className="bg-white/10 text-white text-sm px-3 py-1 rounded-full">
-                                                        <PlayerName id={gs.playerId} lookup={lookup} /> &times; {gs.goals}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {assisters.length > 0 && (
-                                        <div>
-                                            <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
-                                                <span className="text-blue-400 font-bold text-xs bg-blue-400/20 px-1.5 py-0.5 rounded">A</span> Assists
-                                            </h4>
-                                            <div className="flex flex-wrap gap-2">
-                                                {[...assisters].sort((a, b) => b.goals - a.goals).map(a => (
-                                                    <span key={a.playerId} className="bg-white/10 text-white text-sm px-3 py-1 rounded-full">
-                                                        <PlayerName id={a.playerId} lookup={lookup} /> &times; {a.goals}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {motm && (
-                                        <div className="flex items-center gap-2">
-                                            <Award className="w-4 h-4 text-yellow-400" />
-                                            <span className="text-white text-sm">MoTM: <strong><PlayerName id={motm} lookup={lookup} /></strong></span>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <CompletedGameView
+                        game={game}
+                        generatedTeams={generatedTeams}
+                        isAdmin={isAdmin}
+                        goalScorers={goalScorers}
+                        assisters={assisters}
+                        motm={motm}
+                        lookup={lookup}
+                        allPlayerIds={allPlayerIds}
+                        selectedPlayer={selectedPlayer}
+                        scoringControlsElement={scoringControlsElement}
+                        attendanceSectionElement={attendanceSectionElement}
+                        onPlayerClick={handlePlayerClick}
+                        onReopen={handleReopen}
+                    />
                 )}
             </div>
         </div>
