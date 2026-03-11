@@ -127,6 +127,24 @@ const MembersTab: React.FC<MembersTabProps> = ({
 
     return (
         <div className="space-y-3">
+            {/* Invite others */}
+            <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                <div className="text-white font-medium mb-2">Invite others</div>
+                <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white/70 truncate">
+                        {window.location.origin}/join/{league.joinCode}
+                    </div>
+                    <Button
+                        onClick={onCopyCode}
+                        className="bg-green-600 hover:bg-green-500 text-white px-4 shrink-0"
+                    >
+                        {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    </Button>
+                </div>
+                <p className="text-green-300/70 text-xs mt-2">Share this link with others so they can join your league.</p>
+            </div>
+
+            {/* Members list */}
             <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden">
                 {members.map((member, i) => {
                     const isEditing = editingMemberId === member.id;
@@ -321,23 +339,6 @@ const MembersTab: React.FC<MembersTabProps> = ({
                     </div>
                 </div>
             )}
-
-            {/* Share section */}
-            <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                <div className="text-white font-medium mb-2">Invite others</div>
-                <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white/70 truncate">
-                        {window.location.origin}/join/{league.joinCode}
-                    </div>
-                    <Button
-                        onClick={onCopyCode}
-                        className="bg-green-600 hover:bg-green-500 text-white px-4 shrink-0"
-                    >
-                        {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    </Button>
-                </div>
-                <p className="text-green-300/70 text-xs mt-2">Share this code with others so they can join your league.</p>
-            </div>
 
             {/* Season Management — admin only */}
             {isAdmin && (

@@ -305,7 +305,7 @@ const LeaguePage: React.FC = () => {
                             tab === 'members' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
                         }`}
                     >
-                        <Users className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Members</span><span className="sm:hidden">({members.length})</span><span className="hidden sm:inline"> ({members.length})</span>
+                        <Users className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Settings</span>
                     </button>
                     <button
                         onClick={() => setTab('profile')}
