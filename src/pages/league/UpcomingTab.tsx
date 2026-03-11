@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, ArrowRight, CheckCircle, HelpCircle, XCircle, Grid3X3, List } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, CheckCircle, HelpCircle, XCircle, Grid3X3, List, CalendarDays } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { League, Game, PlayerAvailability, AvailabilityStatus } from '../../types';
 import {
@@ -12,6 +12,7 @@ import {
 import CalendarPicker from '../../components/CalendarPicker';
 import { geocodeLocation, GeoResult } from '../../utils/weather';
 import AvailabilityGrid from './AvailabilityGrid';
+import GameCalendar from './GameCalendar';
 import type { User } from 'firebase/auth';
 import type { PersonalStats } from './statsUtils';
 
@@ -52,7 +53,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
     const [newGameCost, setNewGameCost] = useState('');
     const [scheduleAvailability, setScheduleAvailability] = useState<Map<string, PlayerAvailability[]>>(new Map());
     const [expandedAvailGame, setExpandedAvailGame] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+    const [viewMode, setViewMode] = useState<'list' | 'grid' | 'calendar'>('list');
 
     const handleSetAvailability = useCallback(async (gameId: string, status: AvailabilityStatus) => {
         if (!user) return;
@@ -288,8 +289,8 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                 </div>
             )}
 
-            {/* Admin view toggle */}
-            {isAdmin && upcomingGames.length > 0 && (
+            {/* View toggle */}
+            {upcomingGames.length > 0 && (
                 <div className="flex justify-end">
                     <div className="flex bg-white/5 rounded-lg p-0.5">
                         <button
@@ -301,18 +302,28 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                             <List className="w-3.5 h-3.5" /> List
                         </button>
                         <button
-                            onClick={() => setViewMode('grid')}
+                            onClick={() => setViewMode('calendar')}
                             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                                viewMode === 'grid' ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70'
+                                viewMode === 'calendar' ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70'
                             }`}
                         >
-                            <Grid3X3 className="w-3.5 h-3.5" /> Grid
+                            <CalendarDays className="w-3.5 h-3.5" /> Calendar
                         </button>
+                        {isAdmin && (
+                            <button
+                                onClick={() => setViewMode('grid')}
+                                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                                    viewMode === 'grid' ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70'
+                                }`}
+                            >
+                                <Grid3X3 className="w-3.5 h-3.5" /> Grid
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
 
-            {/* Grid view */}
+            {/* Grid view (admin only) */}
             {viewMode === 'grid' && isAdmin && upcomingGames.length > 0 ? (
                 <AvailabilityGrid
                     upcomingGames={upcomingGames}
@@ -321,6 +332,14 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                     scheduleAvailability={scheduleAvailability}
                     currentUserId={user.uid}
                     code={code}
+                />
+            ) : viewMode === 'calendar' && upcomingGames.length > 0 ? (
+                <GameCalendar
+                    games={upcomingGames}
+                    scheduleAvailability={scheduleAvailability}
+                    currentUserId={user.uid}
+                    code={code}
+                    onSetAvailability={(gameId, status) => handleSetAvailability(gameId, status)}
                 />
             ) : upcomingGames.length === 0 ? (
                 <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
