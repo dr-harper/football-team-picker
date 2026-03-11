@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle, HelpCircle, XCircle } from 'lucide-react';
 import { Game, PlayerAvailability, AvailabilityStatus } from '../../types';
-import { setAvailability } from '../../utils/firestore';
+import { setAvailability, updateGuestAvailability } from '../../utils/firestore';
 
 interface Member {
     id: string;
@@ -18,55 +18,95 @@ interface AvailabilityGridProps {
     code: string;
 }
 
-function StatusIcon({ status }: { status?: AvailabilityStatus }) {
-    if (status === 'available') return <CheckCircle className="w-4 h-4 text-green-400" />;
-    if (status === 'maybe') return <HelpCircle className="w-4 h-4 text-yellow-400" />;
-    if (status === 'unavailable') return <XCircle className="w-4 h-4 text-red-400" />;
-    return <span className="w-4 h-4 block rounded-full border border-white/15" />;
+interface GridRow {
+    id: string;
+    displayName: string;
+    isGuest: boolean;
+    isMe: boolean;
 }
 
-function CycleButton({
-    gameId, memberId, memberName, current,
+function ThreeButtonCell({
+    status,
+    onSet,
 }: {
-    gameId: string;
-    memberId: string;
-    memberName: string;
-    current?: AvailabilityStatus;
+    status?: AvailabilityStatus;
+    onSet: (s: AvailabilityStatus) => void;
 }) {
-    const cycle: AvailabilityStatus[] = ['available', 'maybe', 'unavailable'];
-
-    const handleClick = async () => {
-        const idx = current ? cycle.indexOf(current) : -1;
-        const next = cycle[(idx + 1) % cycle.length];
-        await setAvailability(gameId, memberId, memberName, next);
-    };
-
     return (
-        <button
-            onClick={handleClick}
-            className="w-full h-full flex items-center justify-center hover:bg-white/10 rounded transition-colors"
-            title={current ?? 'No response'}
-        >
-            <StatusIcon status={current} />
-        </button>
+        <div className="flex items-center justify-center gap-0.5">
+            {(['available', 'maybe', 'unavailable'] as AvailabilityStatus[]).map(s => (
+                <button
+                    key={s}
+                    onClick={() => onSet(s)}
+                    className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${
+                        status === s
+                            ? s === 'available' ? 'bg-green-600 text-white'
+                            : s === 'maybe' ? 'bg-yellow-600 text-white'
+                            : 'bg-red-600 text-white'
+                            : 'bg-white/8 text-white/30 hover:bg-white/15'
+                    }`}
+                >
+                    {s === 'available' ? <CheckCircle className="w-3.5 h-3.5" /> :
+                     s === 'maybe' ? <HelpCircle className="w-3.5 h-3.5" /> :
+                     <XCircle className="w-3.5 h-3.5" />}
+                </button>
+            ))}
+        </div>
     );
+}
+
+function getGuestStatus(game: Game, guestName: string): AvailabilityStatus | undefined {
+    if (!game.guestPlayers?.includes(guestName)) return undefined;
+    return (game.guestAvailability?.[guestName] as AvailabilityStatus) ?? 'available';
 }
 
 const AvailabilityGrid: React.FC<AvailabilityGridProps> = ({
     upcomingGames, members, scheduleAvailability, currentUserId, code,
 }) => {
-    const sortedMembers = [...members].sort((a, b) => {
-        if (a.id === currentUserId) return -1;
-        if (b.id === currentUserId) return 1;
-        return a.displayName.localeCompare(b.displayName);
-    });
+    // Collect all unique guests across upcoming games
+    const allGuests = useMemo(() => {
+        const guestSet = new Set<string>();
+        for (const game of upcomingGames) {
+            for (const name of game.guestPlayers ?? []) {
+                guestSet.add(name);
+            }
+        }
+        return [...guestSet].sort((a, b) => a.localeCompare(b));
+    }, [upcomingGames]);
+
+    // Build row list: current user first, then members sorted, then guests
+    const rows: GridRow[] = useMemo(() => {
+        const sorted = [...members].sort((a, b) => {
+            if (a.id === currentUserId) return -1;
+            if (b.id === currentUserId) return 1;
+            return a.displayName.localeCompare(b.displayName);
+        });
+        const memberRows: GridRow[] = sorted.map(m => ({
+            id: m.id,
+            displayName: m.displayName,
+            isGuest: false,
+            isMe: m.id === currentUserId,
+        }));
+        const guestRows: GridRow[] = allGuests.map(name => ({
+            id: `guest:${name}`,
+            displayName: name,
+            isGuest: true,
+            isMe: false,
+        }));
+        return [...memberRows, ...guestRows];
+    }, [members, allGuests, currentUserId]);
 
     const gameCount = upcomingGames.length;
+
+    const handleSetGuestStatus = async (game: Game, guestName: string, status: AvailabilityStatus) => {
+        const current = game.guestAvailability ?? {};
+        await updateGuestAvailability(game.id, { ...current, [guestName]: status });
+    };
 
     return (
         <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
-                <table className="w-full border-collapse" style={{ minWidth: `${140 + gameCount * 80}px` }}>
+                <table className="w-full border-collapse" style={{ minWidth: `${140 + gameCount * 90}px` }}>
                     <thead>
                         {/* Date headers */}
                         <tr className="border-b border-white/8">
@@ -74,7 +114,7 @@ const AvailabilityGrid: React.FC<AvailabilityGridProps> = ({
                             {upcomingGames.map(game => {
                                 const d = new Date(game.date);
                                 return (
-                                    <th key={game.id} className="p-2 text-center min-w-[80px]">
+                                    <th key={game.id} className="p-2 text-center min-w-[90px]">
                                         <Link
                                             to={`/league/${code}/game/${game.gameCode || game.id}`}
                                             className="block hover:opacity-80 transition-opacity"
@@ -111,55 +151,62 @@ const AvailabilityGrid: React.FC<AvailabilityGridProps> = ({
                         </tr>
                     </thead>
                     <tbody>
-                        {sortedMembers.map(member => {
-                            const isMe = member.id === currentUserId;
+                        {rows.map((row, ri) => {
+                            const showGuestDivider = row.isGuest && ri > 0 && !rows[ri - 1].isGuest;
                             return (
-                                <tr
-                                    key={member.id}
-                                    className={`border-b border-white/5 ${isMe ? 'bg-green-500/8' : ''}`}
-                                >
-                                    <td className={`sticky left-0 z-10 backdrop-blur-sm px-3 py-2 w-[140px] min-w-[140px] ${isMe ? 'bg-green-900/95' : 'bg-green-900/90'}`}>
-                                        <div className={`text-sm font-medium truncate ${isMe ? 'text-green-300' : 'text-white/90'}`}>
-                                            {member.displayName}
-                                        </div>
-                                    </td>
-                                    {upcomingGames.map(game => {
-                                        const avail = scheduleAvailability.get(game.id) ?? [];
-                                        const status = avail.find(a => a.userId === member.id)?.status;
-                                        return (
-                                            <td key={game.id} className="p-1 text-center">
-                                                {isMe ? (
-                                                    <div className="flex items-center justify-center gap-0.5">
-                                                        {(['available', 'maybe', 'unavailable'] as AvailabilityStatus[]).map(s => (
-                                                            <button
-                                                                key={s}
-                                                                onClick={() => setAvailability(game.id, member.id, member.displayName, s)}
-                                                                className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${
-                                                                    status === s
-                                                                        ? s === 'available' ? 'bg-green-600 text-white'
-                                                                        : s === 'maybe' ? 'bg-yellow-600 text-white'
-                                                                        : 'bg-red-600 text-white'
-                                                                        : 'bg-white/8 text-white/30 hover:bg-white/15'
-                                                                }`}
-                                                            >
-                                                                {s === 'available' ? <CheckCircle className="w-3.5 h-3.5" /> :
-                                                                 s === 'maybe' ? <HelpCircle className="w-3.5 h-3.5" /> :
-                                                                 <XCircle className="w-3.5 h-3.5" />}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <CycleButton
-                                                        gameId={game.id}
-                                                        memberId={member.id}
-                                                        memberName={member.displayName}
-                                                        current={status}
-                                                    />
-                                                )}
+                                <React.Fragment key={row.id}>
+                                    {showGuestDivider && (
+                                        <tr>
+                                            <td
+                                                colSpan={gameCount + 1}
+                                                className="px-3 py-1.5 text-[10px] text-orange-300/60 uppercase tracking-wider font-semibold border-t border-orange-500/15 bg-orange-500/5"
+                                            >
+                                                Guests
                                             </td>
-                                        );
-                                    })}
-                                </tr>
+                                        </tr>
+                                    )}
+                                    <tr className={`border-b border-white/5 ${row.isMe ? 'bg-green-500/8' : ''}`}>
+                                        <td className={`sticky left-0 z-10 backdrop-blur-sm px-3 py-2 w-[140px] min-w-[140px] ${row.isMe ? 'bg-green-900/95' : 'bg-green-900/90'}`}>
+                                            <div className={`text-sm font-medium truncate ${
+                                                row.isMe ? 'text-green-300' :
+                                                row.isGuest ? 'text-orange-300' :
+                                                'text-white/90'
+                                            }`}>
+                                                {row.displayName}
+                                            </div>
+                                        </td>
+                                        {upcomingGames.map(game => {
+                                            if (row.isGuest) {
+                                                const guestName = row.displayName;
+                                                const inThisGame = game.guestPlayers?.includes(guestName);
+                                                if (!inThisGame) {
+                                                    return <td key={game.id} className="p-1 text-center"><span className="text-white/10">—</span></td>;
+                                                }
+                                                const status = getGuestStatus(game, guestName);
+                                                return (
+                                                    <td key={game.id} className="p-1 text-center">
+                                                        <ThreeButtonCell
+                                                            status={status}
+                                                            onSet={s => handleSetGuestStatus(game, guestName, s)}
+                                                        />
+                                                    </td>
+                                                );
+                                            }
+
+                                            const avail = scheduleAvailability.get(game.id) ?? [];
+                                            const status = avail.find(a => a.userId === row.id)?.status;
+                                            const member = members.find(m => m.id === row.id);
+                                            return (
+                                                <td key={game.id} className="p-1 text-center">
+                                                    <ThreeButtonCell
+                                                        status={status}
+                                                        onSet={s => setAvailability(game.id, row.id, member?.displayName ?? row.displayName, s)}
+                                                    />
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                </React.Fragment>
                             );
                         })}
                     </tbody>
