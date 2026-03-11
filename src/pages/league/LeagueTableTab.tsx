@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Game, Season } from '../../types';
-import { computeLeagueTable } from './leagueTableUtils';
+import { computeLeagueTable, type FormResult } from './leagueTableUtils';
 import PlayerName from '../../components/PlayerName';
 
 interface LeagueTableTabProps {
@@ -96,15 +96,20 @@ const LeagueTableTab: React.FC<LeagueTableTabProps> = ({
                     </div>
 
                     {/* Table header */}
-                    <div className="grid grid-cols-[2rem_1fr_repeat(4,2rem)_2.5rem_2.5rem] gap-0 px-4 py-2 text-[10px] text-white/40 uppercase tracking-wide border-b border-white/5">
+                    <div className="overflow-x-auto">
+                    <div className="min-w-[540px]">
+                    <div className="grid grid-cols-[2rem_1fr_repeat(4,2rem)_2rem_2rem_2.5rem_2.5rem_5.5rem] gap-0 px-4 py-2 text-[10px] text-white/40 uppercase tracking-wide border-b border-white/5">
                         <span className="text-center">#</span>
                         <span>Player</span>
                         <span className="text-center">P</span>
                         <span className="text-center">W</span>
                         <span className="text-center">D</span>
                         <span className="text-center">L</span>
+                        <span className="text-center">GF</span>
+                        <span className="text-center">GA</span>
                         <span className="text-center">GD</span>
                         <span className="text-center font-bold">Pts</span>
+                        <span className="text-center">Form</span>
                     </div>
 
                     {/* Table rows */}
@@ -112,7 +117,7 @@ const LeagueTableTab: React.FC<LeagueTableTabProps> = ({
                         {table.map((row, i) => (
                             <div
                                 key={row.playerId}
-                                className={`grid grid-cols-[2rem_1fr_repeat(4,2rem)_2.5rem_2.5rem] gap-0 px-4 py-2.5 items-center ${
+                                className={`grid grid-cols-[2rem_1fr_repeat(4,2rem)_2rem_2rem_2.5rem_2.5rem_5.5rem] gap-0 px-4 py-2.5 items-center ${
                                     row.playerId === myId ? 'bg-green-500/8' : ''
                                 }`}
                             >
@@ -128,12 +133,30 @@ const LeagueTableTab: React.FC<LeagueTableTabProps> = ({
                                 <span className="text-center text-xs text-green-400 tabular-nums">{row.won}</span>
                                 <span className="text-center text-xs text-yellow-400/70 tabular-nums">{row.drawn}</span>
                                 <span className="text-center text-xs text-red-400/70 tabular-nums">{row.lost}</span>
+                                <span className="text-center text-xs text-white/50 tabular-nums">{row.goalsFor}</span>
+                                <span className="text-center text-xs text-white/50 tabular-nums">{row.goalsAgainst}</span>
                                 <span className={`text-center text-xs tabular-nums ${row.goalDifference > 0 ? 'text-green-400' : row.goalDifference < 0 ? 'text-red-400/70' : 'text-white/40'}`}>
                                     {row.goalDifference > 0 ? '+' : ''}{row.goalDifference}
                                 </span>
                                 <span className="text-center text-sm font-bold text-white tabular-nums">{row.points}</span>
+                                <div className="flex items-center justify-center gap-0.5">
+                                    {row.form.map((r: FormResult, fi: number) => (
+                                        <span
+                                            key={fi}
+                                            className={`w-[18px] h-[18px] rounded-[3px] flex items-center justify-center text-[9px] font-bold ${
+                                                r === 'W' ? 'bg-green-500 text-white' :
+                                                r === 'D' ? 'bg-yellow-500 text-white' :
+                                                'bg-red-500 text-white'
+                                            }`}
+                                        >
+                                            {r}
+                                        </span>
+                                    ))}
+                                </div>
                             </div>
                         ))}
+                    </div>
+                    </div>
                     </div>
 
                     {/* Subtitle */}
