@@ -29,7 +29,7 @@ const CompletedGameView: React.FC<CompletedGameViewProps> = ({
     game, generatedTeams, isAdmin, goalScorers, assisters, motm,
     lookup, allPlayerIds, selectedPlayer,
     scoringControlsElement, attendanceSectionElement,
-    isExporting, leagueName,
+    isExporting,
     onPlayerClick, onReopen, onShareResults, onExportResults,
 }) => (
     <div className="max-w-4xl mx-auto">

@@ -370,7 +370,8 @@ export async function updateSeason(leagueId: string, seasonId: string, updates: 
 export async function deleteSeason(leagueId: string, seasonId: string): Promise<void> {
     const league = await getLeague(leagueId);
     if (!league) return;
-    const { [seasonId]: _, ...remaining } = league.seasons ?? {};
+    const { [seasonId]: _removed, ...remaining } = league.seasons ?? {};
+    void _removed;
     const update: Record<string, unknown> = { seasons: remaining };
     if (league.activeSeasonId === seasonId) {
         update.activeSeasonId = deleteField();
@@ -520,7 +521,8 @@ export async function linkGuestToMember(
 
         // Replace in guestAvailability
         if (game.guestAvailability && guestName in game.guestAvailability) {
-            const { [guestName]: _, ...restAvail } = game.guestAvailability;
+            const { [guestName]: _removedAvail, ...restAvail } = game.guestAvailability;
+            void _removedAvail;
             updates.guestAvailability = restAvail;
             changed = true;
         }
