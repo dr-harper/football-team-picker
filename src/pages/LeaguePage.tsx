@@ -16,6 +16,7 @@ import {
 } from '../utils/firestore';
 import { League, Game, LeagueExpense } from '../types';
 import { computeGameStats, getPersonalStats } from './league/statsUtils';
+import { buildLookup } from '../utils/playerLookup';
 import UpcomingTab from './league/UpcomingTab';
 import CompletedTab from './league/CompletedTab';
 import StatsTab from './league/StatsTab';
@@ -79,27 +80,31 @@ const LeaguePage: React.FC = () => {
     const upcomingGames = games.filter(g => g.status !== 'completed').sort((a, b) => a.date - b.date);
     const completedGames = games.filter(g => g.status === 'completed');
 
-    // Stats aggregation
-    const stats = computeGameStats(completedGames);
+    // Player identity
+    const myId = user?.uid ?? '';
     const myName = user?.displayName || user?.email?.split('@')[0] || '';
-    const myStats = getPersonalStats(stats, myName);
+    const lookup = buildLookup(members);
+
+    // Stats aggregation (keyed by playerId)
+    const stats = computeGameStats(completedGames);
+    const myStats = getPersonalStats(stats, myId);
 
     // Finance handlers (shared between ProfileTab and FinanceTab)
     const handleSubmitMyPayment = async (amount: number) => {
         if (!id || !league) return;
-        const currentHistory = (league.payments ?? {})[myName] ?? [];
+        const currentHistory = (league.payments ?? {})[myId] ?? [];
         await updateLeaguePayments(id, {
             ...(league.payments ?? {}),
-            [myName]: [...currentHistory, { amount, date: Date.now() }],
+            [myId]: [...currentHistory, { amount, date: Date.now() }],
         });
     };
 
-    const handleRecordPayment = async (playerName: string, amount: number) => {
+    const handleRecordPayment = async (playerId: string, amount: number) => {
         if (!id || !league) return;
-        const currentHistory = (league.payments ?? {})[playerName] ?? [];
+        const currentHistory = (league.payments ?? {})[playerId] ?? [];
         await updateLeaguePayments(id, {
             ...(league.payments ?? {}),
-            [playerName]: [...currentHistory, { amount, date: Date.now() }],
+            [playerId]: [...currentHistory, { amount, date: Date.now() }],
         });
     };
 
@@ -108,7 +113,7 @@ const LeaguePage: React.FC = () => {
         if (!amount || amount <= 0 || !myExpenseDesc.trim() || !id || !league) return;
         const newExpense: LeagueExpense = {
             id: crypto.randomUUID(),
-            playerName: myName,
+            playerId: myId,
             amount,
             description: myExpenseDesc.trim(),
             date: Date.now(),
@@ -122,10 +127,11 @@ const LeaguePage: React.FC = () => {
 
     const handleApproveExpense = async (expense: LeagueExpense) => {
         if (!id || !league) return;
-        const currentHistory = (league.payments ?? {})[expense.playerName] ?? [];
+        const pid = expense.playerId;
+        const currentHistory = (league.payments ?? {})[pid] ?? [];
         await updateLeaguePayments(id, {
             ...(league.payments ?? {}),
-            [expense.playerName]: [...currentHistory, { amount: expense.amount, date: expense.date }],
+            [pid]: [...currentHistory, { amount: expense.amount, date: expense.date }],
         });
         await updateLeagueExpenses(id, (league.expenses ?? []).map(e =>
             e.id === expense.id ? { ...e, status: 'approved' as const } : e
@@ -324,14 +330,17 @@ const LeaguePage: React.FC = () => {
                         completedGames={completedGames}
                         scorerTotals={stats.scorerTotals}
                         motmTotals={stats.motmTotals}
+                        lookup={lookup}
                     />
                 )}
 
                 {tab === 'stats' && (
                     <StatsTab
                         completedGames={completedGames}
+                        myId={myId}
                         myName={myName}
                         user={user}
+                        lookup={lookup}
                     />
                 )}
 
@@ -340,8 +349,9 @@ const LeaguePage: React.FC = () => {
                         league={league}
                         leagueId={id!}
                         completedGames={completedGames}
-                        myName={myName}
+                        myId={myId}
                         isAdmin={isAdmin}
+                        lookup={lookup}
                         onRecordPayment={handleRecordPayment}
                         onApproveExpense={handleApproveExpense}
                         onRejectExpense={handleRejectExpense}
@@ -372,7 +382,7 @@ const LeaguePage: React.FC = () => {
                         league={league}
                         leagueId={id!}
                         completedGames={completedGames}
-                        myName={myName}
+                        myId={myId}
                         myStats={myStats}
                         updatePlayerTags={updatePlayerTags}
                         updateBio={updateBio}

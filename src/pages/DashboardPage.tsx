@@ -6,10 +6,11 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserLeagues, createLeague, joinLeagueByCode } from '../utils/firestore';
+import { getUserLeagues, createLeague, joinLeagueByCode, getLeagueMembers } from '../utils/firestore';
 import { League, Game } from '../types';
 import NotificationSettings from '../components/NotificationSettings';
 import { getLeagueGames } from '../utils/firestore';
+import { buildLookup, resolvePlayerName } from '../utils/playerLookup';
 import { geocodeLocation, GeoResult } from '../utils/weather';
 import { PLAYER_POSITIONS } from '../constants/playerPositions';
 import { PLAYER_TAGS } from '../constants/playerTags';
@@ -104,8 +105,16 @@ const DashboardPage: React.FC = () => {
             const allCompleted: Game[] = [];
             const statsMap = new Map<string, LeagueStats>();
 
+            const combinedLookup: Record<string, string> = {};
+
             for (const league of userLeagues) {
-                const games = await getLeagueGames(league.id);
+                const [games, members] = await Promise.all([
+                    getLeagueGames(league.id),
+                    getLeagueMembers(league.memberIds),
+                ]);
+                const leagueLookup = buildLookup(members);
+                Object.assign(combinedLookup, leagueLookup);
+
                 upcomingList.push(...games.filter(g => g.status !== 'completed'));
 
                 // Aggregate stats from completed games
@@ -116,7 +125,7 @@ const DashboardPage: React.FC = () => {
                 const motmTotals = new Map<string, number>();
                 for (const g of completed) {
                     for (const scorer of g.goalScorers ?? []) {
-                        goalTotals.set(scorer.name, (goalTotals.get(scorer.name) ?? 0) + scorer.goals);
+                        goalTotals.set(scorer.playerId, (goalTotals.get(scorer.playerId) ?? 0) + scorer.goals);
                     }
                     if (g.manOfTheMatch) {
                         motmTotals.set(g.manOfTheMatch, (motmTotals.get(g.manOfTheMatch) ?? 0) + 1);
@@ -125,8 +134,8 @@ const DashboardPage: React.FC = () => {
                 const topScorerEntry = [...goalTotals.entries()].sort((a, b) => b[1] - a[1])[0];
                 const motmEntry = [...motmTotals.entries()].sort((a, b) => b[1] - a[1])[0];
                 statsMap.set(league.id, {
-                    topScorer: topScorerEntry ? { name: topScorerEntry[0], goals: topScorerEntry[1] } : null,
-                    motmLeader: motmEntry ? { name: motmEntry[0], count: motmEntry[1] } : null,
+                    topScorer: topScorerEntry ? { name: resolvePlayerName(topScorerEntry[0], leagueLookup), goals: topScorerEntry[1] } : null,
+                    motmLeader: motmEntry ? { name: resolvePlayerName(motmEntry[0], leagueLookup), count: motmEntry[1] } : null,
                     gamesPlayed: completed.length,
                 });
             }
@@ -136,16 +145,16 @@ const DashboardPage: React.FC = () => {
             setLeagueStats(statsMap);
 
             // Compute personal stats from all completed games
-            const displayName = user.displayName ?? '';
+            const myId = user.uid;
             let goals = 0, assists = 0, motm = 0, gamesPlayed = 0;
             for (const g of allCompleted) {
-                const inGame = g.teams?.some(t => t.players.some(p => p.name === displayName));
+                const inGame = g.teams?.some(t => t.players.some(p => (p.playerId ?? p.name) === myId));
                 if (inGame) gamesPlayed++;
-                const scorerEntry = g.goalScorers?.find(s => s.name === displayName);
+                const scorerEntry = g.goalScorers?.find(s => s.playerId === myId);
                 if (scorerEntry) goals += scorerEntry.goals;
-                const assisterEntry = g.assisters?.find(a => a.name === displayName);
+                const assisterEntry = g.assisters?.find(a => a.playerId === myId);
                 if (assisterEntry) assists += assisterEntry.goals;
-                if (g.manOfTheMatch === displayName) motm++;
+                if (g.manOfTheMatch === myId) motm++;
             }
             const stats = { goals, assists, motm, games: gamesPlayed };
             setPlayerStats(stats);
@@ -154,7 +163,7 @@ const DashboardPage: React.FC = () => {
             const badges: { emoji: string; label: string }[] = [];
 
             const hasHatTrick = allCompleted.some(g =>
-                (g.goalScorers?.find(s => s.name === displayName)?.goals ?? 0) >= 3
+                (g.goalScorers?.find(s => s.playerId === myId)?.goals ?? 0) >= 3
             );
             if (hasHatTrick) badges.push({ emoji: '🎯', label: 'Hat-trick Hero' });
             if (motm >= 5) badges.push({ emoji: '⭐', label: 'MOTM Machine' });
@@ -166,19 +175,19 @@ const DashboardPage: React.FC = () => {
             let wins = 0;
             for (const g of allCompleted) {
                 if (!g.score || !g.teams) continue;
-                const inTeam1 = g.teams[0]?.players.some(p => p.name === displayName);
-                const inTeam2 = g.teams[1]?.players.some(p => p.name === displayName);
+                const inTeam1 = g.teams[0]?.players.some(p => (p.playerId ?? p.name) === myId);
+                const inTeam2 = g.teams[1]?.players.some(p => (p.playerId ?? p.name) === myId);
                 if (inTeam1 && g.score.team1 > g.score.team2) wins++;
                 else if (inTeam2 && g.score.team2 > g.score.team1) wins++;
             }
             if (wins >= 10) badges.push({ emoji: '🏆', label: 'Winner' });
 
             const recentGamesPlayed = allCompleted
-                .filter(g => g.teams?.some(t => t.players.some(p => p.name === displayName)))
+                .filter(g => g.teams?.some(t => t.players.some(p => (p.playerId ?? p.name) === myId)))
                 .sort((a, b) => b.date - a.date)
                 .slice(0, 3);
             if (recentGamesPlayed.length === 3 && recentGamesPlayed.every(g =>
-                (g.goalScorers?.find(s => s.name === displayName)?.goals ?? 0) > 0
+                (g.goalScorers?.find(s => s.playerId === myId)?.goals ?? 0) > 0
             )) {
                 badges.push({ emoji: '🔥', label: 'On Fire' });
             }

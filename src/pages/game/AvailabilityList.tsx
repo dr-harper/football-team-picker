@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle, XCircle, HelpCircle } from 'lucide-react';
 import { PlayerAvailability, AvailabilityStatus } from '../../types';
+import { makeGuestId } from '../../utils/playerLookup';
 
 interface AvailabilityListProps {
     availablePlayers: PlayerAvailability[];
@@ -17,7 +18,7 @@ interface AvailabilityListProps {
     onSetAvailability: (status: AvailabilityStatus) => void;
     onAdminSetAvailability: (player: PlayerAvailability, status: AvailabilityStatus) => void;
     onGuestStatusChange: (name: string, status: AvailabilityStatus) => void;
-    onPositionToggle: (playerName: string, pos: 'g' | 'd' | 's') => void;
+    onPositionToggle: (playerId: string, pos: 'g' | 'd' | 's') => void;
     onSetMemberAvailability: (gameDocId: string, userId: string, displayName: string, status: AvailabilityStatus) => void;
 }
 
@@ -32,14 +33,14 @@ const AvailabilityList: React.FC<AvailabilityListProps> = ({
         {[...availablePlayers, ...maybePlayers, ...unavailablePlayers].map(a => {
             const isMe = a.userId === currentUserId;
             const s = a.status;
-            const pos = positionMap[a.displayName];
+            const pos = positionMap[a.userId];
             return (
                 <div key={a.id} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5">
                     <span className="text-white text-sm truncate flex-1">{a.displayName}</span>
                     {isAdmin && (
                         <div className="flex gap-0.5 shrink-0">
                             {(['g', 'd', 's'] as const).map(p => (
-                                <button key={p} onClick={() => onPositionToggle(a.displayName, p)}
+                                <button key={p} onClick={() => onPositionToggle(a.userId, p)}
                                     className={`text-xs px-1.5 py-0.5 rounded font-mono transition-colors ${pos === p ? 'bg-white/25 text-white' : 'text-white/25 hover:text-white/60'}`}
                                     title={p === 'g' ? 'Goalkeeper' : p === 'd' ? 'Defender' : 'Forward'}
                                 >{p === 'g' ? 'GK' : p === 'd' ? 'DEF' : 'FWD'}</button>
@@ -62,7 +63,8 @@ const AvailabilityList: React.FC<AvailabilityListProps> = ({
         })}
         {guestPlayers.map(name => {
             const s = guestStatusMap[name] ?? 'available';
-            const pos = positionMap[name];
+            const guestId = makeGuestId(name);
+            const pos = positionMap[guestId];
             return (
                 <div key={name} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5">
                     <span className="text-white text-sm truncate flex-1">{name} <span className="text-white/40 text-xs">guest</span></span>
@@ -70,7 +72,7 @@ const AvailabilityList: React.FC<AvailabilityListProps> = ({
                         <>
                             <div className="flex gap-0.5 shrink-0">
                                 {(['g', 'd', 's'] as const).map(p => (
-                                    <button key={p} onClick={() => onPositionToggle(name, p)}
+                                    <button key={p} onClick={() => onPositionToggle(guestId, p)}
                                         className={`text-xs px-1.5 py-0.5 rounded font-mono transition-colors ${pos === p ? 'bg-white/25 text-white' : 'text-white/25 hover:text-white/60'}`}
                                         title={p === 'g' ? 'Goalkeeper' : p === 'd' ? 'Defender' : 'Forward'}
                                     >{p === 'g' ? 'GK' : p === 'd' ? 'DEF' : 'FWD'}</button>

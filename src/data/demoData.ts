@@ -7,9 +7,12 @@ const PLAYERS = [
     'Ezri',
 ];
 
+const demoId = (name: string) => `demo-${PLAYERS.indexOf(name)}`;
+
 function makeTeams(teamAName: string, teamBName: string, teamA: string[], teamB: string[], colA = '#3b82f6', colB = '#ef4444') {
     const toPlayer = (name: string, idx: number) => ({
         name,
+        playerId: PLAYERS.includes(name) ? demoId(name) : name,
         isGoalkeeper: idx === 0,
         isStriker: idx >= 6,
         isDefender: idx >= 1 && idx <= 3,
@@ -42,57 +45,57 @@ export const demoLeague: League = {
     defaultCostPerPerson: 7.50,
     adminIds: ['demo-admin'],
     payments: {
-        Jamie: [{ amount: 40, date: weeksAgo(7) }, { amount: 40, date: weeksAgo(3) }],
-        Reece: [{ amount: 45, date: weeksAgo(6) }, { amount: 35, date: weeksAgo(2) }],
-        Marcus: [{ amount: 50, date: weeksAgo(8) }, { amount: 40, date: weeksAgo(3) }],
-        Declan: [{ amount: 40, date: weeksAgo(5) }, { amount: 40, date: weeksAgo(1) }],
-        Bukayo: [{ amount: 50, date: weeksAgo(7) }, { amount: 40, date: weeksAgo(2) }],
-        Mason: [{ amount: 25, date: weeksAgo(6) }],
-        Jude: [{ amount: 45, date: weeksAgo(6) }, { amount: 40, date: weeksAgo(2) }],
-        Phil: [{ amount: 20, date: weeksAgo(8) }],
-        Kyle: [{ amount: 40, date: weeksAgo(7) }, { amount: 40, date: weeksAgo(2) }],
-        Harry: [{ amount: 50, date: weeksAgo(8) }, { amount: 50, date: weeksAgo(3) }],
-        Ollie: [{ amount: 45, date: weeksAgo(5) }, { amount: 40, date: weeksAgo(1) }],
-        Trent: [{ amount: 40, date: weeksAgo(6) }, { amount: 40, date: weeksAgo(2) }],
-        Jordan: [{ amount: 40, date: weeksAgo(7) }, { amount: 40, date: weeksAgo(3) }],
-        Jack: [{ amount: 40, date: weeksAgo(5) }, { amount: 40, date: weeksAgo(1) }],
-        Cole: [{ amount: 15, date: weeksAgo(9) }],
-        Ezri: [{ amount: 40, date: weeksAgo(6) }, { amount: 40, date: weeksAgo(2) }],
+        [demoId('Jamie')]: [{ amount: 40, date: weeksAgo(7) }, { amount: 40, date: weeksAgo(3) }],
+        [demoId('Reece')]: [{ amount: 45, date: weeksAgo(6) }, { amount: 35, date: weeksAgo(2) }],
+        [demoId('Marcus')]: [{ amount: 50, date: weeksAgo(8) }, { amount: 40, date: weeksAgo(3) }],
+        [demoId('Declan')]: [{ amount: 40, date: weeksAgo(5) }, { amount: 40, date: weeksAgo(1) }],
+        [demoId('Bukayo')]: [{ amount: 50, date: weeksAgo(7) }, { amount: 40, date: weeksAgo(2) }],
+        [demoId('Mason')]: [{ amount: 25, date: weeksAgo(6) }],
+        [demoId('Jude')]: [{ amount: 45, date: weeksAgo(6) }, { amount: 40, date: weeksAgo(2) }],
+        [demoId('Phil')]: [{ amount: 20, date: weeksAgo(8) }],
+        [demoId('Kyle')]: [{ amount: 40, date: weeksAgo(7) }, { amount: 40, date: weeksAgo(2) }],
+        [demoId('Harry')]: [{ amount: 50, date: weeksAgo(8) }, { amount: 50, date: weeksAgo(3) }],
+        [demoId('Ollie')]: [{ amount: 45, date: weeksAgo(5) }, { amount: 40, date: weeksAgo(1) }],
+        [demoId('Trent')]: [{ amount: 40, date: weeksAgo(6) }, { amount: 40, date: weeksAgo(2) }],
+        [demoId('Jordan')]: [{ amount: 40, date: weeksAgo(7) }, { amount: 40, date: weeksAgo(3) }],
+        [demoId('Jack')]: [{ amount: 40, date: weeksAgo(5) }, { amount: 40, date: weeksAgo(1) }],
+        [demoId('Cole')]: [{ amount: 15, date: weeksAgo(9) }],
+        [demoId('Ezri')]: [{ amount: 40, date: weeksAgo(6) }, { amount: 40, date: weeksAgo(2) }],
     },
     expenses: [],
 };
 
 // Game rosters — some players miss games to create varied attendance
 // Mason misses 4, Phil misses 3, Cole misses 3, Ezri misses 2, Jordan misses 2
-const g1a = ['Jamie', 'Reece', 'Marcus', 'Declan', 'Bukayo', 'Mason', 'Jude', 'Phil'];
-const g1b = ['Kyle', 'Harry', 'Ollie', 'Trent', 'Jordan', 'Jack', 'Cole', 'Ezri'];
+const g1a = [demoId('Jamie'), demoId('Reece'), demoId('Marcus'), demoId('Declan'), demoId('Bukayo'), demoId('Mason'), demoId('Jude'), demoId('Phil')];
+const g1b = [demoId('Kyle'), demoId('Harry'), demoId('Ollie'), demoId('Trent'), demoId('Jordan'), demoId('Jack'), demoId('Cole'), demoId('Ezri')];
 
-const g2a = ['Jamie', 'Reece', 'Marcus', 'Declan', 'Bukayo', 'Jude', 'Phil'];       // Mason out
-const g2b = ['Kyle', 'Harry', 'Ollie', 'Trent', 'Jordan', 'Jack', 'Ezri'];           // Cole out
+const g2a = [demoId('Jamie'), demoId('Reece'), demoId('Marcus'), demoId('Declan'), demoId('Bukayo'), demoId('Jude'), demoId('Phil')];       // Mason out
+const g2b = [demoId('Kyle'), demoId('Harry'), demoId('Ollie'), demoId('Trent'), demoId('Jordan'), demoId('Jack'), demoId('Ezri')];           // Cole out
 
-const g3a = ['Jamie', 'Reece', 'Marcus', 'Declan', 'Bukayo', 'Jude'];                // Mason, Phil out
-const g3b = ['Kyle', 'Harry', 'Ollie', 'Trent', 'Jack', 'Cole', 'Ezri'];             // Jordan out
+const g3a = [demoId('Jamie'), demoId('Reece'), demoId('Marcus'), demoId('Declan'), demoId('Bukayo'), demoId('Jude')];                // Mason, Phil out
+const g3b = [demoId('Kyle'), demoId('Harry'), demoId('Ollie'), demoId('Trent'), demoId('Jack'), demoId('Cole'), demoId('Ezri')];             // Jordan out
 
-const g4a = ['Jamie', 'Reece', 'Marcus', 'Declan', 'Bukayo', 'Mason', 'Jude', 'Phil'];
-const g4b = ['Kyle', 'Harry', 'Ollie', 'Trent', 'Jordan', 'Jack', 'Cole', 'Ezri'];
+const g4a = [demoId('Jamie'), demoId('Reece'), demoId('Marcus'), demoId('Declan'), demoId('Bukayo'), demoId('Mason'), demoId('Jude'), demoId('Phil')];
+const g4b = [demoId('Kyle'), demoId('Harry'), demoId('Ollie'), demoId('Trent'), demoId('Jordan'), demoId('Jack'), demoId('Cole'), demoId('Ezri')];
 
-const g5a = ['Jamie', 'Reece', 'Marcus', 'Declan', 'Bukayo', 'Jude'];                // Mason, Phil out
-const g5b = ['Kyle', 'Harry', 'Ollie', 'Trent', 'Jordan', 'Jack'];                   // Cole, Ezri out
+const g5a = [demoId('Jamie'), demoId('Reece'), demoId('Marcus'), demoId('Declan'), demoId('Bukayo'), demoId('Jude')];                // Mason, Phil out
+const g5b = [demoId('Kyle'), demoId('Harry'), demoId('Ollie'), demoId('Trent'), demoId('Jordan'), demoId('Jack')];                   // Cole, Ezri out
 
-const g6a = ['Jamie', 'Reece', 'Marcus', 'Declan', 'Bukayo', 'Mason', 'Jude', 'Phil'];
-const g6b = ['Kyle', 'Harry', 'Ollie', 'Trent', 'Jack', 'Cole', 'Ezri'];             // Jordan out
+const g6a = [demoId('Jamie'), demoId('Reece'), demoId('Marcus'), demoId('Declan'), demoId('Bukayo'), demoId('Mason'), demoId('Jude'), demoId('Phil')];
+const g6b = [demoId('Kyle'), demoId('Harry'), demoId('Ollie'), demoId('Trent'), demoId('Jack'), demoId('Cole'), demoId('Ezri')];             // Jordan out
 
-const g7a = ['Jamie', 'Reece', 'Marcus', 'Declan', 'Bukayo', 'Jude', 'Phil'];        // Mason out
-const g7b = ['Kyle', 'Harry', 'Ollie', 'Trent', 'Jordan', 'Jack', 'Ezri'];           // Cole out
+const g7a = [demoId('Jamie'), demoId('Reece'), demoId('Marcus'), demoId('Declan'), demoId('Bukayo'), demoId('Jude'), demoId('Phil')];        // Mason out
+const g7b = [demoId('Kyle'), demoId('Harry'), demoId('Ollie'), demoId('Trent'), demoId('Jordan'), demoId('Jack'), demoId('Ezri')];           // Cole out
 
-const g8a = ['Jamie', 'Reece', 'Marcus', 'Declan', 'Bukayo', 'Mason', 'Jude'];       // Phil out
-const g8b = ['Kyle', 'Harry', 'Ollie', 'Trent', 'Jordan', 'Jack', 'Cole', 'Ezri'];
+const g8a = [demoId('Jamie'), demoId('Reece'), demoId('Marcus'), demoId('Declan'), demoId('Bukayo'), demoId('Mason'), demoId('Jude')];       // Phil out
+const g8b = [demoId('Kyle'), demoId('Harry'), demoId('Ollie'), demoId('Trent'), demoId('Jordan'), demoId('Jack'), demoId('Cole'), demoId('Ezri')];
 
-const g9a = ['Jamie', 'Reece', 'Marcus', 'Declan', 'Bukayo', 'Jude'];                // Mason, Phil out
-const g9b = ['Kyle', 'Harry', 'Ollie', 'Trent', 'Jack', 'Ezri'];                     // Jordan, Cole out
+const g9a = [demoId('Jamie'), demoId('Reece'), demoId('Marcus'), demoId('Declan'), demoId('Bukayo'), demoId('Jude')];                // Mason, Phil out
+const g9b = [demoId('Kyle'), demoId('Harry'), demoId('Ollie'), demoId('Trent'), demoId('Jack'), demoId('Ezri')];                     // Jordan, Cole out
 
-const g10a = ['Jamie', 'Reece', 'Marcus', 'Declan', 'Bukayo', 'Mason', 'Jude', 'Phil'];
-const g10b = ['Kyle', 'Harry', 'Ollie', 'Trent', 'Jordan', 'Jack', 'Cole', 'Ezri'];
+const g10a = [demoId('Jamie'), demoId('Reece'), demoId('Marcus'), demoId('Declan'), demoId('Bukayo'), demoId('Mason'), demoId('Jude'), demoId('Phil')];
+const g10b = [demoId('Kyle'), demoId('Harry'), demoId('Ollie'), demoId('Trent'), demoId('Jordan'), demoId('Jack'), demoId('Cole'), demoId('Ezri')];
 
 export const demoCompletedGames: Game[] = [
     {
@@ -100,9 +103,9 @@ export const demoCompletedGames: Game[] = [
         status: 'completed', createdBy: 'demo-admin', createdAt: weeksAgo(1),
         teams: makeTeams('Hackney Reds', 'Shoreditch Blues', g1a, g1b),
         score: { team1: 4, team2: 3 },
-        goalScorers: [{ name: 'Bukayo', goals: 2 }, { name: 'Marcus', goals: 1 }, { name: 'Mason', goals: 1 }, { name: 'Harry', goals: 2 }, { name: 'Trent', goals: 1 }],
-        assisters: [{ name: 'Jude', goals: 2 }, { name: 'Jamie', goals: 1 }, { name: 'Ollie', goals: 1 }],
-        manOfTheMatch: 'Bukayo',
+        goalScorers: [{ playerId: demoId('Bukayo'), goals: 2 }, { playerId: demoId('Marcus'), goals: 1 }, { playerId: demoId('Mason'), goals: 1 }, { playerId: demoId('Harry'), goals: 2 }, { playerId: demoId('Trent'), goals: 1 }],
+        assisters: [{ playerId: demoId('Jude'), goals: 2 }, { playerId: demoId('Jamie'), goals: 1 }, { playerId: demoId('Ollie'), goals: 1 }],
+        manOfTheMatch: demoId('Bukayo'),
         attendees: [...g1a, ...g1b],
         costPerPerson: 7.50,
     },
@@ -111,9 +114,9 @@ export const demoCompletedGames: Game[] = [
         status: 'completed', createdBy: 'demo-admin', createdAt: weeksAgo(2),
         teams: makeTeams('Dalston Dynamos', 'Bethnal Greens', g2a, g2b),
         score: { team1: 2, team2: 2 },
-        goalScorers: [{ name: 'Jude', goals: 1 }, { name: 'Marcus', goals: 1 }, { name: 'Ollie', goals: 1 }, { name: 'Harry', goals: 1 }],
-        assisters: [{ name: 'Bukayo', goals: 1 }, { name: 'Trent', goals: 1 }],
-        manOfTheMatch: 'Jude',
+        goalScorers: [{ playerId: demoId('Jude'), goals: 1 }, { playerId: demoId('Marcus'), goals: 1 }, { playerId: demoId('Ollie'), goals: 1 }, { playerId: demoId('Harry'), goals: 1 }],
+        assisters: [{ playerId: demoId('Bukayo'), goals: 1 }, { playerId: demoId('Trent'), goals: 1 }],
+        manOfTheMatch: demoId('Jude'),
         attendees: [...g2a, ...g2b],
         costPerPerson: 7.50,
     },
@@ -122,9 +125,9 @@ export const demoCompletedGames: Game[] = [
         status: 'completed', createdBy: 'demo-admin', createdAt: weeksAgo(3),
         teams: makeTeams('Mile End United', 'Bow Rovers', g3a, g3b),
         score: { team1: 5, team2: 1 },
-        goalScorers: [{ name: 'Bukayo', goals: 3 }, { name: 'Declan', goals: 1 }, { name: 'Reece', goals: 1 }, { name: 'Kyle', goals: 1 }],
-        assisters: [{ name: 'Marcus', goals: 2 }, { name: 'Jude', goals: 1 }, { name: 'Bukayo', goals: 1 }],
-        manOfTheMatch: 'Bukayo',
+        goalScorers: [{ playerId: demoId('Bukayo'), goals: 3 }, { playerId: demoId('Declan'), goals: 1 }, { playerId: demoId('Reece'), goals: 1 }, { playerId: demoId('Kyle'), goals: 1 }],
+        assisters: [{ playerId: demoId('Marcus'), goals: 2 }, { playerId: demoId('Jude'), goals: 1 }, { playerId: demoId('Bukayo'), goals: 1 }],
+        manOfTheMatch: demoId('Bukayo'),
         attendees: [...g3a, ...g3b],
         costPerPerson: 7.50,
     },
@@ -133,9 +136,9 @@ export const demoCompletedGames: Game[] = [
         status: 'completed', createdBy: 'demo-admin', createdAt: weeksAgo(4),
         teams: makeTeams('Hackney Reds', 'Shoreditch Blues', g4a, g4b),
         score: { team1: 1, team2: 3 },
-        goalScorers: [{ name: 'Mason', goals: 1 }, { name: 'Harry', goals: 2 }, { name: 'Jack', goals: 1 }],
-        assisters: [{ name: 'Phil', goals: 1 }, { name: 'Trent', goals: 2 }],
-        manOfTheMatch: 'Harry',
+        goalScorers: [{ playerId: demoId('Mason'), goals: 1 }, { playerId: demoId('Harry'), goals: 2 }, { playerId: demoId('Jack'), goals: 1 }],
+        assisters: [{ playerId: demoId('Phil'), goals: 1 }, { playerId: demoId('Trent'), goals: 2 }],
+        manOfTheMatch: demoId('Harry'),
         attendees: [...g4a, ...g4b],
         costPerPerson: 7.50,
     },
@@ -144,9 +147,9 @@ export const demoCompletedGames: Game[] = [
         status: 'completed', createdBy: 'demo-admin', createdAt: weeksAgo(5),
         teams: makeTeams('Dalston Dynamos', 'Bethnal Greens', g5a, g5b),
         score: { team1: 3, team2: 2 },
-        goalScorers: [{ name: 'Marcus', goals: 2 }, { name: 'Bukayo', goals: 1 }, { name: 'Ollie', goals: 1 }, { name: 'Jordan', goals: 1 }],
-        assisters: [{ name: 'Declan', goals: 1 }, { name: 'Reece', goals: 1 }],
-        manOfTheMatch: 'Marcus',
+        goalScorers: [{ playerId: demoId('Marcus'), goals: 2 }, { playerId: demoId('Bukayo'), goals: 1 }, { playerId: demoId('Ollie'), goals: 1 }, { playerId: demoId('Jordan'), goals: 1 }],
+        assisters: [{ playerId: demoId('Declan'), goals: 1 }, { playerId: demoId('Reece'), goals: 1 }],
+        manOfTheMatch: demoId('Marcus'),
         attendees: [...g5a, ...g5b],
         costPerPerson: 7.50,
     },
@@ -155,9 +158,9 @@ export const demoCompletedGames: Game[] = [
         status: 'completed', createdBy: 'demo-admin', createdAt: weeksAgo(6),
         teams: makeTeams('Mile End United', 'Bow Rovers', g6a, g6b),
         score: { team1: 0, team2: 1 },
-        goalScorers: [{ name: 'Trent', goals: 1 }],
-        assisters: [{ name: 'Kyle', goals: 1 }],
-        manOfTheMatch: 'Jamie',
+        goalScorers: [{ playerId: demoId('Trent'), goals: 1 }],
+        assisters: [{ playerId: demoId('Kyle'), goals: 1 }],
+        manOfTheMatch: demoId('Jamie'),
         attendees: [...g6a, ...g6b],
         costPerPerson: 7.50,
     },
@@ -166,9 +169,9 @@ export const demoCompletedGames: Game[] = [
         status: 'completed', createdBy: 'demo-admin', createdAt: weeksAgo(7),
         teams: makeTeams('Hackney Reds', 'Shoreditch Blues', g7a, g7b),
         score: { team1: 2, team2: 0 },
-        goalScorers: [{ name: 'Jude', goals: 1 }, { name: 'Declan', goals: 1 }],
-        assisters: [{ name: 'Bukayo', goals: 1 }],
-        manOfTheMatch: 'Declan',
+        goalScorers: [{ playerId: demoId('Jude'), goals: 1 }, { playerId: demoId('Declan'), goals: 1 }],
+        assisters: [{ playerId: demoId('Bukayo'), goals: 1 }],
+        manOfTheMatch: demoId('Declan'),
         attendees: [...g7a, ...g7b],
         costPerPerson: 7.50,
     },
@@ -177,9 +180,9 @@ export const demoCompletedGames: Game[] = [
         status: 'completed', createdBy: 'demo-admin', createdAt: weeksAgo(8),
         teams: makeTeams('Dalston Dynamos', 'Bethnal Greens', g8a, g8b),
         score: { team1: 4, team2: 4 },
-        goalScorers: [{ name: 'Marcus', goals: 2 }, { name: 'Bukayo', goals: 1 }, { name: 'Mason', goals: 1 }, { name: 'Harry', goals: 2 }, { name: 'Ollie', goals: 1 }, { name: 'Jack', goals: 1 }],
-        assisters: [{ name: 'Jude', goals: 2 }, { name: 'Trent', goals: 1 }, { name: 'Reece', goals: 1 }],
-        manOfTheMatch: 'Marcus',
+        goalScorers: [{ playerId: demoId('Marcus'), goals: 2 }, { playerId: demoId('Bukayo'), goals: 1 }, { playerId: demoId('Mason'), goals: 1 }, { playerId: demoId('Harry'), goals: 2 }, { playerId: demoId('Ollie'), goals: 1 }, { playerId: demoId('Jack'), goals: 1 }],
+        assisters: [{ playerId: demoId('Jude'), goals: 2 }, { playerId: demoId('Trent'), goals: 1 }, { playerId: demoId('Reece'), goals: 1 }],
+        manOfTheMatch: demoId('Marcus'),
         attendees: [...g8a, ...g8b],
         costPerPerson: 7.50,
     },
@@ -188,9 +191,9 @@ export const demoCompletedGames: Game[] = [
         status: 'completed', createdBy: 'demo-admin', createdAt: weeksAgo(9),
         teams: makeTeams('Mile End United', 'Bow Rovers', g9a, g9b),
         score: { team1: 3, team2: 1 },
-        goalScorers: [{ name: 'Bukayo', goals: 1 }, { name: 'Jude', goals: 1 }, { name: 'Declan', goals: 1 }, { name: 'Ezri', goals: 1 }],
-        assisters: [{ name: 'Marcus', goals: 1 }, { name: 'Reece', goals: 1 }],
-        manOfTheMatch: 'Jude',
+        goalScorers: [{ playerId: demoId('Bukayo'), goals: 1 }, { playerId: demoId('Jude'), goals: 1 }, { playerId: demoId('Declan'), goals: 1 }, { playerId: demoId('Ezri'), goals: 1 }],
+        assisters: [{ playerId: demoId('Marcus'), goals: 1 }, { playerId: demoId('Reece'), goals: 1 }],
+        manOfTheMatch: demoId('Jude'),
         attendees: [...g9a, ...g9b],
         costPerPerson: 7.50,
     },
@@ -199,9 +202,9 @@ export const demoCompletedGames: Game[] = [
         status: 'completed', createdBy: 'demo-admin', createdAt: weeksAgo(10),
         teams: makeTeams('Hackney Reds', 'Shoreditch Blues', g10a, g10b),
         score: { team1: 2, team2: 3 },
-        goalScorers: [{ name: 'Mason', goals: 1 }, { name: 'Phil', goals: 1 }, { name: 'Kyle', goals: 1 }, { name: 'Harry', goals: 1 }, { name: 'Jordan', goals: 1 }],
-        assisters: [{ name: 'Jamie', goals: 1 }, { name: 'Ollie', goals: 1 }, { name: 'Cole', goals: 1 }],
-        manOfTheMatch: 'Kyle',
+        goalScorers: [{ playerId: demoId('Mason'), goals: 1 }, { playerId: demoId('Phil'), goals: 1 }, { playerId: demoId('Kyle'), goals: 1 }, { playerId: demoId('Harry'), goals: 1 }, { playerId: demoId('Jordan'), goals: 1 }],
+        assisters: [{ playerId: demoId('Jamie'), goals: 1 }, { playerId: demoId('Ollie'), goals: 1 }, { playerId: demoId('Cole'), goals: 1 }],
+        manOfTheMatch: demoId('Kyle'),
         attendees: [...g10a, ...g10b],
         costPerPerson: 7.50,
     },
@@ -217,9 +220,9 @@ export const demoUpcomingGames: Game[] = [
         guestPlayers: ['Dan'],
         guestAvailability: { Dan: 'available' },
         playerPositions: {
-            Jamie: 'g', Kyle: 'g',
-            Reece: 'd', Declan: 'd', Jordan: 'd', Trent: 'd',
-            Bukayo: 's', Harry: 's', Jude: 's', Dan: 's',
+            [demoId('Jamie')]: 'g', [demoId('Kyle')]: 'g',
+            [demoId('Reece')]: 'd', [demoId('Declan')]: 'd', [demoId('Jordan')]: 'd', [demoId('Trent')]: 'd',
+            [demoId('Bukayo')]: 's', [demoId('Harry')]: 's', [demoId('Jude')]: 's', Dan: 's',
         },
     },
     {
@@ -233,9 +236,9 @@ export const demoUpcomingGames: Game[] = [
 
 // --- Demo availability for the upcoming game (Week 11) ---
 const makeAvail = (name: string, status: 'available' | 'maybe' | 'unavailable'): PlayerAvailability => ({
-    id: `demo-upcoming-1_demo-${name.toLowerCase()}`,
+    id: `demo-upcoming-1_${demoId(name)}`,
     gameId: 'demo-upcoming-1',
-    userId: `demo-${name.toLowerCase()}`,
+    userId: demoId(name),
     displayName: name,
     status,
     updatedAt: now - Math.floor(Math.random() * 2 * DAY),
@@ -261,8 +264,8 @@ export const demoAvailability: PlayerAvailability[] = [
 ];
 
 // --- Pre-generated teams for the demo "Generate teams" step ---
-const demoTeamA = ['Jamie', 'Reece', 'Declan', 'Marcus', 'Bukayo', 'Jude', 'Dan'];
-const demoTeamB = ['Kyle', 'Trent', 'Jordan', 'Ollie', 'Harry', 'Jack'];
+const demoTeamA = [demoId('Jamie'), demoId('Reece'), demoId('Declan'), demoId('Marcus'), demoId('Bukayo'), demoId('Jude'), 'Dan'];
+const demoTeamB = [demoId('Kyle'), demoId('Trent'), demoId('Jordan'), demoId('Ollie'), demoId('Harry'), demoId('Jack')];
 
 export const demoGeneratedTeams: TeamSetup = {
     id: 'demo-setup-1',

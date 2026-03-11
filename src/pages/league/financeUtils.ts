@@ -14,7 +14,7 @@ export function buildWeeklySeries(
     completedGames: Game[],
     paymentsMap: Record<string, PaymentRecord[]>,
     defaultCost: number,
-    playerName?: string,
+    playerId?: string,
     fromDate?: number,
 ): BalancePoint[] {
     const relevantGames = completedGames.filter(g => g.attendees && g.attendees.length > 0);
@@ -38,14 +38,14 @@ export function buildWeeklySeries(
         relevantGames.forEach(g => {
             if (g.date >= weekStart) return;
             const cost = g.costPerPerson ?? defaultCost;
-            const att = playerName
-                ? (g.attendees ?? []).filter(n => n === playerName)
+            const att = playerId
+                ? (g.attendees ?? []).filter(id => id === playerId)
                 : (g.attendees ?? []);
             owed += att.length * cost;
         });
         let paid = 0;
-        Object.entries(paymentsMap).forEach(([name, recs]) => {
-            if (playerName && name !== playerName) return;
+        Object.entries(paymentsMap).forEach(([id, recs]) => {
+            if (playerId && id !== playerId) return;
             recs.forEach(p => { if (p.date < weekStart) paid += p.amount; });
         });
         return { date: weekStart, balance: owed - paid };
@@ -72,7 +72,7 @@ export function negateSeries(series: BalancePoint[]): BalancePoint[] {
 }
 
 export interface FinanceLedgerRow {
-    name: string;
+    playerId: string;
     games: number;
     owed: number;
     paid: number;
@@ -90,17 +90,17 @@ export function buildFinanceLedger(
     completedGames.forEach(g => {
         if (!g.attendees) return;
         const cost = g.costPerPerson ?? league.defaultCostPerPerson ?? 0;
-        g.attendees.forEach(name => {
-            const ex = playerData.get(name) ?? { games: 0, owed: 0 };
-            playerData.set(name, { games: ex.games + 1, owed: ex.owed + cost });
+        g.attendees.forEach(pid => {
+            const ex = playerData.get(pid) ?? { games: 0, owed: 0 };
+            playerData.set(pid, { games: ex.games + 1, owed: ex.owed + cost });
         });
     });
 
     return [...playerData.entries()]
-        .map(([name, data]) => {
-            const history = paymentsMap[name] ?? [];
+        .map(([playerId, data]) => {
+            const history = paymentsMap[playerId] ?? [];
             const paid = history.reduce((s, p) => s + p.amount, 0);
-            return { name, games: data.games, owed: data.owed, paid, history, balance: data.owed - paid };
+            return { playerId, games: data.games, owed: data.owed, paid, history, balance: data.owed - paid };
         })
         .sort((a, b) => b.balance - a.balance);
 }

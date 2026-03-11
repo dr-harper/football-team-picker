@@ -3,21 +3,24 @@ import { ResponsiveContainer, AreaChart, Area, LineChart, Line, XAxis, YAxis, Re
 import { Pencil } from 'lucide-react';
 import { League, Game, LeagueExpense } from '../../types';
 import { buildWeeklySeries, zeroOffset, negateSeries, buildFinanceLedger } from './financeUtils';
+import { resolvePlayerName } from '../../utils/playerLookup';
+import PlayerName from '../../components/PlayerName';
 
 interface FinanceTabProps {
     league: League;
     leagueId: string;
     completedGames: Game[];
-    myName: string;
+    myId: string;
     isAdmin: boolean;
-    onRecordPayment: (playerName: string, amount: number) => Promise<void>;
+    lookup: Record<string, string>;
+    onRecordPayment: (playerId: string, amount: number) => Promise<void>;
     onApproveExpense: (expense: LeagueExpense) => Promise<void>;
     onRejectExpense: (expenseId: string) => Promise<void>;
     onSaveDefaultCost: (cost: number | null) => Promise<void>;
 }
 
 const FinanceTab: React.FC<FinanceTabProps> = ({
-    league, completedGames, myName, isAdmin,
+    league, completedGames, myId, isAdmin, lookup,
     onRecordPayment, onApproveExpense, onRejectExpense, onSaveDefaultCost,
 }) => {
     const [editingDefaultCost, setEditingDefaultCost] = useState(false);
@@ -39,11 +42,11 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
         : undefined;
     const aggregateSeries = negateSeries(buildWeeklySeries(completedGames, paymentsMap, defaultCost, undefined, last20Start));
 
-    const handleRecordPayment = async (playerName: string) => {
-        const amount = parseFloat(paymentInputs[playerName] ?? '');
+    const handleRecordPayment = async (playerId: string) => {
+        const amount = parseFloat(paymentInputs[playerId] ?? '');
         if (isNaN(amount) || amount <= 0) return;
-        await onRecordPayment(playerName, amount);
-        setPaymentInputs(prev => ({ ...prev, [playerName]: '' }));
+        await onRecordPayment(playerId, amount);
+        setPaymentInputs(prev => ({ ...prev, [playerId]: '' }));
         setAddingPaymentFor(null);
     };
 
@@ -142,7 +145,7 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm text-white font-medium truncate">{exp.description}</div>
                                             <div className="text-[11px] text-white/40 mt-0.5">
-                                                {exp.playerName} · {new Date(exp.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                                <PlayerName id={exp.playerId} lookup={lookup} /> · {new Date(exp.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                                             </div>
                                         </div>
                                         <span className="text-sm font-bold text-white tabular-nums shrink-0">£{exp.amount.toFixed(2)}</span>
@@ -152,7 +155,7 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
                                             onClick={() => onApproveExpense(exp)}
                                             className="flex-1 text-xs py-1.5 rounded-lg bg-green-600/25 text-green-400 hover:bg-green-600/40 transition-colors font-medium"
                                         >
-                                            Approve — credits {exp.playerName.split(' ')[0]}
+                                            Approve — credits {resolvePlayerName(exp.playerId, lookup).split(' ')[0]}
                                         </button>
                                         <button
                                             onClick={() => onRejectExpense(exp.id)}
@@ -223,17 +226,17 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
                             <span className="text-right">Balance</span>
                         </div>
                         {financeLedger.map(row => {
-                            const isExpanded = selectedPlayerChart === row.name;
+                            const isExpanded = selectedPlayerChart === row.playerId;
                             const isSettled = row.balance <= 0;
                             const paidPct = row.owed > 0 ? Math.min(row.paid / row.owed * 100, 100) : 100;
                             return (
-                                <div key={row.name} className="border-t border-white/5">
+                                <div key={row.playerId} className="border-t border-white/5">
                                     {/* Clickable main row */}
                                     <button
                                         className="w-full text-left grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 px-4 py-3 items-center hover:bg-white/3 transition-colors"
-                                        onClick={() => setSelectedPlayerChart(isExpanded ? null : row.name)}
+                                        onClick={() => setSelectedPlayerChart(isExpanded ? null : row.playerId)}
                                     >
-                                        <span className="text-sm text-white truncate">{row.name}</span>
+                                        <PlayerName id={row.playerId} lookup={lookup} className="text-sm text-white truncate" />
                                         <span className="text-xs text-right text-white/50 tabular-nums">{row.games}</span>
                                         <span className="text-xs text-right text-white/70 tabular-nums">£{row.owed.toFixed(2)}</span>
                                         <span className="text-xs text-right text-white/70 tabular-nums">£{row.paid.toFixed(2)}</span>
@@ -252,10 +255,10 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
 
                                     {/* Expanded: weekly chart + payment history + record payment */}
                                     {isExpanded && (() => {
-                                        const playerSeriesRaw = buildWeeklySeries(completedGames, paymentsMap, defaultCost, row.name, last20Start);
+                                        const playerSeriesRaw = buildWeeklySeries(completedGames, paymentsMap, defaultCost, row.playerId, last20Start);
                                         const playerSeries = playerSeriesRaw.map(p => ({ ...p, balance: -p.balance }));
                                         const pZeroPct = zeroOffset(playerSeries);
-                                        const gradId = `pg_${row.name.replace(/\W/g, '')}`;
+                                        const gradId = `pg_${row.playerId.replace(/\W/g, '')}`;
                                         return (
                                             <div className="px-4 pb-4 pt-1 space-y-3 bg-black/10 border-t border-white/5">
                                                 {/* Balance chart */}
@@ -320,25 +323,25 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
 
                                                 {/* Record payment */}
                                                 <div className="pt-1 border-t border-white/8">
-                                                    {addingPaymentFor === row.name ? (
+                                                    {addingPaymentFor === row.playerId ? (
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-white/60 text-sm">£</span>
                                                             <input
                                                                 type="number"
-                                                                value={paymentInputs[row.name] ?? ''}
-                                                                onChange={e => setPaymentInputs(prev => ({ ...prev, [row.name]: e.target.value }))}
+                                                                value={paymentInputs[row.playerId] ?? ''}
+                                                                onChange={e => setPaymentInputs(prev => ({ ...prev, [row.playerId]: e.target.value }))}
                                                                 placeholder="Amount"
                                                                 min="0"
                                                                 step="0.5"
                                                                 autoFocus
                                                                 className="w-24 bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white text-sm"
                                                             />
-                                                            <button onClick={() => handleRecordPayment(row.name)} className="text-green-400 hover:text-green-300 text-xs px-2 py-1 bg-green-600/20 rounded">Add</button>
+                                                            <button onClick={() => handleRecordPayment(row.playerId)} className="text-green-400 hover:text-green-300 text-xs px-2 py-1 bg-green-600/20 rounded">Add</button>
                                                             <button onClick={() => setAddingPaymentFor(null)} className="text-white/40 hover:text-white text-xs">Cancel</button>
                                                         </div>
                                                     ) : (
                                                         <button
-                                                            onClick={() => { setAddingPaymentFor(row.name); setPaymentInputs(prev => ({ ...prev, [row.name]: '' })); }}
+                                                            onClick={() => { setAddingPaymentFor(row.playerId); setPaymentInputs(prev => ({ ...prev, [row.playerId]: '' })); }}
                                                             className="text-xs text-green-400/60 hover:text-green-400 transition-colors"
                                                         >+ Record payment</button>
                                                     )}
@@ -350,25 +353,25 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
                                     {/* Collapsed quick-pay for debtors */}
                                     {!isExpanded && !isSettled && (
                                         <div className="px-4 pb-2.5">
-                                            {addingPaymentFor === row.name ? (
+                                            {addingPaymentFor === row.playerId ? (
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-white/60 text-sm">£</span>
                                                     <input
                                                         type="number"
-                                                        value={paymentInputs[row.name] ?? ''}
-                                                        onChange={e => setPaymentInputs(prev => ({ ...prev, [row.name]: e.target.value }))}
+                                                        value={paymentInputs[row.playerId] ?? ''}
+                                                        onChange={e => setPaymentInputs(prev => ({ ...prev, [row.playerId]: e.target.value }))}
                                                         placeholder="Amount"
                                                         min="0"
                                                         step="0.5"
                                                         autoFocus
                                                         className="w-24 bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white text-sm"
                                                     />
-                                                    <button onClick={() => handleRecordPayment(row.name)} className="text-green-400 hover:text-green-300 text-xs px-2 py-1 bg-green-600/20 rounded">Add</button>
+                                                    <button onClick={() => handleRecordPayment(row.playerId)} className="text-green-400 hover:text-green-300 text-xs px-2 py-1 bg-green-600/20 rounded">Add</button>
                                                     <button onClick={() => setAddingPaymentFor(null)} className="text-white/40 hover:text-white text-xs">Cancel</button>
                                                 </div>
                                             ) : (
                                                 <button
-                                                    onClick={e => { e.stopPropagation(); setAddingPaymentFor(row.name); setPaymentInputs(prev => ({ ...prev, [row.name]: '' })); }}
+                                                    onClick={e => { e.stopPropagation(); setAddingPaymentFor(row.playerId); setPaymentInputs(prev => ({ ...prev, [row.playerId]: '' })); }}
                                                     className="text-xs text-green-400/60 hover:text-green-400 transition-colors"
                                                 >+ Record payment</button>
                                             )}
@@ -383,7 +386,7 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
 
             {/* Member: personal statement */}
             {!isAdmin && (() => {
-                const myRow = financeLedger.find(r => r.name === myName);
+                const myRow = financeLedger.find(r => r.playerId === myId);
                 return (
                     <div className="space-y-3">
                         {myRow ? (
@@ -429,7 +432,7 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
 
                                 {/* Personal balance chart */}
                                 {(() => {
-                                    const mySeriesRaw = buildWeeklySeries(completedGames, paymentsMap, defaultCost, myName, last20Start);
+                                    const mySeriesRaw = buildWeeklySeries(completedGames, paymentsMap, defaultCost, myId, last20Start);
                                     const mySeries = mySeriesRaw.map(p => ({ ...p, balance: -p.balance }));
                                     if (mySeries.length < 2) return null;
                                     const myZeroPct = zeroOffset(mySeries);
@@ -477,7 +480,7 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
                                 {/* Games attended */}
                                 <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
                                     <div className="px-4 pt-4 pb-3 text-xs font-semibold text-white/50 uppercase tracking-wider">Games attended</div>
-                                    {completedGames.filter(g => g.attendees?.includes(myName)).map(g => {
+                                    {completedGames.filter(g => g.attendees?.includes(myId)).map(g => {
                                         const cost = g.costPerPerson ?? league.defaultCostPerPerson ?? 0;
                                         return (
                                             <div key={g.id} className="flex items-center justify-between px-4 py-2.5 border-t border-white/5">

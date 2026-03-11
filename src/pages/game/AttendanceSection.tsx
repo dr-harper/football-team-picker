@@ -1,6 +1,8 @@
 import React from 'react';
 import { Users, Pencil } from 'lucide-react';
 import { Game, League, PlayerAvailability } from '../../types';
+import { makeGuestId } from '../../utils/playerLookup';
+import PlayerName from '../../components/PlayerName';
 
 interface AttendanceSectionProps {
     game: Game;
@@ -9,27 +11,30 @@ interface AttendanceSectionProps {
     attendees: string[] | null;
     editingCost: boolean;
     costInput: string;
+    lookup: Record<string, string>;
     onCostInputChange: (value: string) => void;
     onEditCost: () => void;
     onSaveCost: () => void;
     onCancelCost: () => void;
-    onToggleAttendee: (name: string) => void;
+    onToggleAttendee: (playerId: string) => void;
 }
 
 const AttendanceSection: React.FC<AttendanceSectionProps> = ({
-    game, league, availability, attendees,
+    game, league, availability, attendees, lookup,
     editingCost, costInput, onCostInputChange,
     onEditCost, onSaveCost, onCancelCost, onToggleAttendee,
 }) => {
     const effectiveCost = game.costPerPerson ?? league?.defaultCostPerPerson ?? 0;
     const defaultList = [
-        ...availability.filter(a => a.status === 'available').map(a => a.displayName),
-        ...(game.guestPlayers ?? []).filter(n => (game.guestAvailability ?? {})[n] === 'available' || !(game.guestAvailability ?? {})[n]),
+        ...availability.filter(a => a.status === 'available').map(a => a.userId),
+        ...(game.guestPlayers ?? [])
+            .filter(n => (game.guestAvailability ?? {})[n] === 'available' || !(game.guestAvailability ?? {})[n])
+            .map(makeGuestId),
     ];
     const effectiveAttendees = attendees ?? defaultList;
     const allPossible = [
-        ...availability.map(a => a.displayName),
-        ...(game.guestPlayers ?? []),
+        ...availability.map(a => a.userId),
+        ...(game.guestPlayers ?? []).map(makeGuestId),
     ];
     const pot = effectiveAttendees.length * effectiveCost;
 
@@ -76,18 +81,15 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({
             </div>
             {/* Attendee checkboxes */}
             <div className="space-y-1.5 mb-3">
-                {allPossible.map(name => (
-                    <label key={name} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-white/8 transition-colors">
+                {allPossible.map(pid => (
+                    <label key={pid} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-white/8 transition-colors">
                         <input
                             type="checkbox"
-                            checked={effectiveAttendees.includes(name)}
-                            onChange={() => onToggleAttendee(name)}
+                            checked={effectiveAttendees.includes(pid)}
+                            onChange={() => onToggleAttendee(pid)}
                             className="w-4 h-4 accent-green-500 shrink-0"
                         />
-                        <span className="text-white text-sm flex-1">{name}</span>
-                        {(game.guestPlayers ?? []).includes(name) && (
-                            <span className="text-white/40 text-xs">guest</span>
-                        )}
+                        <PlayerName id={pid} lookup={lookup} className="text-white text-sm flex-1" />
                     </label>
                 ))}
             </div>

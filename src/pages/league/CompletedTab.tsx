@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Game, League } from '../../types';
+import PlayerName from '../../components/PlayerName';
 
 const PAGE_SIZE = 10;
 
@@ -10,10 +11,11 @@ interface CompletedTabProps {
     completedGames: Game[];
     scorerTotals: Map<string, number>;
     motmTotals: Map<string, number>;
+    lookup: Record<string, string>;
 }
 
 const CompletedTab: React.FC<CompletedTabProps> = ({
-    code, league, completedGames, scorerTotals, motmTotals,
+    code, league, completedGames, scorerTotals, motmTotals, lookup,
 }) => {
     const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
     const visibleGames = completedGames.slice(0, visibleCount);
@@ -31,9 +33,9 @@ const CompletedTab: React.FC<CompletedTabProps> = ({
                                 {[...scorerTotals.entries()]
                                     .sort((a, b) => b[1] - a[1])
                                     .slice(0, 3)
-                                    .map(([name, goals]) => (
-                                        <div key={name} className="flex items-center justify-between text-sm">
-                                            <span className="text-white truncate">{name}</span>
+                                    .map(([pid, goals]) => (
+                                        <div key={pid} className="flex items-center justify-between text-sm">
+                                            <PlayerName id={pid} lookup={lookup} className="text-white truncate" />
                                             <span className="text-green-300 ml-2 shrink-0">{goals} ⚽</span>
                                         </div>
                                     ))}
@@ -49,9 +51,9 @@ const CompletedTab: React.FC<CompletedTabProps> = ({
                                 {[...motmTotals.entries()]
                                     .sort((a, b) => b[1] - a[1])
                                     .slice(0, 3)
-                                    .map(([name, count]) => (
-                                        <div key={name} className="flex items-center justify-between text-sm">
-                                            <span className="text-white truncate">{name}</span>
+                                    .map(([pid, count]) => (
+                                        <div key={pid} className="flex items-center justify-between text-sm">
+                                            <PlayerName id={pid} lookup={lookup} className="text-white truncate" />
                                             <span className="text-yellow-300 ml-2 shrink-0">{count} ⭐</span>
                                         </div>
                                     ))}
