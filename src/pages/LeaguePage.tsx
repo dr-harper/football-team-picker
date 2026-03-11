@@ -16,7 +16,7 @@ import {
 } from '../utils/firestore';
 import { League, Game, LeagueExpense } from '../types';
 import { computeGameStats, getPersonalStats } from './league/statsUtils';
-import { buildLookup, resolvePlayerName } from '../utils/playerLookup';
+import { buildLookup } from '../utils/playerLookup';
 import UpcomingTab from './league/UpcomingTab';
 import CompletedTab from './league/CompletedTab';
 import StatsTab from './league/StatsTab';
@@ -383,9 +383,7 @@ const LeaguePage: React.FC = () => {
                         leagueId={id!}
                         completedGames={completedGames}
                         myId={myId}
-                        myName={myName}
                         myStats={myStats}
-                        lookup={lookup}
                         updatePlayerTags={updatePlayerTags}
                         updateBio={updateBio}
                         onSubmitPayment={handleSubmitMyPayment}

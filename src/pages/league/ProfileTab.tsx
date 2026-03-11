@@ -18,9 +18,7 @@ interface ProfileTabProps {
     leagueId: string;
     completedGames: Game[];
     myId: string;
-    myName: string;
     myStats: PersonalStats;
-    lookup: Record<string, string>;
     updatePlayerTags: (tags: string[], positions: string[]) => Promise<void>;
     updateBio: (bio: string) => Promise<void>;
     onSubmitPayment: (amount: number) => Promise<void>;
@@ -28,7 +26,7 @@ interface ProfileTabProps {
 }
 
 const ProfileTab: React.FC<ProfileTabProps> = ({
-    user, league, completedGames, myId, myName, myStats, lookup,
+    user, league, completedGames, myId, myStats,
     updatePlayerTags, updateBio, onSubmitPayment, onOpenExpenseForm,
 }) => {
     const [leagueProfile, setLeagueProfile] = useState<{ tags: string[]; positions: string[]; bio: string; hasSetTags: boolean } | null>(null);

@@ -22,8 +22,7 @@
  */
 
 import { initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
