@@ -39,13 +39,14 @@ interface ScoringControlsProps {
     assisters: GoalScorer[];
     motm: string;
     lookup: Record<string, string>;
+    enableAssists?: boolean;
     onGoalChange: (playerId: string, delta: number) => void;
     onAssistChange: (playerId: string, delta: number) => void;
     onSetMotm: (playerId: string) => void;
 }
 
 const ScoringControls: React.FC<ScoringControlsProps> = ({
-    allPlayerIds, goalScorers, assisters, motm, lookup,
+    allPlayerIds, goalScorers, assisters, motm, lookup, enableAssists,
     onGoalChange, onAssistChange, onSetMotm,
 }) => (
     <div className="border-t border-white/10 pt-4 mt-4 space-y-4">
@@ -55,12 +56,14 @@ const ScoringControls: React.FC<ScoringControlsProps> = ({
             </h4>
             <TallyRows allPlayerIds={allPlayerIds} tally={goalScorers} onChange={onGoalChange} accentClass="text-green-400 hover:text-green-300" lookup={lookup} />
         </div>
+        {enableAssists && (
         <div>
             <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
                 <span className="text-blue-400 font-bold text-xs bg-blue-400/20 px-1.5 py-0.5 rounded">A</span> Assists
             </h4>
             <TallyRows allPlayerIds={allPlayerIds} tally={assisters} onChange={onAssistChange} accentClass="text-blue-400 hover:text-blue-300" lookup={lookup} />
         </div>
+        )}
         <div>
             <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
                 <Award className="w-4 h-4 text-yellow-400" /> Man of the Match

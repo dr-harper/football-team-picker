@@ -6,6 +6,7 @@ import {
     removeMember, updateUserDisplayName, updateLeagueAdmins,
     createSeason, archiveSeason, updateSeason, deleteSeason,
     extractGuestsFromGames, linkGuestToMember,
+    updateLeagueEnableAssists,
 } from '../../utils/firestore';
 import type { User } from 'firebase/auth';
 import { logger } from '../../utils/logger';
@@ -292,6 +293,31 @@ const MembersTab: React.FC<MembersTabProps> = ({
                                 Linked successfully — updated {linkResult.count} game{linkResult.count !== 1 ? 's' : ''}.
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* League Settings — admin only */}
+            {isAdmin && (
+                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                    <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">League Settings</span>
+                    <div className="mt-3 flex items-center justify-between">
+                        <div>
+                            <div className="text-white text-sm font-medium">Track assists</div>
+                            <div className="text-white/30 text-xs">Record assists alongside goals</div>
+                        </div>
+                        <button
+                            onClick={async () => {
+                                await updateLeagueEnableAssists(leagueId, !(league.enableAssists === true));
+                            }}
+                            className={`relative w-11 h-6 rounded-full transition-colors ${
+                                league.enableAssists ? 'bg-green-500' : 'bg-white/20'
+                            }`}
+                        >
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                                league.enableAssists ? 'translate-x-5' : ''
+                            }`} />
+                        </button>
                     </div>
                 </div>
             )}

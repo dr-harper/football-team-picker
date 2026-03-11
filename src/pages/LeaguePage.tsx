@@ -328,6 +328,7 @@ const LeaguePage: React.FC = () => {
                         isAdmin={isAdmin}
                         myStats={myStats}
                         hasCompletedGames={completedGames.length > 0}
+                        enableAssists={league.enableAssists}
                         onNavigateToStats={() => setTab('stats')}
                     />
                 )}
@@ -360,6 +361,7 @@ const LeaguePage: React.FC = () => {
                         myName={myName}
                         user={user}
                         lookup={lookup}
+                        enableAssists={league.enableAssists}
                     />
                 )}
 
@@ -404,6 +406,7 @@ const LeaguePage: React.FC = () => {
                         completedGames={completedGames}
                         myId={myId}
                         myStats={myStats}
+                        enableAssists={league.enableAssists}
                         updatePlayerTags={updatePlayerTags}
                         updateBio={updateBio}
                         onSubmitPayment={handleSubmitMyPayment}

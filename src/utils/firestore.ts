@@ -256,6 +256,10 @@ export async function updateLeagueAdmins(leagueId: string, adminIds: string[]): 
     await updateDoc(doc(db, 'leagues', leagueId), { adminIds });
 }
 
+export async function updateLeagueEnableAssists(leagueId: string, enabled: boolean): Promise<void> {
+    await updateDoc(doc(db, 'leagues', leagueId), { enableAssists: enabled });
+}
+
 export async function updateLeagueDefaultCost(leagueId: string, cost: number | null): Promise<void> {
     await updateDoc(doc(db, 'leagues', leagueId), { defaultCostPerPerson: cost ?? null });
 }

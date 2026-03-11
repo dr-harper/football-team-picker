@@ -21,6 +21,7 @@ interface ProfileTabProps {
     completedGames: Game[];
     myId: string;
     myStats: PersonalStats;
+    enableAssists?: boolean;
     updatePlayerTags: (tags: string[], positions: string[]) => Promise<void>;
     updateBio: (bio: string) => Promise<void>;
     onSubmitPayment: (amount: number) => Promise<void>;
@@ -28,7 +29,7 @@ interface ProfileTabProps {
 }
 
 const ProfileTab: React.FC<ProfileTabProps> = ({
-    user, league, completedGames, myId, myStats,
+    user, league, completedGames, myId, myStats, enableAssists,
     updatePlayerTags, updateBio, onSubmitPayment, onOpenExpenseForm,
 }) => {
     const [leagueProfile, setLeagueProfile] = useState<{ tags: string[]; positions: string[]; bio: string; hasSetTags: boolean } | null>(null);
@@ -284,12 +285,12 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             {completedGames.length > 0 && (
                 <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
                     <div className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">My Stats in {league.name}</div>
-                    <div className="grid grid-cols-5 gap-3 text-center">
+                    <div className={`grid ${enableAssists ? 'grid-cols-5' : 'grid-cols-4'} gap-3 text-center`}>
                         {[
                             { value: myStats.gamesPlayed, label: 'Games' },
                             { value: myStats.wins, label: 'Wins' },
                             { value: myStats.goals, label: 'Goals' },
-                            { value: myStats.assists, label: 'Assists' },
+                            ...(enableAssists ? [{ value: myStats.assists, label: 'Assists' }] : []),
                             { value: myStats.motm, label: 'MOTM' },
                         ].map(({ value, label }) => (
                             <div key={label}>

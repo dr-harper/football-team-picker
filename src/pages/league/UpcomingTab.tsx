@@ -30,12 +30,13 @@ interface UpcomingTabProps {
     isAdmin: boolean;
     myStats: PersonalStats;
     hasCompletedGames: boolean;
+    enableAssists?: boolean;
     onNavigateToStats: () => void;
 }
 
 const UpcomingTab: React.FC<UpcomingTabProps> = ({
     leagueId, league, code, user, members, upcomingGames, isAdmin,
-    myStats, hasCompletedGames, onNavigateToStats,
+    myStats, hasCompletedGames, enableAssists, onNavigateToStats,
 }) => {
     const today = new Date().toISOString().split('T')[0];
     const [showNewGame, setShowNewGame] = useState(false);
@@ -116,12 +117,12 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
             {hasCompletedGames && (
                 <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-3">
                     <div className="flex items-center gap-3">
-                        <div className="flex-1 grid grid-cols-5 gap-2 text-center">
+                        <div className={`flex-1 grid ${enableAssists ? 'grid-cols-5' : 'grid-cols-4'} gap-2 text-center`}>
                             {[
                                 { value: myStats.gamesPlayed, label: 'Games' },
                                 { value: myStats.wins, label: 'Wins' },
                                 { value: myStats.goals, label: 'Goals' },
-                                { value: myStats.assists, label: 'Assists' },
+                                ...(enableAssists ? [{ value: myStats.assists, label: 'Assists' }] : []),
                                 { value: myStats.motm, label: 'MOTM' },
                             ].map(({ value, label }) => (
                                 <div key={label}>

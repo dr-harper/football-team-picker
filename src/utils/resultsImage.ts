@@ -14,6 +14,7 @@ export interface ResultsImageData {
     assisters: GoalScorer[];
     motm: string;
     lookup: Record<string, string>;
+    enableAssists?: boolean;
     weatherEmoji?: string;
     temperature?: number;
     rainProbability?: number;
@@ -112,8 +113,8 @@ export async function generateResultsImage(data: ResultsImageData): Promise<stri
         // Split goal scorers and assists by team
         const team1Goals = data.goalScorers.filter(g => findPlayerTeam(g.playerId, data.teams) === 0).sort((a, b) => b.goals - a.goals);
         const team2Goals = data.goalScorers.filter(g => findPlayerTeam(g.playerId, data.teams) === 1).sort((a, b) => b.goals - a.goals);
-        const team1Assists = data.assisters.filter(a => findPlayerTeam(a.playerId, data.teams) === 0).sort((a, b) => b.goals - a.goals);
-        const team2Assists = data.assisters.filter(a => findPlayerTeam(a.playerId, data.teams) === 1).sort((a, b) => b.goals - a.goals);
+        const team1Assists = data.enableAssists ? data.assisters.filter(a => findPlayerTeam(a.playerId, data.teams) === 0).sort((a, b) => b.goals - a.goals) : [];
+        const team2Assists = data.enableAssists ? data.assisters.filter(a => findPlayerTeam(a.playerId, data.teams) === 1).sort((a, b) => b.goals - a.goals) : [];
 
         // Layout heights
         const headerHeight = 100;

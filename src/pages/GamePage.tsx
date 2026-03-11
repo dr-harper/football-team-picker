@@ -100,6 +100,7 @@ const GamePage: React.FC = () => {
             assisters,
             motm,
             lookup,
+            enableAssists,
             weatherEmoji: emoji,
             temperature: weather?.temperature,
             rainProbability: weather?.rainProbability,
@@ -145,6 +146,8 @@ const GamePage: React.FC = () => {
     const isPast = game.date < Date.now();
     const isAdmin = user?.uid === game.createdBy;
 
+    const enableAssists = league?.enableAssists === true;
+
     const scoringControlsElement = (
         <ScoringControls
             allPlayerIds={allPlayerIds}
@@ -152,6 +155,7 @@ const GamePage: React.FC = () => {
             goalScorers={goalScorers}
             assisters={assisters}
             motm={motm}
+            enableAssists={enableAssists}
             onGoalChange={handleGoalChange}
             onAssistChange={handleAssistChange}
             onSetMotm={handleSetMotm}
@@ -253,7 +257,7 @@ const GamePage: React.FC = () => {
                         lookup={lookup} allPlayerIds={allPlayerIds} selectedPlayer={selectedPlayer}
                         scoringControlsElement={scoringControlsElement}
                         attendanceSectionElement={attendanceSectionElement}
-                        isExporting={isExporting} leagueName={league?.name}
+                        isExporting={isExporting} enableAssists={enableAssists} leagueName={league?.name}
                         onPlayerClick={handlePlayerClick} onReopen={handleReopen}
                         onShareResults={handleShareResults} onExportResults={handleExportResults}
                     />

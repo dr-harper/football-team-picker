@@ -10,9 +10,10 @@ interface StatsTabProps {
     myName: string;
     user: User | null;
     lookup: Record<string, string>;
+    enableAssists?: boolean;
 }
 
-const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myId, myName, user, lookup }) => {
+const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myId, myName, user, lookup, enableAssists }) => {
     const [statsFilter, setStatsFilter] = useState<'all' | 'month' | 'year'>('all');
 
     const formDot = (r: 'W' | 'D' | 'L' | null) => (
@@ -79,16 +80,16 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myId, myName, user,
                 const { scorerTotals: fScorerTotals, assistTotals: fAssistTotals, motmTotals: fMotmTotals, winCounts: fWinCounts, gamesPlayedCounts: fPlayedCounts, cleanSheets: fCleanSheets, hatTricks: fHatTricks, form: fForm } = stats;
 
                 const totalGoals = [...fScorerTotals.values()].reduce((a, b) => a + b, 0);
-                const totalAssists = [...fAssistTotals.values()].reduce((a, b) => a + b, 0);
+                const totalAssists = enableAssists ? [...fAssistTotals.values()].reduce((a, b) => a + b, 0) : 0;
 
                 // Contributions (goals + assists combined)
-                const contributorNames = new Set([...fScorerTotals.keys(), ...fAssistTotals.keys()]);
+                const contributorNames = new Set([...fScorerTotals.keys(), ...(enableAssists ? fAssistTotals.keys() : [])]);
                 const sortedContributors = [...contributorNames]
                     .map(name => ({
                         name,
                         goals: fScorerTotals.get(name) ?? 0,
-                        assists: fAssistTotals.get(name) ?? 0,
-                        total: (fScorerTotals.get(name) ?? 0) + (fAssistTotals.get(name) ?? 0),
+                        assists: enableAssists ? (fAssistTotals.get(name) ?? 0) : 0,
+                        total: (fScorerTotals.get(name) ?? 0) + (enableAssists ? (fAssistTotals.get(name) ?? 0) : 0),
                     }))
                     .sort((a, b) => b.total - a.total || b.goals - a.goals);
                 const maxContrib = Math.max(...sortedContributors.map(c => c.total), 1);
@@ -113,7 +114,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myId, myName, user,
 
                 // Personal highlights for signed-in user
                 const myGoalsF = fScorerTotals.get(myId) ?? 0;
-                const myAssistsF = fAssistTotals.get(myId) ?? 0;
+                const myAssistsF = enableAssists ? (fAssistTotals.get(myId) ?? 0) : 0;
                 const myWinsF = fWinCounts.get(myId) ?? 0;
                 const myPlayedF = fPlayedCounts.get(myId) ?? 0;
                 const myWinPctF = myPlayedF > 0 ? Math.round((myWinsF / myPlayedF) * 100) : 0;
@@ -136,11 +137,11 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myId, myName, user,
                                             <div className="text-xs text-green-400/70">Your stats</div>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-4 gap-3">
+                                    <div className={`grid gap-3 ${enableAssists ? 'grid-cols-4' : 'grid-cols-3'}`}>
                                         {[
                                             { value: myPlayedF, label: 'Games' },
                                             { value: myGoalsF, label: 'Goals' },
-                                            { value: myAssistsF, label: 'Assists' },
+                                            ...(enableAssists ? [{ value: myAssistsF, label: 'Assists' }] : []),
                                             { value: `${myWinPctF}%`, label: 'Win rate' },
                                         ].map(({ value, label }) => (
                                             <div key={label} className="text-center">
@@ -160,11 +161,11 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myId, myName, user,
                         )}
 
                         {/* League summary */}
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className={`grid gap-2 ${enableAssists ? 'grid-cols-3' : 'grid-cols-2'}`}>
                             {[
                                 { emoji: '🎮', label: 'Games', value: filteredGames.length },
                                 { emoji: '⚽', label: 'Goals', value: totalGoals },
-                                { emoji: '🅰️', label: 'Assists', value: totalAssists },
+                                ...(enableAssists ? [{ emoji: '🅰️', label: 'Assists', value: totalAssists }] : []),
                             ].map(({ emoji, label, value }) => (
                                 <div key={label} className="bg-white/5 border border-white/8 rounded-xl p-3 text-center">
                                     <div className="text-lg mb-1">{emoji}</div>
@@ -178,8 +179,8 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myId, myName, user,
                         <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
                             <div className="flex items-center gap-2 px-4 pt-4 pb-3">
                                 <span className="text-base">⚽</span>
-                                <span className="font-semibold text-white text-sm">Goal Contributions</span>
-                                <span className="text-white/25 text-[10px] ml-auto uppercase tracking-wide">G · A</span>
+                                <span className="font-semibold text-white text-sm">{enableAssists ? 'Goal Contributions' : 'Goal Scorers'}</span>
+                                {enableAssists && <span className="text-white/25 text-[10px] ml-auto uppercase tracking-wide">G · A</span>}
                             </div>
                             {sortedContributors.length === 0 ? (
                                 <p className="px-4 pb-4 text-white/30 text-sm">No goals or assists yet</p>
@@ -201,8 +202,10 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myId, myName, user,
                                                 </span>
                                                 <span className="text-xs shrink-0 tabular-nums text-white/70">
                                                     <span className="text-white font-semibold">{goals}</span>
-                                                    <span className="text-white/25 mx-0.5">·</span>
-                                                    <span className="text-blue-300">{assists}</span>
+                                                    {enableAssists && <>
+                                                        <span className="text-white/25 mx-0.5">·</span>
+                                                        <span className="text-blue-300">{assists}</span>
+                                                    </>}
                                                 </span>
                                             </div>
                                             <div className="ml-7 h-1 bg-white/8 rounded-full overflow-hidden flex gap-px">

@@ -69,6 +69,7 @@ export interface League {
     defaultCostPerPerson?: number;
     payments?: Record<string, PaymentRecord[]>; // playerId (userId) → dated payment history
     expenses?: LeagueExpense[];                 // player-submitted expenses awaiting admin approval
+    enableAssists?: boolean;                   // opt-in: track assists (default off)
     seasons?: Record<string, Season>;          // season map keyed by ID
     activeSeasonId?: string;                   // which season is currently active
 }

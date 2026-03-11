@@ -18,6 +18,7 @@ interface CompletedGameViewProps {
     scoringControlsElement: React.ReactNode;
     attendanceSectionElement: React.ReactNode;
     isExporting: boolean;
+    enableAssists?: boolean;
     leagueName?: string;
     onPlayerClick: (setupIndex: number, teamIndex: number, playerIndex: number) => void;
     onReopen: () => void;
@@ -29,7 +30,7 @@ const CompletedGameView: React.FC<CompletedGameViewProps> = ({
     game, generatedTeams, isAdmin, goalScorers, assisters, motm,
     lookup, allPlayerIds, selectedPlayer,
     scoringControlsElement, attendanceSectionElement,
-    isExporting,
+    isExporting, enableAssists,
     onPlayerClick, onReopen, onShareResults, onExportResults,
 }) => (
     <div className="max-w-4xl mx-auto">
@@ -61,7 +62,7 @@ const CompletedGameView: React.FC<CompletedGameViewProps> = ({
             />
 
             {/* Goal scorers & assists — always visible, split by team */}
-            {(goalScorers.length > 0 || assisters.length > 0 || motm) && (
+            {(goalScorers.length > 0 || (enableAssists && assisters.length > 0) || motm) && (
                 <div className="border-t border-white/10 pt-3 mt-3 space-y-3">
                     {goalScorers.length > 0 && (
                         <div>
@@ -77,7 +78,7 @@ const CompletedGameView: React.FC<CompletedGameViewProps> = ({
                             </div>
                         </div>
                     )}
-                    {assisters.length > 0 && (
+                    {enableAssists && assisters.length > 0 && (
                         <div>
                             <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-xs sm:text-sm">
                                 <span className="text-blue-400 font-bold text-[10px] sm:text-xs bg-blue-400/20 px-1.5 py-0.5 rounded">A</span> Assists
