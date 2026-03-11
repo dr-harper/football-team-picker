@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, ArrowRight, CheckCircle, HelpCircle, XCircle } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, CheckCircle, HelpCircle, XCircle, Grid3X3, List } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { League, Game, PlayerAvailability, AvailabilityStatus } from '../../types';
 import {
@@ -11,6 +11,7 @@ import {
 } from '../../utils/firestore';
 import CalendarPicker from '../../components/CalendarPicker';
 import { geocodeLocation, GeoResult } from '../../utils/weather';
+import AvailabilityGrid from './AvailabilityGrid';
 import type { User } from 'firebase/auth';
 import type { PersonalStats } from './statsUtils';
 
@@ -50,6 +51,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
     const [newGameCost, setNewGameCost] = useState('');
     const [scheduleAvailability, setScheduleAvailability] = useState<Map<string, PlayerAvailability[]>>(new Map());
     const [expandedAvailGame, setExpandedAvailGame] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
     const handleSetAvailability = useCallback(async (gameId: string, status: AvailabilityStatus) => {
         if (!user) return;
@@ -285,7 +287,40 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                 </div>
             )}
 
-            {upcomingGames.length === 0 ? (
+            {/* Admin view toggle */}
+            {isAdmin && upcomingGames.length > 0 && (
+                <div className="flex justify-end">
+                    <div className="flex bg-white/5 rounded-lg p-0.5">
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                                viewMode === 'list' ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70'
+                            }`}
+                        >
+                            <List className="w-3.5 h-3.5" /> List
+                        </button>
+                        <button
+                            onClick={() => setViewMode('grid')}
+                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                                viewMode === 'grid' ? 'bg-white/15 text-white' : 'text-white/40 hover:text-white/70'
+                            }`}
+                        >
+                            <Grid3X3 className="w-3.5 h-3.5" /> Grid
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Grid view */}
+            {viewMode === 'grid' && isAdmin && upcomingGames.length > 0 ? (
+                <AvailabilityGrid
+                    upcomingGames={upcomingGames}
+                    members={members}
+                    scheduleAvailability={scheduleAvailability}
+                    currentUserId={user.uid}
+                    code={code}
+                />
+            ) : upcomingGames.length === 0 ? (
                 <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
                     <p className="text-green-300">No upcoming games. Schedule one!</p>
                 </div>
