@@ -24,6 +24,7 @@ interface MatchStepProps {
     onExport: (count: number) => void;
     onBack: () => void;
     onGoToTeams: () => void;
+    lookup?: Record<string, string>;
 }
 
 const MatchStep: React.FC<MatchStepProps> = ({
@@ -32,6 +33,7 @@ const MatchStep: React.FC<MatchStepProps> = ({
     scoringControlsElement, attendanceSectionElement,
     onScore1Change, onScore2Change, onSaveScore,
     onPlayerClick, onShare, onExport, onBack, onGoToTeams,
+    lookup,
 }) => (
     <div className="max-w-4xl mx-auto space-y-4">
         {generatedTeams && generatedTeams.length === 2 ? (
@@ -64,6 +66,7 @@ const MatchStep: React.FC<MatchStepProps> = ({
                         setupIndex={0}
                         selectedPlayer={selectedPlayer}
                         onPlayerClick={(_, tIdx, pIdx) => onPlayerClick(0, tIdx, pIdx)}
+                        lookup={lookup}
                     />
                 </div>
                 {(isPast || game.status === 'in_progress') && isAdmin && (

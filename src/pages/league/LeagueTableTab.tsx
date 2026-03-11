@@ -11,16 +11,24 @@ interface LeagueTableTabProps {
     lookup: Record<string, string>;
 }
 
+/** Filter games that fall within a season's date range */
+function gamesInSeason(games: Game[], season: Season): Game[] {
+    const end = season.endDate ?? Infinity;
+    return games.filter(g => g.date >= season.startDate && g.date <= end);
+}
+
 const LeagueTableTab: React.FC<LeagueTableTabProps> = ({
     completedGames, seasons, activeSeasonId, myId, lookup,
 }) => {
-    const seasonList = Object.values(seasons).sort((a, b) => b.createdAt - a.createdAt);
+    const seasonList = Object.values(seasons).sort((a, b) => b.startDate - a.startDate);
     const defaultFilter = activeSeasonId || 'all';
     const [selectedSeason, setSelectedSeason] = useState<string>(defaultFilter);
 
     const filteredGames = selectedSeason === 'all'
         ? completedGames
-        : completedGames.filter(g => g.seasonId === selectedSeason);
+        : seasons[selectedSeason]
+            ? gamesInSeason(completedGames, seasons[selectedSeason])
+            : completedGames;
 
     const table = computeLeagueTable(filteredGames);
 

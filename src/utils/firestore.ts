@@ -334,12 +334,13 @@ export async function getLeagueMembers(memberIds: string[]): Promise<{ id: strin
 
 // ---- Seasons ----
 
-export async function createSeason(leagueId: string, name: string): Promise<Season> {
+export async function createSeason(leagueId: string, name: string, startDate?: number, endDate?: number): Promise<Season> {
     const id = crypto.randomUUID().slice(0, 8);
     const season: Season = {
         id,
         name,
-        startDate: Date.now(),
+        startDate: startDate ?? Date.now(),
+        endDate,
         status: 'active',
         createdAt: Date.now(),
     };
@@ -356,4 +357,179 @@ export async function archiveSeason(leagueId: string, seasonId: string): Promise
         [`seasons.${seasonId}.endDate`]: Date.now(),
         activeSeasonId: deleteField(),
     });
+}
+
+export async function updateSeason(leagueId: string, seasonId: string, updates: Partial<Season>): Promise<void> {
+    const fields: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(updates)) {
+        fields[`seasons.${seasonId}.${key}`] = value;
+    }
+    await updateDoc(doc(db, 'leagues', leagueId), fields);
+}
+
+export async function deleteSeason(leagueId: string, seasonId: string): Promise<void> {
+    const league = await getLeague(leagueId);
+    if (!league) return;
+    const { [seasonId]: _, ...remaining } = league.seasons ?? {};
+    const update: Record<string, unknown> = { seasons: remaining };
+    if (league.activeSeasonId === seasonId) {
+        update.activeSeasonId = deleteField();
+    }
+    await updateDoc(doc(db, 'leagues', leagueId), update);
+}
+
+// ---- Guest Linking ----
+
+/** Extract all unique guest IDs from league games */
+export function extractGuestsFromGames(games: Game[]): { guestId: string; guestName: string; gameCount: number }[] {
+    const counts = new Map<string, number>();
+    for (const game of games) {
+        const guestIds = new Set<string>();
+
+        // From guestPlayers array
+        for (const name of game.guestPlayers ?? []) {
+            guestIds.add(`guest:${name}`);
+        }
+
+        // From teams
+        for (const team of game.teams ?? []) {
+            for (const player of team.players) {
+                const pid = player.playerId ?? player.name;
+                if (pid.startsWith('guest:')) guestIds.add(pid);
+            }
+        }
+
+        // From goalScorers
+        for (const gs of game.goalScorers ?? []) {
+            if (gs.playerId.startsWith('guest:')) guestIds.add(gs.playerId);
+        }
+
+        // From assisters
+        for (const a of game.assisters ?? []) {
+            if (a.playerId.startsWith('guest:')) guestIds.add(a.playerId);
+        }
+
+        // From manOfTheMatch
+        if (game.manOfTheMatch?.startsWith('guest:')) guestIds.add(game.manOfTheMatch);
+
+        // From attendees
+        for (const a of game.attendees ?? []) {
+            if (a.startsWith('guest:')) guestIds.add(a);
+        }
+
+        // From playerPositions keys
+        for (const key of Object.keys(game.playerPositions ?? {})) {
+            if (key.startsWith('guest:')) guestIds.add(key);
+        }
+
+        for (const gid of guestIds) {
+            counts.set(gid, (counts.get(gid) ?? 0) + 1);
+        }
+    }
+
+    return Array.from(counts.entries())
+        .map(([guestId, gameCount]) => ({
+            guestId,
+            guestName: guestId.slice('guest:'.length),
+            gameCount,
+        }))
+        .sort((a, b) => b.gameCount - a.gameCount);
+}
+
+/** Replace all occurrences of a guest ID with a member's userId across all league games */
+export async function linkGuestToMember(
+    leagueId: string,
+    guestId: string,
+    memberId: string,
+): Promise<number> {
+    const games = await getLeagueGames(leagueId);
+    let updatedCount = 0;
+
+    for (const game of games) {
+        const updates: Record<string, unknown> = {};
+        let changed = false;
+
+        // Replace in teams
+        if (game.teams) {
+            const newTeams = game.teams.map(team => ({
+                ...team,
+                players: team.players.map(p => {
+                    const pid = p.playerId ?? p.name;
+                    if (pid === guestId) {
+                        return { ...p, playerId: memberId };
+                    }
+                    return p;
+                }),
+            }));
+            if (JSON.stringify(newTeams) !== JSON.stringify(game.teams)) {
+                updates.teams = newTeams;
+                changed = true;
+            }
+        }
+
+        // Replace in goalScorers
+        if (game.goalScorers) {
+            const newGs = game.goalScorers.map(gs =>
+                gs.playerId === guestId ? { ...gs, playerId: memberId } : gs,
+            );
+            if (JSON.stringify(newGs) !== JSON.stringify(game.goalScorers)) {
+                updates.goalScorers = newGs;
+                changed = true;
+            }
+        }
+
+        // Replace in assisters
+        if (game.assisters) {
+            const newA = game.assisters.map(a =>
+                a.playerId === guestId ? { ...a, playerId: memberId } : a,
+            );
+            if (JSON.stringify(newA) !== JSON.stringify(game.assisters)) {
+                updates.assisters = newA;
+                changed = true;
+            }
+        }
+
+        // Replace manOfTheMatch
+        if (game.manOfTheMatch === guestId) {
+            updates.manOfTheMatch = memberId;
+            changed = true;
+        }
+
+        // Replace in attendees
+        if (game.attendees) {
+            const newAtt = game.attendees.map(a => a === guestId ? memberId : a);
+            if (JSON.stringify(newAtt) !== JSON.stringify(game.attendees)) {
+                updates.attendees = newAtt;
+                changed = true;
+            }
+        }
+
+        // Replace in playerPositions
+        if (game.playerPositions && guestId in game.playerPositions) {
+            const { [guestId]: posVal, ...rest } = game.playerPositions;
+            updates.playerPositions = { ...rest, [memberId]: posVal };
+            changed = true;
+        }
+
+        // Replace in guestPlayers (remove the guest name)
+        const guestName = guestId.slice('guest:'.length);
+        if (game.guestPlayers?.includes(guestName)) {
+            updates.guestPlayers = game.guestPlayers.filter(n => n !== guestName);
+            changed = true;
+        }
+
+        // Replace in guestAvailability
+        if (game.guestAvailability && guestName in game.guestAvailability) {
+            const { [guestName]: _, ...restAvail } = game.guestAvailability;
+            updates.guestAvailability = restAvail;
+            changed = true;
+        }
+
+        if (changed) {
+            await updateDoc(doc(db, 'games', game.id), updates);
+            updatedCount++;
+        }
+    }
+
+    return updatedCount;
 }

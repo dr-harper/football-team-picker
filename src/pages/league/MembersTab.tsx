@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
-import { Users, Copy, Check, Trash2, Pencil, X, LogOut, Trophy, Archive } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Users, Copy, Check, Trash2, Pencil, X, LogOut, Trophy, Archive, UserPlus, Link2, Calendar } from 'lucide-react';
 import { Button } from '../../components/ui/button';
-import { League, Season } from '../../types';
-import { removeMember, updateUserDisplayName, updateLeagueAdmins, createSeason, archiveSeason } from '../../utils/firestore';
+import { League, Game, Season } from '../../types';
+import {
+    removeMember, updateUserDisplayName, updateLeagueAdmins,
+    createSeason, archiveSeason, updateSeason, deleteSeason,
+    extractGuestsFromGames, linkGuestToMember,
+} from '../../utils/firestore';
 import type { User } from 'firebase/auth';
 import { logger } from '../../utils/logger';
 
@@ -17,6 +21,7 @@ interface MembersTabProps {
     leagueId: string;
     user: User;
     members: Member[];
+    games: Game[];
     isOwner: boolean;
     isAdmin: boolean;
     code: string;
@@ -27,25 +32,51 @@ interface MembersTabProps {
     onMembersChanged: (members: Member[]) => void;
 }
 
+function toDateInput(ts: number): string {
+    return new Date(ts).toISOString().split('T')[0];
+}
+
+function fromDateInput(val: string): number {
+    return new Date(val + 'T00:00:00').getTime();
+}
+
 const MembersTab: React.FC<MembersTabProps> = ({
-    league, leagueId, user, members, isOwner, isAdmin,
+    league, leagueId, user, members, games, isOwner, isAdmin,
     copiedCode, onCopyCode, onLeaveLeague, onDeleteLeague, onMembersChanged,
 }) => {
     const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
     const [editingMemberName, setEditingMemberName] = useState('');
     const [showNewSeason, setShowNewSeason] = useState(false);
     const [newSeasonName, setNewSeasonName] = useState('');
+    const [newSeasonStart, setNewSeasonStart] = useState('');
+    const [newSeasonEnd, setNewSeasonEnd] = useState('');
     const [savingSeason, setSavingSeason] = useState(false);
     const [seasonError, setSeasonError] = useState('');
+    const [editingSeasonId, setEditingSeasonId] = useState<string | null>(null);
+    const [editSeasonName, setEditSeasonName] = useState('');
+    const [editSeasonStart, setEditSeasonStart] = useState('');
+    const [editSeasonEnd, setEditSeasonEnd] = useState('');
+
+    // Guest linking state
+    const [linkingGuestId, setLinkingGuestId] = useState<string | null>(null);
+    const [selectedMemberId, setSelectedMemberId] = useState('');
+    const [linkingInProgress, setLinkingInProgress] = useState(false);
+    const [linkResult, setLinkResult] = useState<{ guestId: string; count: number } | null>(null);
+
+    const guests = useMemo(() => extractGuestsFromGames(games), [games]);
 
     const handleCreateSeason = async () => {
         const trimmed = newSeasonName.trim();
-        if (!trimmed) return;
+        if (!trimmed || !newSeasonStart) return;
         setSavingSeason(true);
         setSeasonError('');
         try {
-            await createSeason(leagueId, trimmed);
+            const startTs = fromDateInput(newSeasonStart);
+            const endTs = newSeasonEnd ? fromDateInput(newSeasonEnd) : undefined;
+            await createSeason(leagueId, trimmed, startTs, endTs);
             setNewSeasonName('');
+            setNewSeasonStart('');
+            setNewSeasonEnd('');
             setShowNewSeason(false);
         } catch (err) {
             logger.error('[createSeason]', err);
@@ -53,6 +84,44 @@ const MembersTab: React.FC<MembersTabProps> = ({
         } finally {
             setSavingSeason(false);
         }
+    };
+
+    const handleUpdateSeason = async (seasonId: string) => {
+        const trimmed = editSeasonName.trim();
+        if (!trimmed || !editSeasonStart) return;
+        setSeasonError('');
+        try {
+            await updateSeason(leagueId, seasonId, {
+                name: trimmed,
+                startDate: fromDateInput(editSeasonStart),
+                endDate: editSeasonEnd ? fromDateInput(editSeasonEnd) : undefined,
+            });
+            setEditingSeasonId(null);
+        } catch (err) {
+            logger.error('[updateSeason]', err);
+            setSeasonError('Failed to update season.');
+        }
+    };
+
+    const handleLinkGuest = async (guestId: string) => {
+        if (!selectedMemberId) return;
+        setLinkingInProgress(true);
+        try {
+            const count = await linkGuestToMember(leagueId, guestId, selectedMemberId);
+            setLinkResult({ guestId, count });
+            setLinkingGuestId(null);
+            setSelectedMemberId('');
+        } catch (err) {
+            logger.error('[linkGuest]', err);
+        } finally {
+            setLinkingInProgress(false);
+        }
+    };
+
+    const countGamesInSeason = (season: Season): number => {
+        const start = season.startDate;
+        const end = season.endDate ?? Infinity;
+        return games.filter(g => g.status === 'completed' && g.date >= start && g.date <= end).length;
     };
 
     return (
@@ -157,6 +226,76 @@ const MembersTab: React.FC<MembersTabProps> = ({
                 })}
             </div>
 
+            {/* Guest Players — admin only */}
+            {isAdmin && guests.length > 0 && (
+                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                        <UserPlus className="w-4 h-4 text-orange-400" />
+                        <span className="text-white font-medium text-sm">Guest Players</span>
+                        <span className="text-white/30 text-xs ml-auto">{guests.length} guests</span>
+                    </div>
+                    <p className="text-white/40 text-xs mb-3">
+                        Link a guest to a signed-up member to merge their stats (goals, assists, MoTM, attendance).
+                    </p>
+                    <div className="space-y-2">
+                        {guests
+                            .filter(g => linkResult?.guestId !== g.guestId)
+                            .map(guest => (
+                            <div key={guest.guestId} className="flex items-center gap-3 bg-white/5 rounded-lg px-3 py-2">
+                                <div className="w-7 h-7 shrink-0 rounded-full bg-orange-600/30 border border-orange-500/30 flex items-center justify-center text-orange-300 font-bold text-xs">
+                                    {guest.guestName.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-white text-sm truncate">{guest.guestName}</div>
+                                    <div className="text-white/30 text-xs">{guest.gameCount} game{guest.gameCount !== 1 ? 's' : ''}</div>
+                                </div>
+                                {linkingGuestId === guest.guestId ? (
+                                    <div className="flex items-center gap-2">
+                                        <select
+                                            value={selectedMemberId}
+                                            onChange={e => setSelectedMemberId(e.target.value)}
+                                            className="bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-green-400 max-w-[140px]"
+                                        >
+                                            <option value="" className="bg-green-900">Select member...</option>
+                                            {members.map(m => (
+                                                <option key={m.id} value={m.id} className="bg-green-900">{m.displayName}</option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            onClick={() => handleLinkGuest(guest.guestId)}
+                                            disabled={!selectedMemberId || linkingInProgress}
+                                            className="text-green-400 hover:text-green-300 disabled:opacity-40 shrink-0"
+                                            title="Confirm link"
+                                        >
+                                            {linkingInProgress ? <span className="text-xs">...</span> : <Check className="w-4 h-4" />}
+                                        </button>
+                                        <button
+                                            onClick={() => { setLinkingGuestId(null); setSelectedMemberId(''); }}
+                                            className="text-white/40 hover:text-white shrink-0"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => { setLinkingGuestId(guest.guestId); setSelectedMemberId(''); setLinkResult(null); }}
+                                        className="text-white/30 hover:text-green-400 transition-colors flex items-center gap-1 text-xs"
+                                        title="Link to member"
+                                    >
+                                        <Link2 className="w-3.5 h-3.5" /> Link
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                        {linkResult && (
+                            <div className="text-green-400 text-xs bg-green-500/10 rounded-lg px-3 py-2">
+                                Linked successfully — updated {linkResult.count} game{linkResult.count !== 1 ? 's' : ''}.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Share section */}
             <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
                 <div className="text-white font-medium mb-2">Invite others</div>
@@ -182,7 +321,7 @@ const MembersTab: React.FC<MembersTabProps> = ({
                             <Trophy className="w-4 h-4 text-yellow-400" />
                             <span className="text-white font-medium text-sm">Seasons</span>
                         </div>
-                        {!league.activeSeasonId && !showNewSeason && (
+                        {!showNewSeason && (
                             <button
                                 onClick={() => setShowNewSeason(true)}
                                 className="text-xs text-green-400 hover:text-green-300 transition-colors"
@@ -193,7 +332,7 @@ const MembersTab: React.FC<MembersTabProps> = ({
                     </div>
 
                     {showNewSeason && (
-                        <div className="flex gap-2 mb-3">
+                        <div className="space-y-2 mb-3 bg-white/5 rounded-lg p-3">
                             <input
                                 type="text"
                                 value={newSeasonName}
@@ -201,29 +340,43 @@ const MembersTab: React.FC<MembersTabProps> = ({
                                 placeholder='e.g. "Spring 2026"'
                                 maxLength={30}
                                 autoFocus
-                                onKeyDown={e => {
-                                    if (e.key === 'Enter' && newSeasonName.trim()) {
-                                        handleCreateSeason();
-                                    }
-                                }}
-                                className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-green-400"
+                                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-green-400"
                             />
-                            <button
-                                onClick={() => {
-                                    if (!newSeasonName.trim()) return;
-                                    handleCreateSeason();
-                                }}
-                                disabled={!newSeasonName.trim() || savingSeason}
-                                className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm px-3 py-2 rounded-lg transition-colors"
-                            >
-                                {savingSeason ? '…' : 'Start'}
-                            </button>
-                            <button
-                                onClick={() => { setShowNewSeason(false); setNewSeasonName(''); }}
-                                className="text-white/40 hover:text-white/70 px-1"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-xs text-white/40 mb-1">Start date</label>
+                                    <input
+                                        type="date"
+                                        value={newSeasonStart}
+                                        onChange={e => setNewSeasonStart(e.target.value)}
+                                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-400 [color-scheme:dark]"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-white/40 mb-1">End date</label>
+                                    <input
+                                        type="date"
+                                        value={newSeasonEnd}
+                                        onChange={e => setNewSeasonEnd(e.target.value)}
+                                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-400 [color-scheme:dark]"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleCreateSeason}
+                                    disabled={!newSeasonName.trim() || !newSeasonStart || savingSeason}
+                                    className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm px-3 py-2 rounded-lg transition-colors"
+                                >
+                                    {savingSeason ? '...' : 'Create Season'}
+                                </button>
+                                <button
+                                    onClick={() => { setShowNewSeason(false); setNewSeasonName(''); setNewSeasonStart(''); setNewSeasonEnd(''); }}
+                                    className="text-white/40 hover:text-white/70 px-2"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
                     )}
 
@@ -237,46 +390,138 @@ const MembersTab: React.FC<MembersTabProps> = ({
                             return <p className="text-white/30 text-xs">No seasons yet. Create one to track league standings over time.</p>;
                         }
 
-                        const active = seasons.find(s => s.id === league.activeSeasonId);
-                        const archived = seasons.filter(s => s.status === 'archived').sort((a, b) => (b.endDate ?? 0) - (a.endDate ?? 0));
+                        const sorted = [...seasons].sort((a, b) => b.startDate - a.startDate);
 
                         return (
                             <div className="space-y-2">
-                                {active && (
-                                    <div className="flex items-center justify-between bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
-                                        <div>
-                                            <span className="text-white text-sm font-medium">{active.name}</span>
-                                            <span className="text-green-400 text-xs ml-2">Active</span>
-                                        </div>
-                                        <button
-                                            onClick={async () => {
-                                                if (confirm(`End "${active.name}"? You can start a new season afterwards.`)) {
-                                                    setSeasonError('');
-                                                    try {
-                                                        await archiveSeason(leagueId, active.id);
-                                                    } catch (err) {
-                                                        logger.error('[archiveSeason]', err);
-                                                        setSeasonError('Failed to end season. Please try again.');
-                                                    }
-                                                }
-                                            }}
-                                            className="text-xs text-white/40 hover:text-yellow-400 transition-colors flex items-center gap-1"
+                                {sorted.map(s => {
+                                    const isActive = s.id === league.activeSeasonId;
+                                    const isEditingSeason = editingSeasonId === s.id;
+                                    const gameCount = countGamesInSeason(s);
+
+                                    if (isEditingSeason) {
+                                        return (
+                                            <div key={s.id} className="space-y-2 bg-white/5 rounded-lg p-3">
+                                                <input
+                                                    type="text"
+                                                    value={editSeasonName}
+                                                    onChange={e => setEditSeasonName(e.target.value)}
+                                                    maxLength={30}
+                                                    autoFocus
+                                                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-400"
+                                                />
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <label className="block text-xs text-white/40 mb-1">Start</label>
+                                                        <input
+                                                            type="date"
+                                                            value={editSeasonStart}
+                                                            onChange={e => setEditSeasonStart(e.target.value)}
+                                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-400 [color-scheme:dark]"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs text-white/40 mb-1">End</label>
+                                                        <input
+                                                            type="date"
+                                                            value={editSeasonEnd}
+                                                            onChange={e => setEditSeasonEnd(e.target.value)}
+                                                            className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-400 [color-scheme:dark]"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleUpdateSeason(s.id)}
+                                                        disabled={!editSeasonName.trim() || !editSeasonStart}
+                                                        className="text-green-400 hover:text-green-300 disabled:opacity-40 text-xs"
+                                                    >
+                                                        Save
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setEditingSeasonId(null)}
+                                                        className="text-white/40 hover:text-white text-xs"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div
+                                            key={s.id}
+                                            className={`flex items-center justify-between rounded-lg px-3 py-2 ${
+                                                isActive ? 'bg-green-500/10 border border-green-500/20' : 'bg-white/5'
+                                            }`}
                                         >
-                                            <Archive className="w-3 h-3" /> End
-                                        </button>
-                                    </div>
-                                )}
-                                {archived.map(s => (
-                                    <div key={s.id} className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
-                                        <div>
-                                            <span className="text-white/60 text-sm">{s.name}</span>
-                                            <span className="text-white/25 text-xs ml-2">
-                                                {new Date(s.startDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
-                                                {s.endDate && ` – ${new Date(s.endDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`}
-                                            </span>
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-sm font-medium ${isActive ? 'text-white' : 'text-white/60'}`}>{s.name}</span>
+                                                    {isActive && <span className="text-green-400 text-xs">Active</span>}
+                                                </div>
+                                                <div className="flex items-center gap-1 text-white/25 text-xs mt-0.5">
+                                                    <Calendar className="w-3 h-3" />
+                                                    {new Date(s.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    {s.endDate && ` – ${new Date(s.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                                                    {!s.endDate && ' – ongoing'}
+                                                    <span className="ml-1">({gameCount} game{gameCount !== 1 ? 's' : ''})</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingSeasonId(s.id);
+                                                        setEditSeasonName(s.name);
+                                                        setEditSeasonStart(toDateInput(s.startDate));
+                                                        setEditSeasonEnd(s.endDate ? toDateInput(s.endDate) : '');
+                                                    }}
+                                                    className="text-white/30 hover:text-white/70 transition-colors"
+                                                    title="Edit season"
+                                                >
+                                                    <Pencil className="w-3 h-3" />
+                                                </button>
+                                                {isActive && (
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (confirm(`End "${s.name}"? You can start a new season afterwards.`)) {
+                                                                setSeasonError('');
+                                                                try {
+                                                                    await archiveSeason(leagueId, s.id);
+                                                                } catch (err) {
+                                                                    logger.error('[archiveSeason]', err);
+                                                                    setSeasonError('Failed to end season.');
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="text-xs text-white/40 hover:text-yellow-400 transition-colors flex items-center gap-1"
+                                                    >
+                                                        <Archive className="w-3 h-3" /> End
+                                                    </button>
+                                                )}
+                                                {!isActive && (
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (confirm(`Delete "${s.name}"? This cannot be undone.`)) {
+                                                                try {
+                                                                    await deleteSeason(leagueId, s.id);
+                                                                } catch (err) {
+                                                                    logger.error('[deleteSeason]', err);
+                                                                    setSeasonError('Failed to delete season.');
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="text-white/30 hover:text-red-400 transition-colors"
+                                                        title="Delete season"
+                                                    >
+                                                        <Trash2 className="w-3 h-3" />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         );
                     })()}

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, ReferenceLine, Tooltip } from 'recharts';
-import { Pencil } from 'lucide-react';
+import { Pencil, Check, X } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { logger } from '../../utils/logger';
+import { useAuth } from '../../contexts/AuthContext';
 import { League, Game, PaymentRecord } from '../../types';
 import { PLAYER_POSITIONS } from '../../constants/playerPositions';
 import { PLAYER_TAGS } from '../../constants/playerTags';
@@ -38,6 +39,11 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     const [saving, setSaving] = useState(false);
     const [showPaymentForm, setShowPaymentForm] = useState(false);
     const [paymentAmount, setPaymentAmount] = useState('');
+    const [editingName, setEditingName] = useState(false);
+    const [nameInput, setNameInput] = useState('');
+    const [nameSaving, setNameSaving] = useState(false);
+    const [nameError, setNameError] = useState('');
+    const { updateDisplayName } = useAuth();
 
     useEffect(() => {
         if (!user) return;
@@ -96,6 +102,56 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                             <Pencil className="w-4 h-4" />
                         </button>
                     )}
+                </div>
+
+                {/* Display name */}
+                <div className="flex items-center gap-2 mb-3 pb-3 border-b border-white/10">
+                    {editingName ? (
+                        <form
+                            className="flex items-center gap-2 flex-1"
+                            onSubmit={async e => {
+                                e.preventDefault();
+                                const trimmed = nameInput.trim();
+                                if (!trimmed) { setNameError('Please enter a name'); return; }
+                                if (trimmed.length > 30) { setNameError('Name must be 30 characters or less'); return; }
+                                setNameSaving(true);
+                                try {
+                                    await updateDisplayName(trimmed);
+                                    setEditingName(false);
+                                } catch {
+                                    setNameError('Something went wrong');
+                                }
+                                setNameSaving(false);
+                            }}
+                        >
+                            <input
+                                autoFocus
+                                value={nameInput}
+                                onChange={e => { setNameInput(e.target.value); setNameError(''); }}
+                                maxLength={30}
+                                placeholder="Your display name"
+                                className="flex-1 bg-white/10 border border-white/30 rounded-lg px-3 py-1.5 text-white text-sm focus:ring-2 focus:ring-green-400 outline-none"
+                            />
+                            <button type="submit" disabled={nameSaving} className="text-green-400 hover:text-green-300 shrink-0">
+                                <Check className="w-4 h-4" />
+                            </button>
+                            <button type="button" onClick={() => setEditingName(false)} className="text-white/40 hover:text-white shrink-0">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </form>
+                    ) : (
+                        <>
+                            <span className="text-white font-semibold text-sm flex-1">{user.displayName || user.email}</span>
+                            <button
+                                onClick={() => { setNameInput(user.displayName || ''); setNameError(''); setEditingName(true); }}
+                                className="text-white/30 hover:text-white/60 transition-colors"
+                                title="Edit display name"
+                            >
+                                <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                        </>
+                    )}
+                    {nameError && <span className="text-red-400 text-xs">{nameError}</span>}
                 </div>
 
                 {isEditing ? (
@@ -285,7 +341,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                 const myPaid = myHistory.reduce((s, p) => s + p.amount, 0);
                 let myOwed = 0;
                 completedGames.forEach(g => {
-                    if (!(g.attendees ?? []).includes(myId)) return;
+                    const att = g.attendees && g.attendees.length > 0
+                        ? g.attendees
+                        : g.teams?.flatMap(t => t.players.map(p => p.playerId ?? p.name)) ?? [];
+                    if (!att.includes(myId)) return;
                     myOwed += g.costPerPerson ?? league.defaultCostPerPerson ?? 0;
                 });
                 const myBalance = myOwed - myPaid;

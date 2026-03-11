@@ -384,6 +384,7 @@ const LeaguePage: React.FC = () => {
                         leagueId={id!}
                         user={user}
                         members={members}
+                        games={games}
                         isOwner={isOwner}
                         isAdmin={isAdmin}
                         code={code!}

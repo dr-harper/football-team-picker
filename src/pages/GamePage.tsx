@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { describeWeatherCode } from '../utils/weather';
 import { exportImage, shareImage, ImageHeader } from '../utils/imageExport';
+import { shareResultsImage, exportResultsImage, ResultsImageData } from '../utils/resultsImage';
 import ScoringControls from './game/ScoringControls';
 import AttendanceSection from './game/AttendanceSection';
 import GameHeader from './game/GameHeader';
@@ -83,6 +84,41 @@ const GamePage: React.FC = () => {
     const handleExport = async (setupCount: number) => {
         setIsExporting(true);
         await exportImage(setupCount, undefined, buildImageHeader());
+        setIsExporting(false);
+    };
+
+    const buildResultsData = (): ResultsImageData | null => {
+        if (!game || !generatedTeams || generatedTeams.length < 2 || !game.score) return null;
+        const { emoji } = weather ? describeWeatherCode(weather.weatherCode) : { emoji: undefined };
+        return {
+            leagueName: league?.name,
+            gameTitle: game.title,
+            gameDate: game.date,
+            teams: generatedTeams,
+            score: game.score,
+            goalScorers,
+            assisters,
+            motm,
+            lookup,
+            weatherEmoji: emoji,
+            temperature: weather?.temperature,
+            rainProbability: weather?.rainProbability,
+        };
+    };
+
+    const handleShareResults = async () => {
+        const data = buildResultsData();
+        if (!data) return;
+        setIsExporting(true);
+        await shareResultsImage(data);
+        setIsExporting(false);
+    };
+
+    const handleExportResults = async () => {
+        const data = buildResultsData();
+        if (!data) return;
+        setIsExporting(true);
+        await exportResultsImage(data);
         setIsExporting(false);
     };
 
@@ -206,6 +242,7 @@ const GamePage: React.FC = () => {
                         onSaveScore={handleSaveScore} onPlayerClick={handlePlayerClick}
                         onShare={handleShare} onExport={handleExport}
                         onBack={() => setWizardStep(2)} onGoToTeams={() => setWizardStep(2)}
+                        lookup={lookup}
                     />
                 )}
 
@@ -216,7 +253,9 @@ const GamePage: React.FC = () => {
                         lookup={lookup} allPlayerIds={allPlayerIds} selectedPlayer={selectedPlayer}
                         scoringControlsElement={scoringControlsElement}
                         attendanceSectionElement={attendanceSectionElement}
+                        isExporting={isExporting} leagueName={league?.name}
                         onPlayerClick={handlePlayerClick} onReopen={handleReopen}
+                        onShareResults={handleShareResults} onExportResults={handleExportResults}
                     />
                 )}
             </div>

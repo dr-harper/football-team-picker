@@ -89,7 +89,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                     verifiedLocation?.lat,
                     verifiedLocation?.lon,
                     costPerPerson,
-                    league.activeSeasonId || undefined,
+                    undefined, // seasonId auto-determined by date range
                 );
             })
         );
@@ -111,9 +111,37 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
     };
 
     return (
-        <div className="flex gap-4 items-start">
+        <div className="space-y-3">
+            {/* My Stats — horizontal bar */}
+            {hasCompletedGames && (
+                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-3">
+                    <div className="flex items-center gap-3">
+                        <div className="flex-1 grid grid-cols-5 gap-2 text-center">
+                            {[
+                                { value: myStats.gamesPlayed, label: 'Games' },
+                                { value: myStats.wins, label: 'Wins' },
+                                { value: myStats.goals, label: 'Goals' },
+                                { value: myStats.assists, label: 'Assists' },
+                                { value: myStats.motm, label: 'MOTM' },
+                            ].map(({ value, label }) => (
+                                <div key={label}>
+                                    <div className="text-lg sm:text-xl font-bold text-white tabular-nums">{value}</div>
+                                    <div className="text-[10px] text-white/40 uppercase tracking-wide">{label}</div>
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            onClick={onNavigateToStats}
+                            className="text-xs text-green-300 hover:text-white transition-colors flex items-center gap-1 shrink-0"
+                        >
+                            More <ArrowRight className="w-3 h-3" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Main game list */}
-            <div className="flex-1 min-w-0 space-y-3">
+            <div className="space-y-3">
 
             {!showNewGame ? (
                 <Button
@@ -391,41 +419,6 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                 })
             )}
             </div>{/* end main game list */}
-
-            {/* My Stats sidebar */}
-            {hasCompletedGames && (
-                <div className="w-36 shrink-0 bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4 space-y-4">
-                    <div className="text-xs font-semibold text-green-300 uppercase tracking-wide">My Stats</div>
-                    <div className="space-y-3">
-                        <div>
-                            <div className="text-2xl font-bold text-white">{myStats.gamesPlayed}</div>
-                            <div className="text-xs text-white/50 mt-0.5">Games</div>
-                        </div>
-                        <div>
-                            <div className="text-2xl font-bold text-white">{myStats.wins}</div>
-                            <div className="text-xs text-white/50 mt-0.5">Wins</div>
-                        </div>
-                        <div>
-                            <div className="text-2xl font-bold text-white">{myStats.goals}</div>
-                            <div className="text-xs text-white/50 mt-0.5">Goals</div>
-                        </div>
-                        <div>
-                            <div className="text-2xl font-bold text-white">{myStats.assists}</div>
-                            <div className="text-xs text-white/50 mt-0.5">Assists</div>
-                        </div>
-                        <div>
-                            <div className="text-2xl font-bold text-white">{myStats.motm}</div>
-                            <div className="text-xs text-white/50 mt-0.5">MOTM</div>
-                        </div>
-                    </div>
-                    <button
-                        onClick={onNavigateToStats}
-                        className="text-xs text-green-300 hover:text-white transition-colors flex items-center gap-1"
-                    >
-                        View more <ArrowRight className="w-3 h-3" />
-                    </button>
-                </div>
-            )}
         </div>
     );
 };

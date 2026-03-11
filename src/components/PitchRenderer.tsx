@@ -4,6 +4,7 @@ import { ArrowLeftRight } from 'lucide-react';
 import PlayerIcon from './PlayerIcon';
 import { Team, PositionedPlayer } from '../types';
 import { positionsByTeamSizeAndSide } from '../constants/positionsConstants';
+import { resolvePlayerName } from '../utils/playerLookup';
 
 interface SelectedPlayer {
     setupIndex: number;
@@ -16,6 +17,7 @@ interface PitchRendererProps {
     setupIndex: number;
     selectedPlayer: SelectedPlayer | null;
     onPlayerClick: (setupIndex: number, teamIndex: number, playerIndex: number) => void;
+    lookup?: Record<string, string>;
 }
 
 function getPositionsForTeam(team: Team, isLeftSide: boolean): PositionedPlayer[] {
@@ -50,6 +52,7 @@ const PitchRenderer: React.FC<PitchRendererProps> = React.memo(({
     setupIndex,
     selectedPlayer,
     onPlayerClick,
+    lookup,
 }) => {
     const renderTeamPlayers = (team: Team, teamIndex: number, isLeft: boolean) =>
         getPositionsForTeam(team, isLeft).map((position: PositionedPlayer) => (
@@ -72,7 +75,7 @@ const PitchRenderer: React.FC<PitchRendererProps> = React.memo(({
                     <PlayerIcon
                         color={team.color}
                         number={position.player.shirtNumber}
-                        name={position.player.name}
+                        name={lookup && position.player.playerId ? resolvePlayerName(position.player.playerId, lookup) : position.player.name}
                         isGoalkeeper={position.player.isGoalkeeper}
                     />
                 </motion.div>

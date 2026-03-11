@@ -279,6 +279,14 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         const s2 = parseInt(score2);
         if (isNaN(s1) || isNaN(s2)) return;
         await updateGameScore(gameDocId, { team1: s1, team2: s2 });
+
+        // Auto-populate attendees from team players if not already set
+        if (generatedTeams && (!game?.attendees || game.attendees.length === 0)) {
+            const playerIds = generatedTeams.flatMap(t =>
+                t.players.map(p => p.playerId ?? p.name)
+            );
+            await updateGameAttendees(gameDocId, playerIds);
+        }
     };
 
     const handleReopen = async () => {

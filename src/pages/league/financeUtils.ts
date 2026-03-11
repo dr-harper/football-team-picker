@@ -1,5 +1,12 @@
 import { Game, League, PaymentRecord } from '../../types';
 
+/** Get the list of player IDs who attended a game, falling back to team players if attendees not set */
+function getGameAttendees(g: Game): string[] {
+    if (g.attendees && g.attendees.length > 0) return g.attendees;
+    if (g.teams) return g.teams.flatMap(t => t.players.map(p => p.playerId ?? p.name));
+    return [];
+}
+
 export interface BalancePoint {
     date: number;
     balance: number;
@@ -17,7 +24,7 @@ export function buildWeeklySeries(
     playerId?: string,
     fromDate?: number,
 ): BalancePoint[] {
-    const relevantGames = completedGames.filter(g => g.attendees && g.attendees.length > 0);
+    const relevantGames = completedGames.filter(g => getGameAttendees(g).length > 0);
     if (relevantGames.length === 0) return [];
     const windowGames = fromDate ? relevantGames.filter(g => g.date >= fromDate) : relevantGames;
     if (windowGames.length === 0) return [];
@@ -38,10 +45,9 @@ export function buildWeeklySeries(
         relevantGames.forEach(g => {
             if (g.date >= weekStart) return;
             const cost = g.costPerPerson ?? defaultCost;
-            const att = playerId
-                ? (g.attendees ?? []).filter(id => id === playerId)
-                : (g.attendees ?? []);
-            owed += att.length * cost;
+            const att = getGameAttendees(g);
+            const filtered = playerId ? att.filter(id => id === playerId) : att;
+            owed += filtered.length * cost;
         });
         let paid = 0;
         Object.entries(paymentsMap).forEach(([id, recs]) => {
@@ -88,9 +94,10 @@ export function buildFinanceLedger(
     const playerData = new Map<string, { games: number; owed: number }>();
 
     completedGames.forEach(g => {
-        if (!g.attendees) return;
+        const att = getGameAttendees(g);
+        if (att.length === 0) return;
         const cost = g.costPerPerson ?? league.defaultCostPerPerson ?? 0;
-        g.attendees.forEach(pid => {
+        att.forEach(pid => {
             const ex = playerData.get(pid) ?? { games: 0, owed: 0 };
             playerData.set(pid, { games: ex.games + 1, owed: ex.owed + cost });
         });
