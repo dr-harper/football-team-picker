@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, QueryConstraint } from 'firebase/firestore';
 import { db } from '../firebase';
+import { logger } from '../utils/logger';
 
 interface UseRealtimeCollectionResult<T> {
     data: T[];
@@ -37,7 +38,7 @@ export function useRealtimeCollection<T>(
                 setLoading(false);
             },
             (err) => {
-                console.error(`[useRealtimeCollection] ${collectionName}:`, err);
+                logger.error(`[useRealtimeCollection] ${collectionName}:`, err);
                 setError(err);
                 setLoading(false);
             },

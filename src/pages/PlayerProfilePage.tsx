@@ -5,6 +5,7 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { PLAYER_TAGS } from '../constants/playerTags';
 import { PLAYER_POSITIONS } from '../constants/playerPositions';
+import { logger } from '../utils/logger';
 
 const MAX_TAGS = 3;
 
@@ -33,7 +34,7 @@ const PlayerProfilePage: React.FC = () => {
                     }
                 }
             } catch (err) {
-                console.error('[PlayerProfilePage load]', err);
+                logger.error('[PlayerProfilePage load]', err);
             }
             setLoadingProfile(false);
         };
@@ -61,7 +62,7 @@ const PlayerProfilePage: React.FC = () => {
             await updatePlayerTags(selectedTags, selectedPositions);
             navigate('/dashboard');
         } catch (err) {
-            console.error('[updatePlayerTags]', err);
+            logger.error('[updatePlayerTags]', err);
             setSaving(false);
         }
     };

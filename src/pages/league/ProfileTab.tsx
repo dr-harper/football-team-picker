@@ -3,6 +3,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, ReferenceLine, Tool
 import { Pencil } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { logger } from '../../utils/logger';
 import { League, Game, PaymentRecord } from '../../types';
 import { PLAYER_POSITIONS } from '../../constants/playerPositions';
 import { PLAYER_TAGS } from '../../constants/playerTags';
@@ -62,7 +63,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             setLeagueProfile(prev => prev ? { ...prev, tags: editTags, positions: editPositions, bio: editBio.trim(), hasSetTags: true } : prev);
             setIsEditing(false);
         } catch (err) {
-            console.error('[saveLeagueProfile]', err);
+            logger.error('[saveLeagueProfile]', err);
         }
         setSaving(false);
     };

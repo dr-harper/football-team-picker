@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
+import { logger } from '../utils/logger';
 
 interface UseRealtimeDocResult<T> {
     data: T | null;
@@ -40,7 +41,7 @@ export function useRealtimeDoc<T>(
                 setLoading(false);
             },
             (err) => {
-                console.error(`[useRealtimeDoc] ${collectionName}/${docId}:`, err);
+                logger.error(`[useRealtimeDoc] ${collectionName}/${docId}:`, err);
                 setError(err);
                 setLoading(false);
             },

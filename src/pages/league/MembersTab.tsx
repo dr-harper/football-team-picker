@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { League, Season } from '../../types';
 import { removeMember, updateUserDisplayName, updateLeagueAdmins, createSeason, archiveSeason } from '../../utils/firestore';
 import type { User } from 'firebase/auth';
+import { logger } from '../../utils/logger';
 
 interface Member {
     id: string;
@@ -47,7 +48,7 @@ const MembersTab: React.FC<MembersTabProps> = ({
             setNewSeasonName('');
             setShowNewSeason(false);
         } catch (err) {
-            console.error('[createSeason]', err);
+            logger.error('[createSeason]', err);
             setSeasonError('Failed to create season. Please try again.');
         } finally {
             setSavingSeason(false);
@@ -254,7 +255,7 @@ const MembersTab: React.FC<MembersTabProps> = ({
                                                     try {
                                                         await archiveSeason(leagueId, active.id);
                                                     } catch (err) {
-                                                        console.error('[archiveSeason]', err);
+                                                        logger.error('[archiveSeason]', err);
                                                         setSeasonError('Failed to end season. Please try again.');
                                                     }
                                                 }

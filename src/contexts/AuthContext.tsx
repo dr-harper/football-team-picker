@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../firebase';
+import { logger } from '../utils/logger';
 
 interface AuthContextValue {
     user: User | null;
@@ -73,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const result = await ensureUserDoc(u);
                     setNeedsDisplayName(result.needsDisplayName);
                     setNeedsPlayerTags(result.needsPlayerTags);
-                } catch (err) { console.error('[ensureUserDoc]', err); }
+                } catch (err) { logger.error('[ensureUserDoc]', err); }
             } else {
                 setNeedsDisplayName(false);
                 setNeedsPlayerTags(false);

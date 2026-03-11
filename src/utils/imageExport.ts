@@ -1,5 +1,6 @@
 import { toPng } from 'html-to-image';
 import { MotionGlobalConfig } from 'framer-motion';
+import { logger } from './logger';
 
 const HIDDEN_SELECTORS = ['.delete-button', '.color-picker', '.color-circle', '.generate-ai-summary', '.swap-hint'];
 
@@ -201,7 +202,7 @@ export async function generateTeamsImage(setupCount: number, taglines?: string[]
 
         return canvas.toDataURL('image/png');
     } catch (error) {
-        console.error('Failed to generate image:', error);
+        logger.error('Failed to generate image:', error);
         return null;
     } finally {
         setElementsVisibility(elements, '');
@@ -225,7 +226,7 @@ export async function exportImage(setupCount: number, taglines?: string[], heade
         link.click();
         return { success: true };
     } catch (err) {
-        console.error('Export failed:', err);
+        logger.error('Export failed:', err);
         return { success: false, error: 'Failed to export image' };
     }
 }
@@ -262,7 +263,7 @@ export async function shareImage(setupCount: number, taglines?: string[], header
         link.click();
         return { success: true };
     } catch (err) {
-        console.error('Sharing failed:', err);
+        logger.error('Sharing failed:', err);
         return { success: false, error: 'Failed to share image' };
     }
 }

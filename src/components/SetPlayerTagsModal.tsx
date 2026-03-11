@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { logger } from '../utils/logger';
 import { PLAYER_TAGS } from '../constants/playerTags';
 import { PLAYER_POSITIONS } from '../constants/playerPositions';
 
@@ -47,7 +48,7 @@ const SetPlayerTagsModal: React.FC<Props> = ({ editMode = false, initialPosition
             await updatePlayerTags(selectedTags, selectedPositions);
             onClose?.();
         } catch (err) {
-            console.error('[updatePlayerTags]', err);
+            logger.error('[updatePlayerTags]', err);
         }
         setSaving(false);
     };

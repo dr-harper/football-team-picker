@@ -1,4 +1,5 @@
 import { teamPlaces } from '../constants/teamConstants';
+import { logger } from './logger';
 
 export const getPlacesBasedOnLocation = async (): Promise<{ location: string; places: string[] }> => {
     try {
@@ -9,9 +10,7 @@ export const getPlacesBasedOnLocation = async (): Promise<{ location: string; pl
         const { latitude, longitude } = position.coords;
 
         // Print the latitude and longitude when developing
-        if (import.meta.env.DEV) {
-            console.log(`Latitude: ${latitude}, Longitude: ${longitude}`);
-        }
+        logger.log(`Latitude: ${latitude}, Longitude: ${longitude}`);
 
         let closestLocation = 'Generic';
         let closestPlaces = teamPlaces.Generic.places;
@@ -44,7 +43,7 @@ export const getPlacesBasedOnLocation = async (): Promise<{ location: string; pl
 
         return { location: closestLocation, places: closestPlaces };
     } catch (error) {
-        console.error('Failed to get location:', error);
+        logger.error('Failed to get location:', error);
         return { location: 'Generic', places: teamPlaces.Generic.places }; // Default to Generic places if location fails
     }
 };

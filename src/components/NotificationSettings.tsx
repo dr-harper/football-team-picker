@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, BellOff, Smartphone } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { logger } from '../utils/logger';
 import { NotificationPreferences, DEFAULT_NOTIFICATION_PREFERENCES } from '../types';
 import {
     isPushSupported,
@@ -45,7 +46,7 @@ const NotificationSettings: React.FC = () => {
             setPermissionDenied(getPermissionState() === 'denied');
         };
 
-        load().catch((err) => console.error('Failed to load notification settings:', err));
+        load().catch((err) => logger.error('Failed to load notification settings:', err));
     }, [user, supported]);
 
     if (!user || !supported) return null;
@@ -65,7 +66,7 @@ const NotificationSettings: React.FC = () => {
                 }
             }
         } catch (err) {
-            console.error('Notification subscribe error:', err);
+            logger.error('Notification subscribe error:', err);
             setError('Something went wrong. Please try again.');
         } finally {
             setLoading(false);
@@ -79,7 +80,7 @@ const NotificationSettings: React.FC = () => {
             await unsubscribeFromPush(user.uid);
             setSubscribed(false);
         } catch (err) {
-            console.error('Notification unsubscribe error:', err);
+            logger.error('Notification unsubscribe error:', err);
             setError('Failed to disable notifications. Please try again.');
         } finally {
             setLoading(false);
@@ -92,7 +93,7 @@ const NotificationSettings: React.FC = () => {
         try {
             await saveNotificationPreferences(user.uid, updated);
         } catch (err) {
-            console.error('Failed to save notification preferences:', err);
+            logger.error('Failed to save notification preferences:', err);
             setPrefs(prefs); // revert on failure
         }
     };

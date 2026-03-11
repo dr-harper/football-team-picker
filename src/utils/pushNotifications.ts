@@ -1,5 +1,6 @@
 import { doc, setDoc, deleteDoc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import { logger } from './logger';
 import { NotificationPreferences, DEFAULT_NOTIFICATION_PREFERENCES } from '../types';
 
 // Convert URL-safe base64 VAPID key to Uint8Array
@@ -58,7 +59,7 @@ export async function subscribeToPush(userId: string): Promise<boolean> {
 
         const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
         if (!vapidKey) {
-            console.error('VAPID public key not configured');
+            logger.error('VAPID public key not configured');
             return false;
         }
 
@@ -79,7 +80,7 @@ export async function subscribeToPush(userId: string): Promise<boolean> {
 
         return true;
     } catch (err) {
-        console.error('Failed to subscribe to push notifications:', err);
+        logger.error('Failed to subscribe to push notifications:', err);
         return false;
     }
 }
@@ -93,7 +94,7 @@ export async function unsubscribeFromPush(userId: string): Promise<void> {
         await subscription.unsubscribe();
         await deleteDoc(doc(db, 'users', userId, 'pushSubscriptions', subId));
     } catch (err) {
-        console.error('Failed to unsubscribe from push notifications:', err);
+        logger.error('Failed to unsubscribe from push notifications:', err);
     }
 }
 

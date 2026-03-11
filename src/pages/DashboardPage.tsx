@@ -10,6 +10,7 @@ import { createLeague, joinLeagueByCode, getLeagueMembers, subscribeToUserLeague
 import { League, Game } from '../types';
 import NotificationSettings from '../components/NotificationSettings';
 import { buildLookup, resolvePlayerName } from '../utils/playerLookup';
+import { logger } from '../utils/logger';
 import { computeBadges, computePersonalStats, Badge } from '../utils/badgeUtils';
 import PlayerProfileCard from './dashboard/PlayerProfileCard';
 import CreateLeagueModal from './dashboard/CreateLeagueModal';
@@ -100,7 +101,7 @@ const DashboardPage: React.FC = () => {
             setPlayerStats(computePersonalStats(allCompleted, user.uid));
             setPlayerBadges(computeBadges(allCompleted, user.uid));
         } catch (err) {
-            console.error('[loadGamesAndStats]', err);
+            logger.error('[loadGamesAndStats]', err);
         }
         setLoading(false);
     }, [user, leagues]);
@@ -125,7 +126,7 @@ const DashboardPage: React.FC = () => {
                     });
                 }
             } catch (err) {
-                console.error('[loadPlayerProfile]', err);
+                logger.error('[loadPlayerProfile]', err);
             }
         };
         loadPlayerProfile();
@@ -138,7 +139,7 @@ const DashboardPage: React.FC = () => {
             await updateBio(bio);
             setPlayerProfile(prev => prev ? { ...prev, tags, positions, bio, hasSetTags: true } : prev);
         } catch (err) {
-            console.error('[saveProfile]', err);
+            logger.error('[saveProfile]', err);
         }
         setSavingProfile(false);
     };
@@ -150,7 +151,7 @@ const DashboardPage: React.FC = () => {
             await createLeague(name, user.uid, venue, coords?.lat, coords?.lon);
             setShowCreateModal(false);
         } catch (err) {
-            console.error('[createLeague]', err);
+            logger.error('[createLeague]', err);
             setError('Failed to create league');
         }
     };
