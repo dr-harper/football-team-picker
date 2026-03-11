@@ -1,27 +1,29 @@
 import React from 'react';
 import { Goal, Plus, Minus, Award, Star } from 'lucide-react';
 import { GoalScorer } from '../../types';
+import { resolvePlayerName } from '../../utils/playerLookup';
 
 interface TallyRowsProps {
-    allPlayerNames: string[];
+    allPlayerIds: string[];
     tally: GoalScorer[];
-    onChange: (name: string, delta: number) => void;
+    onChange: (playerId: string, delta: number) => void;
     accentClass: string;
+    lookup: Record<string, string>;
 }
 
-const TallyRows: React.FC<TallyRowsProps> = ({ allPlayerNames, tally, onChange, accentClass }) => (
+const TallyRows: React.FC<TallyRowsProps> = ({ allPlayerIds, tally, onChange, accentClass, lookup }) => (
     <div className="space-y-1.5">
-        {allPlayerNames.map(name => {
-            const count = tally.find(t => t.name === name)?.goals ?? 0;
+        {allPlayerIds.map(pid => {
+            const count = tally.find(t => t.playerId === pid)?.goals ?? 0;
             return (
-                <div key={name} className="flex items-center justify-between gap-2 bg-white/5 rounded-lg px-3 py-1.5">
-                    <span className="text-white text-sm truncate">{name}</span>
+                <div key={pid} className="flex items-center justify-between gap-2 bg-white/5 rounded-lg px-3 py-1.5">
+                    <span className="text-white text-sm truncate">{resolvePlayerName(pid, lookup)}</span>
                     <div className="flex items-center gap-2 shrink-0">
-                        <button onClick={() => onChange(name, -1)} disabled={count === 0} className="text-white/40 hover:text-white disabled:opacity-20 p-0.5">
+                        <button onClick={() => onChange(pid, -1)} disabled={count === 0} className="text-white/40 hover:text-white disabled:opacity-20 p-0.5">
                             <Minus className="w-3.5 h-3.5" />
                         </button>
                         <span className="text-white font-bold text-sm w-4 text-center">{count}</span>
-                        <button onClick={() => onChange(name, 1)} className={`${accentClass} p-0.5`}>
+                        <button onClick={() => onChange(pid, 1)} className={`${accentClass} p-0.5`}>
                             <Plus className="w-3.5 h-3.5" />
                         </button>
                     </div>
@@ -32,17 +34,18 @@ const TallyRows: React.FC<TallyRowsProps> = ({ allPlayerNames, tally, onChange, 
 );
 
 interface ScoringControlsProps {
-    allPlayerNames: string[];
+    allPlayerIds: string[];
     goalScorers: GoalScorer[];
     assisters: GoalScorer[];
     motm: string;
-    onGoalChange: (name: string, delta: number) => void;
-    onAssistChange: (name: string, delta: number) => void;
-    onSetMotm: (name: string) => void;
+    lookup: Record<string, string>;
+    onGoalChange: (playerId: string, delta: number) => void;
+    onAssistChange: (playerId: string, delta: number) => void;
+    onSetMotm: (playerId: string) => void;
 }
 
 const ScoringControls: React.FC<ScoringControlsProps> = ({
-    allPlayerNames, goalScorers, assisters, motm,
+    allPlayerIds, goalScorers, assisters, motm, lookup,
     onGoalChange, onAssistChange, onSetMotm,
 }) => (
     <div className="border-t border-white/10 pt-4 mt-4 space-y-4">
@@ -50,30 +53,30 @@ const ScoringControls: React.FC<ScoringControlsProps> = ({
             <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
                 <Goal className="w-4 h-4 text-green-400" /> Goal Scorers
             </h4>
-            <TallyRows allPlayerNames={allPlayerNames} tally={goalScorers} onChange={onGoalChange} accentClass="text-green-400 hover:text-green-300" />
+            <TallyRows allPlayerIds={allPlayerIds} tally={goalScorers} onChange={onGoalChange} accentClass="text-green-400 hover:text-green-300" lookup={lookup} />
         </div>
         <div>
             <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
                 <span className="text-blue-400 font-bold text-xs bg-blue-400/20 px-1.5 py-0.5 rounded">A</span> Assists
             </h4>
-            <TallyRows allPlayerNames={allPlayerNames} tally={assisters} onChange={onAssistChange} accentClass="text-blue-400 hover:text-blue-300" />
+            <TallyRows allPlayerIds={allPlayerIds} tally={assisters} onChange={onAssistChange} accentClass="text-blue-400 hover:text-blue-300" lookup={lookup} />
         </div>
         <div>
             <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
                 <Award className="w-4 h-4 text-yellow-400" /> Man of the Match
             </h4>
             <div className="flex flex-wrap gap-2">
-                {allPlayerNames.map(name => (
+                {allPlayerIds.map(pid => (
                     <button
-                        key={name}
-                        onClick={() => onSetMotm(name)}
+                        key={pid}
+                        onClick={() => onSetMotm(pid)}
                         className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                            motm === name
+                            motm === pid
                                 ? 'bg-yellow-500 text-green-900'
                                 : 'bg-white/10 text-white hover:bg-white/20'
                         }`}
                     >
-                        {motm === name && <Star className="w-3 h-3 inline mr-1" />}{name}
+                        {motm === pid && <Star className="w-3 h-3 inline mr-1" />}{resolvePlayerName(pid, lookup)}
                     </button>
                 ))}
             </div>

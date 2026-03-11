@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { Game } from '../../types';
 import { computeExtendedStats } from './statsUtils';
+import { resolvePlayerName } from '../../utils/playerLookup';
 import type { User } from 'firebase/auth';
 
 interface StatsTabProps {
     completedGames: Game[];
+    myId: string;
     myName: string;
     user: User | null;
+    lookup: Record<string, string>;
 }
 
-const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myName, user }) => {
+const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myId, myName, user, lookup }) => {
     const [statsFilter, setStatsFilter] = useState<'all' | 'month' | 'year'>('all');
 
     const formDot = (r: 'W' | 'D' | 'L' | null) => (
@@ -109,12 +112,12 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myName, user }) => 
                     .sort((a, b) => b.rate - a.rate || b.played - a.played);
 
                 // Personal highlights for signed-in user
-                const myGoalsF = fScorerTotals.get(myName) ?? 0;
-                const myAssistsF = fAssistTotals.get(myName) ?? 0;
-                const myWinsF = fWinCounts.get(myName) ?? 0;
-                const myPlayedF = fPlayedCounts.get(myName) ?? 0;
+                const myGoalsF = fScorerTotals.get(myId) ?? 0;
+                const myAssistsF = fAssistTotals.get(myId) ?? 0;
+                const myWinsF = fWinCounts.get(myId) ?? 0;
+                const myPlayedF = fPlayedCounts.get(myId) ?? 0;
                 const myWinPctF = myPlayedF > 0 ? Math.round((myWinsF / myPlayedF) * 100) : 0;
-                const myMotmF = fMotmTotals.get(myName) ?? 0;
+                const myMotmF = fMotmTotals.get(myId) ?? 0;
                 const hasPersonalData = myPlayedF > 0;
 
                 return (
@@ -183,13 +186,13 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myName, user }) => 
                             ) : (
                                 <div className="divide-y divide-white/5">
                                     {sortedContributors.map(({ name, goals, assists }, i) => (
-                                        <div key={name} className={`px-4 py-2.5 ${name === myName ? 'bg-green-500/8' : ''}`}>
+                                        <div key={name} className={`px-4 py-2.5 ${name === myId ? 'bg-green-500/8' : ''}`}>
                                             <div className="flex items-center gap-2 mb-1.5">
                                                 <span className="w-5 text-center text-sm shrink-0 leading-none">
                                                     {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span className="text-white/25 text-xs">{i + 1}</span>}
                                                 </span>
-                                                <span className={`flex-1 text-sm truncate ${name === myName ? 'text-green-300 font-semibold' : 'text-white/90'}`}>
-                                                    {name}
+                                                <span className={`flex-1 text-sm truncate ${name === myId ? 'text-green-300 font-semibold' : 'text-white/90'}`}>
+                                                    {resolvePlayerName(name, lookup)}
                                                     {(fHatTricks.get(name) ?? 0) > 0 && (
                                                         <span className="ml-1.5 text-[10px] bg-amber-500/15 text-amber-300 px-1 py-0.5 rounded font-medium">
                                                             🎩{fHatTricks.get(name)! > 1 ? ` ×${fHatTricks.get(name)}` : ''}
@@ -232,12 +235,12 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myName, user }) => 
                                         const form = fForm.get(name) ?? [];
                                         const paddedForm: ('W' | 'D' | 'L' | null)[] = [...Array(Math.max(0, 5 - form.length)).fill(null), ...form];
                                         return (
-                                            <div key={name} className={`px-4 py-2.5 ${name === myName ? 'bg-green-500/8' : ''}`}>
+                                            <div key={name} className={`px-4 py-2.5 ${name === myId ? 'bg-green-500/8' : ''}`}>
                                                 <div className="flex items-center gap-2 mb-1.5">
                                                     <span className="w-5 text-center text-sm shrink-0 leading-none">
                                                         {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span className="text-white/25 text-xs">{i + 1}</span>}
                                                     </span>
-                                                    <span className={`flex-1 text-sm truncate ${name === myName ? 'text-green-300 font-semibold' : 'text-white/90'}`}>{name}</span>
+                                                    <span className={`flex-1 text-sm truncate ${name === myId ? 'text-green-300 font-semibold' : 'text-white/90'}`}>{resolvePlayerName(name, lookup)}</span>
                                                     <span className="flex gap-0.5 shrink-0 mr-2">{paddedForm.map((r, j) => <React.Fragment key={j}>{formDot(r)}</React.Fragment>)}</span>
                                                     <span className="text-xs shrink-0 tabular-nums text-white/50 w-14 text-right">{wins}W · {pct}%</span>
                                                 </div>
@@ -258,12 +261,12 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myName, user }) => 
                                 </div>
                                 <div className="divide-y divide-white/5">
                                     {sortedCleanSheets.map(([name, count], i) => (
-                                        <div key={name} className={`px-4 py-2.5 ${name === myName ? 'bg-green-500/8' : ''}`}>
+                                        <div key={name} className={`px-4 py-2.5 ${name === myId ? 'bg-green-500/8' : ''}`}>
                                             <div className="flex items-center gap-2 mb-1.5">
                                                 <span className="w-5 text-center text-sm shrink-0 leading-none">
                                                     {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span className="text-white/25 text-xs">{i + 1}</span>}
                                                 </span>
-                                                <span className={`flex-1 text-sm truncate ${name === myName ? 'text-green-300 font-semibold' : 'text-white/90'}`}>{name}</span>
+                                                <span className={`flex-1 text-sm truncate ${name === myId ? 'text-green-300 font-semibold' : 'text-white/90'}`}>{resolvePlayerName(name, lookup)}</span>
                                                 <span className="text-white/50 text-xs shrink-0 tabular-nums">{count}</span>
                                             </div>
                                             {statBar((count / maxCS) * 100, i === 0 ? 'bg-yellow-400' : i === 1 ? 'bg-slate-300' : i === 2 ? 'bg-amber-600' : 'bg-cyan-500/60')}
@@ -283,8 +286,8 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myName, user }) => 
                                 </div>
                                 <div className="divide-y divide-white/5">
                                     {sortedAttendance.map(({ name, played, rate }) => (
-                                        <div key={name} className={`px-4 py-2.5 flex items-center gap-3 ${name === myName ? 'bg-green-500/8' : ''}`}>
-                                            <span className={`flex-1 text-sm truncate ${name === myName ? 'text-green-300 font-semibold' : 'text-white/80'}`}>{name}</span>
+                                        <div key={name} className={`px-4 py-2.5 flex items-center gap-3 ${name === myId ? 'bg-green-500/8' : ''}`}>
+                                            <span className={`flex-1 text-sm truncate ${name === myId ? 'text-green-300 font-semibold' : 'text-white/80'}`}>{resolvePlayerName(name, lookup)}</span>
                                             <span className="text-white/30 text-xs tabular-nums shrink-0">{played}/{filteredGames.length}</span>
                                             <span className={`text-xs font-semibold shrink-0 w-9 text-right tabular-nums ${rate >= 80 ? 'text-green-400' : rate >= 50 ? 'text-white/70' : 'text-white/30'}`}>{rate}%</span>
                                         </div>
@@ -306,7 +309,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myName, user }) => 
                                         {sortedMotm[1] && (
                                             <div className="flex-1 text-center">
                                                 <div className="text-xl mb-1.5">🥈</div>
-                                                <div className={`text-xs truncate mb-2 ${sortedMotm[1][0] === myName ? 'text-green-300 font-semibold' : 'text-white/70'}`}>{sortedMotm[1][0]}</div>
+                                                <div className={`text-xs truncate mb-2 ${sortedMotm[1][0] === myId ? 'text-green-300 font-semibold' : 'text-white/70'}`}>{resolvePlayerName(sortedMotm[1][0], lookup)}</div>
                                                 <div className="bg-white/10 rounded-t-xl pt-5 pb-3">
                                                     <span className="text-white font-bold tabular-nums">{sortedMotm[1][1]}×</span>
                                                 </div>
@@ -315,7 +318,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myName, user }) => 
                                         {/* 1st place */}
                                         <div className="flex-1 text-center">
                                             <div className="text-2xl mb-1.5">🥇</div>
-                                            <div className={`text-xs font-semibold truncate mb-2 ${sortedMotm[0][0] === myName ? 'text-green-300' : 'text-white'}`}>{sortedMotm[0][0]}</div>
+                                            <div className={`text-xs font-semibold truncate mb-2 ${sortedMotm[0][0] === myId ? 'text-green-300' : 'text-white'}`}>{resolvePlayerName(sortedMotm[0][0], lookup)}</div>
                                             <div className="bg-gradient-to-b from-yellow-500/30 to-yellow-600/10 border border-yellow-500/20 rounded-t-xl pt-7 pb-3">
                                                 <span className="text-yellow-300 font-bold text-lg tabular-nums">{sortedMotm[0][1]}×</span>
                                             </div>
@@ -324,7 +327,7 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myName, user }) => 
                                         {sortedMotm[2] && (
                                             <div className="flex-1 text-center">
                                                 <div className="text-xl mb-1.5">🥉</div>
-                                                <div className={`text-xs truncate mb-2 ${sortedMotm[2][0] === myName ? 'text-green-300 font-semibold' : 'text-white/50'}`}>{sortedMotm[2][0]}</div>
+                                                <div className={`text-xs truncate mb-2 ${sortedMotm[2][0] === myId ? 'text-green-300 font-semibold' : 'text-white/50'}`}>{resolvePlayerName(sortedMotm[2][0], lookup)}</div>
                                                 <div className="bg-white/5 rounded-t-xl pt-3 pb-3">
                                                     <span className="text-white/50 font-bold tabular-nums">{sortedMotm[2][1]}×</span>
                                                 </div>
@@ -333,8 +336,8 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myName, user }) => 
                                     </div>
                                 )}
                                 {sortedMotm.slice(sortedMotm.length >= 2 ? 3 : 0).map(([name, count]) => (
-                                    <div key={name} className={`flex items-center justify-between px-4 py-2.5 border-t border-white/5 ${name === myName ? 'bg-green-500/8' : ''}`}>
-                                        <span className={`text-sm ${name === myName ? 'text-green-300 font-semibold' : 'text-white/60'}`}>{name}</span>
+                                    <div key={name} className={`flex items-center justify-between px-4 py-2.5 border-t border-white/5 ${name === myId ? 'bg-green-500/8' : ''}`}>
+                                        <span className={`text-sm ${name === myId ? 'text-green-300 font-semibold' : 'text-white/60'}`}>{resolvePlayerName(name, lookup)}</span>
                                         <span className="text-white/40 text-xs tabular-nums">{count}×</span>
                                     </div>
                                 ))}

@@ -36,6 +36,7 @@ import LocationMap from '../components/LocationMap';
 import ScoringControls from './game/ScoringControls';
 import AttendanceSection from './game/AttendanceSection';
 import AvailabilityList from './game/AvailabilityList';
+import { buildLookup, resolvePlayerName, makeGuestId } from '../utils/playerLookup';
 
 const GamePage: React.FC = () => {
     const { id: rawId } = useParams<{ id: string }>();
@@ -141,6 +142,8 @@ const GamePage: React.FC = () => {
             .finally(() => setWeatherLoading(false));
     }, [game?.location, game?.date, game?.locationLat, game?.locationLon]);
 
+    const lookup = buildLookup(leagueMembers);
+
     const myAvailability = availability.find(a => a.userId === user?.uid);
     const availablePlayers = availability.filter(a => a.status === 'available');
     const maybePlayers = availability.filter(a => a.status === 'maybe');
@@ -181,6 +184,15 @@ const GamePage: React.FC = () => {
     };
 
     const addSetup = useCallback((text: string, count = 1) => {
+        // Build name → playerId map for stamping generated Player objects
+        const nameToId: Record<string, string> = {};
+        for (const a of availability) {
+            nameToId[a.displayName] = a.userId;
+        }
+        for (const gn of game?.guestPlayers ?? []) {
+            nameToId[gn] = makeGuestId(gn);
+        }
+
         const newSetups: TeamSetup[] = [];
         let lastNumbers = playerNumbers;
         let hasError = false;
@@ -188,26 +200,31 @@ const GamePage: React.FC = () => {
             const result = generateTeamsFromText(text, places, lastNumbers);
             if (result.error) { setGenError(result.error); hasError = true; break; }
             lastNumbers = result.playerNumbers;
-            newSetups.push({ id: String(nextSetupIdRef.current++), teams: result.teams, playersInput: text });
+            // Stamp playerId on each generated Player
+            const teams = result.teams.map(t => ({
+                ...t,
+                players: t.players.map(p => ({ ...p, playerId: nameToId[p.name] ?? p.name })),
+            }));
+            newSetups.push({ id: String(nextSetupIdRef.current++), teams, playersInput: text });
         }
         if (!hasError) {
             setPlayerNumbers(lastNumbers);
             setPendingSetups(prev => [...prev, ...newSetups]);
             setGenError('');
         }
-    }, [places, playerNumbers]);
+    }, [places, playerNumbers, availability, game?.guestPlayers]);
 
     const generateFromAvailable = useCallback((count = 3) => {
         const statusMap = game?.guestAvailability ?? {};
         const positions = game?.playerPositions ?? {};
         const availableGuests = (game?.guestPlayers ?? []).filter(n => (statusMap[n] ?? 'available') === 'available');
-        const withTag = (name: string) => {
-            const tag = positions[name];
-            return tag ? `${name} #${tag}` : name;
+        const withTag = (displayName: string, playerId: string) => {
+            const tag = positions[playerId];
+            return tag ? `${displayName} #${tag}` : displayName;
         };
         const names = [
-            ...availablePlayers.map(a => withTag(a.displayName)),
-            ...availableGuests.map(withTag),
+            ...availablePlayers.map(a => withTag(a.displayName, a.userId)),
+            ...availableGuests.map(n => withTag(n, makeGuestId(n))),
         ];
         const playerList = names.join('\n');
         setPlayersText(playerList);
@@ -249,43 +266,43 @@ const GamePage: React.FC = () => {
         await updateGameGuests(gameDocId, updated);
     };
 
-    const handleGoalChange = async (playerName: string, delta: number) => {
+    const handleGoalChange = async (playerId: string, delta: number) => {
         if (!gameDocId) return;
-        const existing = goalScorers.find(g => g.name === playerName);
+        const existing = goalScorers.find(g => g.playerId === playerId);
         let updated: GoalScorer[];
         if (existing) {
             const newGoals = Math.max(0, existing.goals + delta);
             updated = newGoals === 0
-                ? goalScorers.filter(g => g.name !== playerName)
-                : goalScorers.map(g => g.name === playerName ? { ...g, goals: newGoals } : g);
+                ? goalScorers.filter(g => g.playerId !== playerId)
+                : goalScorers.map(g => g.playerId === playerId ? { ...g, goals: newGoals } : g);
         } else {
             if (delta <= 0) return;
-            updated = [...goalScorers, { name: playerName, goals: delta }];
+            updated = [...goalScorers, { playerId, goals: delta }];
         }
         setGoalScorers(updated);
         await updateGameGoalScorers(gameDocId, updated);
     };
 
-    const handleAssistChange = async (playerName: string, delta: number) => {
+    const handleAssistChange = async (playerId: string, delta: number) => {
         if (!gameDocId) return;
-        const existing = assisters.find(a => a.name === playerName);
+        const existing = assisters.find(a => a.playerId === playerId);
         let updated: GoalScorer[];
         if (existing) {
             const newCount = Math.max(0, existing.goals + delta);
             updated = newCount === 0
-                ? assisters.filter(a => a.name !== playerName)
-                : assisters.map(a => a.name === playerName ? { ...a, goals: newCount } : a);
+                ? assisters.filter(a => a.playerId !== playerId)
+                : assisters.map(a => a.playerId === playerId ? { ...a, goals: newCount } : a);
         } else {
             if (delta <= 0) return;
-            updated = [...assisters, { name: playerName, goals: delta }];
+            updated = [...assisters, { playerId, goals: delta }];
         }
         setAssisters(updated);
         await updateGameAssisters(gameDocId, updated);
     };
 
-    const handleSetMotm = async (name: string) => {
+    const handleSetMotm = async (playerId: string) => {
         if (!gameDocId) return;
-        const newMotm = motm === name ? '' : name;
+        const newMotm = motm === playerId ? '' : playerId;
         setMotm(newMotm);
         await updateGameMotm(gameDocId, newMotm || null);
     };
@@ -303,15 +320,15 @@ const GamePage: React.FC = () => {
         await updateGameStatus(gameDocId, 'in_progress');
     };
 
-    const handleToggleAttendee = async (name: string) => {
+    const handleToggleAttendee = async (playerId: string) => {
         if (!gameDocId || !game) return;
         const defaultList = [
-            ...availability.filter(a => a.status === 'available').map(a => a.displayName),
-            ...(game.guestPlayers ?? []).filter(n => (game.guestAvailability ?? {})[n] === 'available' || !(game.guestAvailability ?? {})[n]),
+            ...availability.filter(a => a.status === 'available').map(a => a.userId),
+            ...(game.guestPlayers ?? []).filter(n => (game.guestAvailability ?? {})[n] === 'available' || !(game.guestAvailability ?? {})[n]).map(makeGuestId),
         ];
         const current = new Set(attendees ?? defaultList);
-        if (current.has(name)) current.delete(name);
-        else current.add(name);
+        if (current.has(playerId)) current.delete(playerId);
+        else current.add(playerId);
         const updated = [...current];
         setAttendees(updated);
         await updateGameAttendees(gameDocId, updated);
@@ -395,19 +412,19 @@ const GamePage: React.FC = () => {
 
     const positionMap = game.playerPositions ?? {};
 
-    const handlePositionToggle = async (playerName: string, pos: 'g' | 'd' | 's') => {
+    const handlePositionToggle = async (playerId: string, pos: 'g' | 'd' | 's') => {
         if (!gameDocId) return;
-        const current = positionMap[playerName];
+        const current = positionMap[playerId];
         const updated = current === pos
-            ? Object.fromEntries(Object.entries(positionMap).filter(([k]) => k !== playerName))
-            : { ...positionMap, [playerName]: pos };
+            ? Object.fromEntries(Object.entries(positionMap).filter(([k]) => k !== playerId))
+            : { ...positionMap, [playerId]: pos };
         await updatePlayerPositions(gameDocId, updated);
     };
 
-    const allPlayerNames = [
-        ...availablePlayers.map(a => a.displayName),
-        ...guestsAvailable,
-        ...guestsMaybe,
+    const allPlayerIds = [
+        ...availablePlayers.map(a => a.userId),
+        ...guestsAvailable.map(makeGuestId),
+        ...guestsMaybe.map(makeGuestId),
     ];
 
     const totalAvailable = availablePlayers.length + guestsAvailable.length;
@@ -420,7 +437,8 @@ const GamePage: React.FC = () => {
 
     const scoringControlsElement = (
         <ScoringControls
-            allPlayerNames={allPlayerNames}
+            allPlayerIds={allPlayerIds}
+            lookup={lookup}
             goalScorers={goalScorers}
             assisters={assisters}
             motm={motm}
@@ -438,6 +456,7 @@ const GamePage: React.FC = () => {
             attendees={attendees}
             editingCost={editingCost}
             costInput={costInput}
+            lookup={lookup}
             onCostInputChange={setCostInput}
             onEditCost={() => { setCostInput(String(game.costPerPerson ?? league?.defaultCostPerPerson ?? '')); setEditingCost(true); }}
             onSaveCost={handleSaveGameCost}
@@ -830,7 +849,7 @@ const GamePage: React.FC = () => {
                                         </Button>
                                     </div>
                                 )}
-                                {(isPast || game.status === 'in_progress') && isAdmin && allPlayerNames.length > 0 && scoringControlsElement}
+                                {(isPast || game.status === 'in_progress') && isAdmin && allPlayerIds.length > 0 && scoringControlsElement}
                                 {(isPast || game.status === 'in_progress') && isAdmin && attendanceSectionElement}
                             </div>
                         ) : (
@@ -897,7 +916,7 @@ const GamePage: React.FC = () => {
                                     )}
                                 </div>
                             )}
-                            {isAdmin && allPlayerNames.length > 0 && scoringControlsElement}
+                            {isAdmin && allPlayerIds.length > 0 && scoringControlsElement}
                             {isAdmin && attendanceSectionElement}
                             {!isAdmin && (goalScorers.length > 0 || assisters.length > 0 || motm) && (
                                 <div className="border-t border-white/10 pt-4 mt-4 space-y-3">
@@ -908,8 +927,8 @@ const GamePage: React.FC = () => {
                                             </h4>
                                             <div className="flex flex-wrap gap-2">
                                                 {[...goalScorers].sort((a, b) => b.goals - a.goals).map(gs => (
-                                                    <span key={gs.name} className="bg-white/10 text-white text-sm px-3 py-1 rounded-full">
-                                                        {gs.name} &times; {gs.goals}
+                                                    <span key={gs.playerId} className="bg-white/10 text-white text-sm px-3 py-1 rounded-full">
+                                                        {resolvePlayerName(gs.playerId, lookup)} &times; {gs.goals}
                                                     </span>
                                                 ))}
                                             </div>
@@ -922,8 +941,8 @@ const GamePage: React.FC = () => {
                                             </h4>
                                             <div className="flex flex-wrap gap-2">
                                                 {[...assisters].sort((a, b) => b.goals - a.goals).map(a => (
-                                                    <span key={a.name} className="bg-white/10 text-white text-sm px-3 py-1 rounded-full">
-                                                        {a.name} &times; {a.goals}
+                                                    <span key={a.playerId} className="bg-white/10 text-white text-sm px-3 py-1 rounded-full">
+                                                        {resolvePlayerName(a.playerId, lookup)} &times; {a.goals}
                                                     </span>
                                                 ))}
                                             </div>
@@ -932,7 +951,7 @@ const GamePage: React.FC = () => {
                                     {motm && (
                                         <div className="flex items-center gap-2">
                                             <Award className="w-4 h-4 text-yellow-400" />
-                                            <span className="text-white text-sm">MoTM: <strong>{motm}</strong></span>
+                                            <span className="text-white text-sm">MoTM: <strong>{resolvePlayerName(motm, lookup)}</strong></span>
                                         </div>
                                     )}
                                 </div>

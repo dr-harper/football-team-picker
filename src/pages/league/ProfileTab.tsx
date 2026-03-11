@@ -17,8 +17,10 @@ interface ProfileTabProps {
     league: League;
     leagueId: string;
     completedGames: Game[];
+    myId: string;
     myName: string;
     myStats: PersonalStats;
+    lookup: Record<string, string>;
     updatePlayerTags: (tags: string[], positions: string[]) => Promise<void>;
     updateBio: (bio: string) => Promise<void>;
     onSubmitPayment: (amount: number) => Promise<void>;
@@ -26,7 +28,7 @@ interface ProfileTabProps {
 }
 
 const ProfileTab: React.FC<ProfileTabProps> = ({
-    user, league, completedGames, myName, myStats,
+    user, league, completedGames, myId, myName, myStats, lookup,
     updatePlayerTags, updateBio, onSubmitPayment, onOpenExpenseForm,
 }) => {
     const [leagueProfile, setLeagueProfile] = useState<{ tags: string[]; positions: string[]; bio: string; hasSetTags: boolean } | null>(null);
@@ -246,7 +248,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                     {(() => {
                         const badges: { emoji: string; label: string }[] = [];
                         const hasHatTrick = completedGames.some(g =>
-                            (g.goalScorers?.find(s => s.name === myName)?.goals ?? 0) >= 3
+                            (g.goalScorers?.find(s => s.playerId === myId)?.goals ?? 0) >= 3
                         );
                         if (hasHatTrick) badges.push({ emoji: '🎯', label: 'Hat-trick Hero' });
                         if (myStats.motm >= 5) badges.push({ emoji: '⭐', label: 'MOTM Machine' });
@@ -254,11 +256,11 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                         if (myStats.goals >= 10) badges.push({ emoji: '⚽', label: '10 Club' });
                         if (myStats.wins >= 10) badges.push({ emoji: '🏆', label: 'Winner' });
                         const recentPlayed = completedGames
-                            .filter(g => g.teams?.some(t => t.players.some(p => p.name === myName)))
+                            .filter(g => g.teams?.some(t => t.players.some(p => (p.playerId ?? p.name) === myId)))
                             .sort((a, b) => b.date - a.date)
                             .slice(0, 3);
                         if (recentPlayed.length === 3 && recentPlayed.every(g =>
-                            (g.goalScorers?.find(s => s.name === myName)?.goals ?? 0) > 0
+                            (g.goalScorers?.find(s => s.playerId === myId)?.goals ?? 0) > 0
                         )) badges.push({ emoji: '🔥', label: 'On Fire' });
 
                         return badges.length > 0 ? (
@@ -280,11 +282,11 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             {/* My balance & chart */}
             {(() => {
                 const paymentsMap: Record<string, PaymentRecord[]> = league.payments ?? {};
-                const myHistory = paymentsMap[myName] ?? [];
+                const myHistory = paymentsMap[myId] ?? [];
                 const myPaid = myHistory.reduce((s, p) => s + p.amount, 0);
                 let myOwed = 0;
                 completedGames.forEach(g => {
-                    if (!(g.attendees ?? []).includes(myName)) return;
+                    if (!(g.attendees ?? []).includes(myId)) return;
                     myOwed += g.costPerPerson ?? league.defaultCostPerPerson ?? 0;
                 });
                 const myBalance = myOwed - myPaid;
@@ -296,7 +298,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                     : undefined;
 
                 const mySeriesRaw = buildWeeklySeries(
-                    completedGames, paymentsMap, league.defaultCostPerPerson ?? 0, myName, last20Start,
+                    completedGames, paymentsMap, league.defaultCostPerPerson ?? 0, myId, last20Start,
                 );
                 const mySeries = mySeriesRaw.map(p => ({ ...p, balance: -p.balance }));
                 const myZeroPct = zeroOffset(mySeries);
@@ -402,9 +404,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                                 </div>
                             )}
                             {/* Pending/resolved expenses for this player */}
-                            {(league.expenses ?? []).filter(e => e.playerName === myName).length > 0 && (
+                            {(league.expenses ?? []).filter(e => e.playerId === myId).length > 0 && (
                                 <div className="pt-1 space-y-1.5">
-                                    {[...(league.expenses ?? [])].filter(e => e.playerName === myName).sort((a, b) => b.date - a.date).map(exp => (
+                                    {[...(league.expenses ?? [])].filter(e => e.playerId === myId).sort((a, b) => b.date - a.date).map(exp => (
                                         <div key={exp.id} className="flex items-center gap-2 text-xs">
                                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${exp.status === 'approved' ? 'bg-green-400' : exp.status === 'rejected' ? 'bg-red-400' : 'bg-yellow-400'}`} />
                                             <span className="flex-1 text-white/60 truncate">{exp.description}</span>

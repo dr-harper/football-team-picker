@@ -16,11 +16,15 @@ service cloud.firestore {
       // Public read allows the join landing page to show league name before sign-up
       allow read:   if true;
       allow create: if request.auth != null;
-      // Owner or admins can update any field
+      // Owner can update any field
+      // Admins can update any field EXCEPT createdBy and adminIds (prevents privilege escalation)
       // Regular members can ONLY add themselves to memberIds (join flow)
       allow update: if request.auth != null && (
         request.auth.uid == resource.data.createdBy ||
-        (resource.data.adminIds != null && request.auth.uid in resource.data.adminIds) ||
+        (
+          resource.data.adminIds != null && request.auth.uid in resource.data.adminIds &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdBy', 'adminIds'])
+        ) ||
         (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds']) &&
           request.resource.data.memberIds.hasAll(resource.data.memberIds) &&
@@ -39,8 +43,20 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/leagues/$(request.resource.data.leagueId))
         && request.auth.uid in get(/databases/$(database)/documents/leagues/$(request.resource.data.leagueId)).data.memberIds;
 
-      // Only the game creator can update or delete
-      allow update: if request.auth != null && request.auth.uid == resource.data.createdBy;
+      // Game creator or league admins can update; only creator can delete
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.createdBy ||
+        (
+          exists(/databases/$(database)/documents/leagues/$(resource.data.leagueId)) &&
+          (
+            request.auth.uid == get(/databases/$(database)/documents/leagues/$(resource.data.leagueId)).data.createdBy ||
+            (
+              get(/databases/$(database)/documents/leagues/$(resource.data.leagueId)).data.adminIds != null &&
+              request.auth.uid in get(/databases/$(database)/documents/leagues/$(resource.data.leagueId)).data.adminIds
+            )
+          )
+        )
+      );
       allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
     }
 

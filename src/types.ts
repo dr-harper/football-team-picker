@@ -1,5 +1,6 @@
 export interface Player {
     name: string;
+    playerId?: string;        // userId or 'guest:<name>' — set when generated from availability
     isGoalkeeper: boolean;
     isStriker: boolean;
     isDefender: boolean;
@@ -37,7 +38,8 @@ export interface PaymentRecord {
 
 export interface LeagueExpense {
     id: string;
-    playerName: string;
+    playerId: string;         // userId of the player who submitted
+    playerName?: string;      // deprecated — kept for backward compat with old data
     amount: number;
     description: string;
     date: number;
@@ -56,7 +58,7 @@ export interface League {
     defaultVenueLon?: number;
     adminIds?: string[];               // promoted admins (subset of memberIds, excludes owner)
     defaultCostPerPerson?: number;
-    payments?: Record<string, PaymentRecord[]>; // playerName → dated payment history
+    payments?: Record<string, PaymentRecord[]>; // playerId (userId) → dated payment history
     expenses?: LeagueExpense[];                 // player-submitted expenses awaiting admin approval
 }
 
@@ -68,7 +70,7 @@ export interface GameScore {
 }
 
 export interface GoalScorer {
-    name: string;
+    playerId: string;  // userId or 'guest:<name>' — was 'name' (displayName)
     goals: number;
 }
 
@@ -87,13 +89,13 @@ export interface Game {
     score?: GameScore;
     guestPlayers?: string[];           // ringer names added by admin, no account needed
     guestAvailability?: Record<string, AvailabilityStatus>; // per-guest status override (default: available)
-    playerPositions?: Record<string, 'g' | 'd' | 's'>;    // position tag per player name (g=GK, d=DEF, s=FWD)
-    goalScorers?: GoalScorer[];    // simple tally per player
-    assisters?: GoalScorer[];      // assist tally per player (reuses GoalScorer shape)
-    manOfTheMatch?: string;        // player name picked by admin
+    playerPositions?: Record<string, 'g' | 'd' | 's'>;    // playerId → position tag (g=GK, d=DEF, s=FWD)
+    goalScorers?: GoalScorer[];    // tally per playerId
+    assisters?: GoalScorer[];      // assist tally per playerId (reuses GoalScorer shape)
+    manOfTheMatch?: string;        // playerId of player picked by admin
     gameCode?: string;             // short 6-char shareable code
     costPerPerson?: number;        // overrides league default; undefined = use league default
-    attendees?: string[];          // player names who actually attended; set by admin post-game
+    attendees?: string[];          // playerIds who actually attended; set by admin post-game
     createdBy: string;
     createdAt: number;
 }

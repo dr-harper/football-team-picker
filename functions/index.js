@@ -351,24 +351,21 @@ exports.paymentReminder = onSchedule(
                 .where('status', '==', 'completed')
                 .get();
 
-            // Calculate per-player attendance costs
+            // Calculate per-player attendance costs (attendees now store playerIds)
             const attendanceCosts = {};
             for (const gameDoc of gamesSnap.docs) {
                 const game = gameDoc.data();
                 const gameCost = game.costPerPerson ?? costPerPerson;
-                for (const name of (game.attendees || [])) {
-                    attendanceCosts[name] = (attendanceCosts[name] || 0) + gameCost;
+                for (const pid of (game.attendees || [])) {
+                    attendanceCosts[pid] = (attendanceCosts[pid] || 0) + gameCost;
                 }
             }
 
-            // Notify members with outstanding debt (parallelised)
+            // Notify members with outstanding debt (payments keyed by userId)
             const memberIds = league.memberIds || [];
             await Promise.all(memberIds.map(async (uid) => {
-                const userDoc = await db.collection('users').doc(uid).get();
-                if (!userDoc.exists) return;
-                const displayName = userDoc.data().displayName || '';
-                const owed = attendanceCosts[displayName] || 0;
-                const paid = (payments[displayName] || []).reduce((sum, p) => sum + (p.amount || 0), 0);
+                const owed = attendanceCosts[uid] || 0;
+                const paid = (payments[uid] || []).reduce((sum, p) => sum + (p.amount || 0), 0);
                 const balance = paid - owed;
 
                 if (balance >= 0) return; // No debt
@@ -387,7 +384,9 @@ exports.paymentReminder = onSchedule(
     },
 );
 
-// ── Display Name Cascade ─────────────────────────────────────────────────────
+// ── Display Name Cascade (cosmetic only) ─────────────────────────────────────
+// Since all data keys now use userId, the only cascade needed is updating the
+// displayName field on availability records (used for UI display only).
 
 exports.onUserUpdated = onDocumentUpdated(
     { document: 'users/{userId}', region: 'europe-west2' },
@@ -402,87 +401,18 @@ exports.onUserUpdated = onDocumentUpdated(
         const db = getFirestore();
         const userId = event.params.userId;
 
-        // Find all leagues this user belongs to
-        const leaguesSnap = await db.collection('leagues')
-            .where('memberIds', 'array-contains', userId)
-            .get();
-
-        for (const leagueDoc of leaguesSnap.docs) {
-            const league = leagueDoc.data();
-
-            // Rename payment history key if present
-            const payments = league.payments || {};
-            if (payments[oldName]) {
-                payments[newName] = payments[oldName];
-                delete payments[oldName];
-                await leagueDoc.ref.update({ payments });
-            }
-
-            // Update all games in this league
-            const gamesSnap = await db.collection('games')
-                .where('leagueId', '==', leagueDoc.id)
-                .get();
-
-            for (const gameDoc of gamesSnap.docs) {
-                const game = gameDoc.data();
-                const updates = {};
-
-                // Attendees array
-                if (game.attendees && game.attendees.includes(oldName)) {
-                    updates.attendees = game.attendees.map(n => n === oldName ? newName : n);
-                }
-
-                // Goal scorers
-                if (game.goalScorers) {
-                    const renamed = game.goalScorers.map(s =>
-                        s.name === oldName ? { ...s, name: newName } : s
-                    );
-                    if (JSON.stringify(renamed) !== JSON.stringify(game.goalScorers)) {
-                        updates.goalScorers = renamed;
-                    }
-                }
-
-                // Assisters
-                if (game.assisters) {
-                    const renamed = game.assisters.map(s =>
-                        s.name === oldName ? { ...s, name: newName } : s
-                    );
-                    if (JSON.stringify(renamed) !== JSON.stringify(game.assisters)) {
-                        updates.assisters = renamed;
-                    }
-                }
-
-                // Man of the match
-                if (game.manOfTheMatch === oldName) {
-                    updates.manOfTheMatch = newName;
-                }
-
-                // Player positions (keyed by name)
-                if (game.playerPositions && game.playerPositions[oldName] !== undefined) {
-                    const positions = { ...game.playerPositions };
-                    positions[newName] = positions[oldName];
-                    delete positions[oldName];
-                    updates.playerPositions = positions;
-                }
-
-                if (Object.keys(updates).length > 0) {
-                    await gameDoc.ref.update(updates);
-                }
-            }
-        }
-
-        // Update availability records
+        // Update availability records sequentially to avoid Firestore rate limits
         const availSnap = await db.collection('availability')
             .where('userId', '==', userId)
             .get();
 
-        await Promise.all(availSnap.docs.map(async (availDoc) => {
+        for (const availDoc of availSnap.docs) {
             if (availDoc.data().displayName === oldName) {
                 await availDoc.ref.update({ displayName: newName });
             }
-        }));
+        }
 
-        console.log(`Cascaded displayName change: "${oldName}" → "${newName}" for user ${userId}`);
+        console.log(`Updated displayName on availability docs: "${oldName}" → "${newName}" for user ${userId}`);
     },
 );
 
