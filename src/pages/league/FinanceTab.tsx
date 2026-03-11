@@ -4,6 +4,7 @@ import { Pencil } from 'lucide-react';
 import { League, Game, LeagueExpense } from '../../types';
 import { buildWeeklySeries, zeroOffset, negateSeries, buildFinanceLedger } from './financeUtils';
 import { resolvePlayerName } from '../../utils/playerLookup';
+import PlayerName from '../../components/PlayerName';
 
 interface FinanceTabProps {
     league: League;
@@ -144,7 +145,7 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm text-white font-medium truncate">{exp.description}</div>
                                             <div className="text-[11px] text-white/40 mt-0.5">
-                                                {resolvePlayerName(exp.playerId, lookup)} · {new Date(exp.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                                <PlayerName id={exp.playerId} lookup={lookup} /> · {new Date(exp.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                                             </div>
                                         </div>
                                         <span className="text-sm font-bold text-white tabular-nums shrink-0">£{exp.amount.toFixed(2)}</span>
@@ -235,7 +236,7 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
                                         className="w-full text-left grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 px-4 py-3 items-center hover:bg-white/3 transition-colors"
                                         onClick={() => setSelectedPlayerChart(isExpanded ? null : row.playerId)}
                                     >
-                                        <span className="text-sm text-white truncate">{resolvePlayerName(row.playerId, lookup)}</span>
+                                        <PlayerName id={row.playerId} lookup={lookup} className="text-sm text-white truncate" />
                                         <span className="text-xs text-right text-white/50 tabular-nums">{row.games}</span>
                                         <span className="text-xs text-right text-white/70 tabular-nums">£{row.owed.toFixed(2)}</span>
                                         <span className="text-xs text-right text-white/70 tabular-nums">£{row.paid.toFixed(2)}</span>

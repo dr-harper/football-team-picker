@@ -36,7 +36,8 @@ import LocationMap from '../components/LocationMap';
 import ScoringControls from './game/ScoringControls';
 import AttendanceSection from './game/AttendanceSection';
 import AvailabilityList from './game/AvailabilityList';
-import { buildLookup, resolvePlayerName, makeGuestId } from '../utils/playerLookup';
+import { buildLookup, makeGuestId } from '../utils/playerLookup';
+import PlayerName from '../components/PlayerName';
 
 const GamePage: React.FC = () => {
     const { id: rawId } = useParams<{ id: string }>();
@@ -928,7 +929,7 @@ const GamePage: React.FC = () => {
                                             <div className="flex flex-wrap gap-2">
                                                 {[...goalScorers].sort((a, b) => b.goals - a.goals).map(gs => (
                                                     <span key={gs.playerId} className="bg-white/10 text-white text-sm px-3 py-1 rounded-full">
-                                                        {resolvePlayerName(gs.playerId, lookup)} &times; {gs.goals}
+                                                        <PlayerName id={gs.playerId} lookup={lookup} /> &times; {gs.goals}
                                                     </span>
                                                 ))}
                                             </div>
@@ -942,7 +943,7 @@ const GamePage: React.FC = () => {
                                             <div className="flex flex-wrap gap-2">
                                                 {[...assisters].sort((a, b) => b.goals - a.goals).map(a => (
                                                     <span key={a.playerId} className="bg-white/10 text-white text-sm px-3 py-1 rounded-full">
-                                                        {resolvePlayerName(a.playerId, lookup)} &times; {a.goals}
+                                                        <PlayerName id={a.playerId} lookup={lookup} /> &times; {a.goals}
                                                     </span>
                                                 ))}
                                             </div>
@@ -951,7 +952,7 @@ const GamePage: React.FC = () => {
                                     {motm && (
                                         <div className="flex items-center gap-2">
                                             <Award className="w-4 h-4 text-yellow-400" />
-                                            <span className="text-white text-sm">MoTM: <strong>{resolvePlayerName(motm, lookup)}</strong></span>
+                                            <span className="text-white text-sm">MoTM: <strong><PlayerName id={motm} lookup={lookup} /></strong></span>
                                         </div>
                                     )}
                                 </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Goal, Plus, Minus, Award, Star } from 'lucide-react';
 import { GoalScorer } from '../../types';
-import { resolvePlayerName } from '../../utils/playerLookup';
+import PlayerName from '../../components/PlayerName';
 
 interface TallyRowsProps {
     allPlayerIds: string[];
@@ -17,7 +17,7 @@ const TallyRows: React.FC<TallyRowsProps> = ({ allPlayerIds, tally, onChange, ac
             const count = tally.find(t => t.playerId === pid)?.goals ?? 0;
             return (
                 <div key={pid} className="flex items-center justify-between gap-2 bg-white/5 rounded-lg px-3 py-1.5">
-                    <span className="text-white text-sm truncate">{resolvePlayerName(pid, lookup)}</span>
+                    <PlayerName id={pid} lookup={lookup} className="text-white text-sm truncate" />
                     <div className="flex items-center gap-2 shrink-0">
                         <button onClick={() => onChange(pid, -1)} disabled={count === 0} className="text-white/40 hover:text-white disabled:opacity-20 p-0.5">
                             <Minus className="w-3.5 h-3.5" />
@@ -76,7 +76,7 @@ const ScoringControls: React.FC<ScoringControlsProps> = ({
                                 : 'bg-white/10 text-white hover:bg-white/20'
                         }`}
                     >
-                        {motm === pid && <Star className="w-3 h-3 inline mr-1" />}{resolvePlayerName(pid, lookup)}
+                        {motm === pid && <Star className="w-3 h-3 inline mr-1" />}<PlayerName id={pid} lookup={lookup} />
                     </button>
                 ))}
             </div>

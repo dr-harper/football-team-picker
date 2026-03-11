@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Game, League } from '../../types';
-import { resolvePlayerName } from '../../utils/playerLookup';
+import PlayerName from '../../components/PlayerName';
 
 const PAGE_SIZE = 10;
 
@@ -35,7 +35,7 @@ const CompletedTab: React.FC<CompletedTabProps> = ({
                                     .slice(0, 3)
                                     .map(([pid, goals]) => (
                                         <div key={pid} className="flex items-center justify-between text-sm">
-                                            <span className="text-white truncate">{resolvePlayerName(pid, lookup)}</span>
+                                            <PlayerName id={pid} lookup={lookup} className="text-white truncate" />
                                             <span className="text-green-300 ml-2 shrink-0">{goals} ⚽</span>
                                         </div>
                                     ))}
@@ -53,7 +53,7 @@ const CompletedTab: React.FC<CompletedTabProps> = ({
                                     .slice(0, 3)
                                     .map(([pid, count]) => (
                                         <div key={pid} className="flex items-center justify-between text-sm">
-                                            <span className="text-white truncate">{resolvePlayerName(pid, lookup)}</span>
+                                            <PlayerName id={pid} lookup={lookup} className="text-white truncate" />
                                             <span className="text-yellow-300 ml-2 shrink-0">{count} ⭐</span>
                                         </div>
                                     ))}

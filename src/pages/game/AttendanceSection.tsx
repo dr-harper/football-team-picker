@@ -1,7 +1,8 @@
 import React from 'react';
 import { Users, Pencil } from 'lucide-react';
 import { Game, League, PlayerAvailability } from '../../types';
-import { resolvePlayerName, makeGuestId } from '../../utils/playerLookup';
+import { makeGuestId } from '../../utils/playerLookup';
+import PlayerName from '../../components/PlayerName';
 
 interface AttendanceSectionProps {
     game: Game;
@@ -88,10 +89,7 @@ const AttendanceSection: React.FC<AttendanceSectionProps> = ({
                             onChange={() => onToggleAttendee(pid)}
                             className="w-4 h-4 accent-green-500 shrink-0"
                         />
-                        <span className="text-white text-sm flex-1">{resolvePlayerName(pid, lookup)}</span>
-                        {pid.startsWith('guest:') && (
-                            <span className="text-white/40 text-xs">guest</span>
-                        )}
+                        <PlayerName id={pid} lookup={lookup} className="text-white text-sm flex-1" />
                     </label>
                 ))}
             </div>
