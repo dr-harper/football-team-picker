@@ -89,6 +89,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                     verifiedLocation?.lat,
                     verifiedLocation?.lon,
                     costPerPerson,
+                    league.activeSeasonId || undefined,
                 );
             })
         );
