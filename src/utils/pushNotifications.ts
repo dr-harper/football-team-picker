@@ -52,40 +52,49 @@ export async function getExistingSubscription(): Promise<PushSubscription | null
 export async function subscribeToPush(userId: string): Promise<boolean> {
     if (!isPushSupported()) return false;
 
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return false;
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return false;
 
-    const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-    if (!vapidKey) {
-        console.error('VAPID public key not configured');
+        const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+        if (!vapidKey) {
+            console.error('VAPID public key not configured');
+            return false;
+        }
+
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        });
+
+        const subJson = subscription.toJSON();
+        const subId = await hashEndpoint(subscription.endpoint);
+
+        await setDoc(doc(db, 'users', userId, 'pushSubscriptions', subId), {
+            endpoint: subJson.endpoint,
+            keys: subJson.keys,
+            createdAt: Date.now(),
+        });
+
+        return true;
+    } catch (err) {
+        console.error('Failed to subscribe to push notifications:', err);
         return false;
     }
-
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
-    });
-
-    const subJson = subscription.toJSON();
-    const subId = await hashEndpoint(subscription.endpoint);
-
-    await setDoc(doc(db, 'users', userId, 'pushSubscriptions', subId), {
-        endpoint: subJson.endpoint,
-        keys: subJson.keys,
-        createdAt: Date.now(),
-    });
-
-    return true;
 }
 
 export async function unsubscribeFromPush(userId: string): Promise<void> {
-    const subscription = await getExistingSubscription();
-    if (!subscription) return;
+    try {
+        const subscription = await getExistingSubscription();
+        if (!subscription) return;
 
-    const subId = await hashEndpoint(subscription.endpoint);
-    await subscription.unsubscribe();
-    await deleteDoc(doc(db, 'users', userId, 'pushSubscriptions', subId));
+        const subId = await hashEndpoint(subscription.endpoint);
+        await subscription.unsubscribe();
+        await deleteDoc(doc(db, 'users', userId, 'pushSubscriptions', subId));
+    } catch (err) {
+        console.error('Failed to unsubscribe from push notifications:', err);
+    }
 }
 
 export async function saveNotificationPreferences(
