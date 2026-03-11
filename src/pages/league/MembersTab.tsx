@@ -35,6 +35,24 @@ const MembersTab: React.FC<MembersTabProps> = ({
     const [showNewSeason, setShowNewSeason] = useState(false);
     const [newSeasonName, setNewSeasonName] = useState('');
     const [savingSeason, setSavingSeason] = useState(false);
+    const [seasonError, setSeasonError] = useState('');
+
+    const handleCreateSeason = async () => {
+        const trimmed = newSeasonName.trim();
+        if (!trimmed) return;
+        setSavingSeason(true);
+        setSeasonError('');
+        try {
+            await createSeason(leagueId, trimmed);
+            setNewSeasonName('');
+            setShowNewSeason(false);
+        } catch (err) {
+            console.error('[createSeason]', err);
+            setSeasonError('Failed to create season. Please try again.');
+        } finally {
+            setSavingSeason(false);
+        }
+    };
 
     return (
         <div className="space-y-3">
@@ -184,11 +202,7 @@ const MembersTab: React.FC<MembersTabProps> = ({
                                 autoFocus
                                 onKeyDown={e => {
                                     if (e.key === 'Enter' && newSeasonName.trim()) {
-                                        setSavingSeason(true);
-                                        createSeason(leagueId, newSeasonName.trim()).then(() => {
-                                            setNewSeasonName('');
-                                            setShowNewSeason(false);
-                                        }).finally(() => setSavingSeason(false));
+                                        handleCreateSeason();
                                     }
                                 }}
                                 className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-green-400"
@@ -196,11 +210,7 @@ const MembersTab: React.FC<MembersTabProps> = ({
                             <button
                                 onClick={() => {
                                     if (!newSeasonName.trim()) return;
-                                    setSavingSeason(true);
-                                    createSeason(leagueId, newSeasonName.trim()).then(() => {
-                                        setNewSeasonName('');
-                                        setShowNewSeason(false);
-                                    }).finally(() => setSavingSeason(false));
+                                    handleCreateSeason();
                                 }}
                                 disabled={!newSeasonName.trim() || savingSeason}
                                 className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm px-3 py-2 rounded-lg transition-colors"
@@ -214,6 +224,10 @@ const MembersTab: React.FC<MembersTabProps> = ({
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
+                    )}
+
+                    {seasonError && (
+                        <p className="text-red-400 text-xs mb-2">{seasonError}</p>
                     )}
 
                     {(() => {
@@ -234,9 +248,15 @@ const MembersTab: React.FC<MembersTabProps> = ({
                                             <span className="text-green-400 text-xs ml-2">Active</span>
                                         </div>
                                         <button
-                                            onClick={() => {
+                                            onClick={async () => {
                                                 if (confirm(`End "${active.name}"? You can start a new season afterwards.`)) {
-                                                    archiveSeason(leagueId, active.id);
+                                                    setSeasonError('');
+                                                    try {
+                                                        await archiveSeason(leagueId, active.id);
+                                                    } catch (err) {
+                                                        console.error('[archiveSeason]', err);
+                                                        setSeasonError('Failed to end season. Please try again.');
+                                                    }
                                                 }
                                             }}
                                             className="text-xs text-white/40 hover:text-yellow-400 transition-colors flex items-center gap-1"

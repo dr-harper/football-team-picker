@@ -1,5 +1,18 @@
 # Team Shuffle Changelog
 
+## v1.2.0 - 11th March 2026
+
+### Features:
+- 🔄 **Real-time dashboard** — league data now updates live via Firestore listeners, no page refresh needed
+- 🏆 **Season mode** — admins can create and archive seasons to track standings over time; games auto-tagged with active season
+- 📊 **League table** — per-player standings (P/W/D/L/GD/Pts) with season filtering and medal emojis for top 3
+- 🪝 **Reusable hooks** — `useRealtimeDoc` and `useRealtimeCollection` for Firestore subscriptions
+
+### Fixes:
+- Fixed mobile overscroll bounce showing white space on iOS Safari
+
+---
+
 ## v1.1.0 - 4th March 2026
 
 ### Features:

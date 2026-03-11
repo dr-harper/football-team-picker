@@ -11,6 +11,7 @@ import {
     where,
     orderBy,
     onSnapshot,
+    deleteField,
     Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -342,28 +343,17 @@ export async function createSeason(leagueId: string, name: string): Promise<Seas
         status: 'active',
         createdAt: Date.now(),
     };
-    const league = await getLeague(leagueId);
-    if (!league) throw new Error('League not found');
-
-    const seasons = { ...(league.seasons ?? {}), [id]: season };
     await updateDoc(doc(db, 'leagues', leagueId), {
-        seasons,
+        [`seasons.${id}`]: season,
         activeSeasonId: id,
     });
     return season;
 }
 
 export async function archiveSeason(leagueId: string, seasonId: string): Promise<void> {
-    const league = await getLeague(leagueId);
-    if (!league?.seasons?.[seasonId]) return;
-
-    const updated = {
-        ...league.seasons[seasonId],
-        status: 'archived' as const,
-        endDate: Date.now(),
-    };
     await updateDoc(doc(db, 'leagues', leagueId), {
-        [`seasons.${seasonId}`]: updated,
-        activeSeasonId: '',
+        [`seasons.${seasonId}.status`]: 'archived',
+        [`seasons.${seasonId}.endDate`]: Date.now(),
+        activeSeasonId: deleteField(),
     });
 }
