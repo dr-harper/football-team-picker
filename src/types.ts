@@ -46,6 +46,15 @@ export interface LeagueExpense {
     status: 'pending' | 'approved' | 'rejected';
 }
 
+export interface Season {
+    id: string;
+    name: string;           // e.g. "Spring 2026", "Season 3"
+    startDate: number;      // timestamp
+    endDate?: number;       // timestamp, set when archived
+    status: 'active' | 'archived';
+    createdAt: number;
+}
+
 export interface League {
     id: string;
     name: string;
@@ -60,6 +69,8 @@ export interface League {
     defaultCostPerPerson?: number;
     payments?: Record<string, PaymentRecord[]>; // playerId (userId) → dated payment history
     expenses?: LeagueExpense[];                 // player-submitted expenses awaiting admin approval
+    seasons?: Record<string, Season>;          // season map keyed by ID
+    activeSeasonId?: string;                   // which season is currently active
 }
 
 export type GameStatus = 'scheduled' | 'in_progress' | 'completed';
@@ -96,6 +107,7 @@ export interface Game {
     gameCode?: string;             // short 6-char shareable code
     costPerPerson?: number;        // overrides league default; undefined = use league default
     attendees?: string[];          // playerIds who actually attended; set by admin post-game
+    seasonId?: string;             // links game to a season (undefined = unassigned / pre-season)
     createdBy: string;
     createdAt: number;
 }

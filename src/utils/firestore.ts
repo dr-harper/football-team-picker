@@ -11,10 +11,11 @@ import {
     where,
     orderBy,
     onSnapshot,
+    deleteField,
     Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { League, Game, PlayerAvailability, GameStatus, GameScore, Team, GoalScorer, PaymentRecord, LeagueExpense } from '../types';
+import { League, Game, Season, PlayerAvailability, GameStatus, GameScore, Team, GoalScorer, PaymentRecord, LeagueExpense } from '../types';
 
 // ---- Leagues ----
 
@@ -88,6 +89,17 @@ export async function getUserLeagues(userId: string): Promise<League[]> {
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as League));
 }
 
+export function subscribeToUserLeagues(userId: string, cb: (leagues: League[]) => void): Unsubscribe {
+    const q = query(
+        collection(db, 'leagues'),
+        where('memberIds', 'array-contains', userId),
+        orderBy('createdAt', 'desc'),
+    );
+    return onSnapshot(q, (snap) => {
+        cb(snap.docs.map(d => ({ id: d.id, ...d.data() } as League)));
+    });
+}
+
 export function subscribeToLeague(leagueId: string, cb: (league: League | null) => void): Unsubscribe {
     return onSnapshot(doc(db, 'leagues', leagueId), (snap) => {
         if (!snap.exists()) { cb(null); return; }
@@ -133,6 +145,7 @@ export async function createGame(
     locationLat?: number,
     locationLon?: number,
     costPerPerson?: number,
+    seasonId?: string,
 ): Promise<Game> {
     const gameCode = generateJoinCode();
     const data: Omit<Game, 'id'> = {
@@ -147,6 +160,7 @@ export async function createGame(
         ...(locationLat !== undefined ? { locationLat } : {}),
         ...(locationLon !== undefined ? { locationLon } : {}),
         ...(costPerPerson !== undefined ? { costPerPerson } : {}),
+        ...(seasonId ? { seasonId } : {}),
     };
     const ref = await addDoc(collection(db, 'games'), data);
     return { id: ref.id, ...data };
@@ -316,4 +330,30 @@ export async function getLeagueMembers(memberIds: string[]): Promise<{ id: strin
         });
     }
     return members;
+}
+
+// ---- Seasons ----
+
+export async function createSeason(leagueId: string, name: string): Promise<Season> {
+    const id = crypto.randomUUID().slice(0, 8);
+    const season: Season = {
+        id,
+        name,
+        startDate: Date.now(),
+        status: 'active',
+        createdAt: Date.now(),
+    };
+    await updateDoc(doc(db, 'leagues', leagueId), {
+        [`seasons.${id}`]: season,
+        activeSeasonId: id,
+    });
+    return season;
+}
+
+export async function archiveSeason(leagueId: string, seasonId: string): Promise<void> {
+    await updateDoc(doc(db, 'leagues', leagueId), {
+        [`seasons.${seasonId}.status`]: 'archived',
+        [`seasons.${seasonId}.endDate`]: Date.now(),
+        activeSeasonId: deleteField(),
+    });
 }

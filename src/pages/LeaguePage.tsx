@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Calendar, Trophy, BarChart2, Users, User, Wallet, Copy, Check } from 'lucide-react';
+import { Calendar, Trophy, BarChart2, Users, User, Wallet, Copy, Check, TableProperties } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -23,6 +23,7 @@ import StatsTab from './league/StatsTab';
 import ProfileTab from './league/ProfileTab';
 import FinanceTab from './league/FinanceTab';
 import MembersTab from './league/MembersTab';
+import LeagueTableTab from './league/LeagueTableTab';
 
 const LeaguePage: React.FC = () => {
     const { code } = useParams<{ code: string }>();
@@ -35,7 +36,7 @@ const LeaguePage: React.FC = () => {
     const [members, setMembers] = useState<{ id: string; displayName: string; email: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [copiedCode, setCopiedCode] = useState(false);
-    const [tab, setTab] = useState<'upcoming' | 'completed' | 'stats' | 'members' | 'profile' | 'finance'>('upcoming');
+    const [tab, setTab] = useState<'upcoming' | 'completed' | 'table' | 'stats' | 'members' | 'profile' | 'finance'>('upcoming');
 
     // Expense modal state (rendered at root level, triggered from ProfileTab)
     const [showMyExpenseForm, setShowMyExpenseForm] = useState(false);
@@ -257,7 +258,7 @@ const LeaguePage: React.FC = () => {
 
             <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4">
                 {/* Tabs */}
-                <div className="grid grid-cols-6 gap-1 bg-white/5 rounded-lg p-1">
+                <div className="grid grid-cols-7 gap-1 bg-white/5 rounded-lg p-1">
                     <button
                         onClick={() => setTab('upcoming')}
                         className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
@@ -273,6 +274,14 @@ const LeaguePage: React.FC = () => {
                         }`}
                     >
                         <Trophy className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Results</span><span className="sm:hidden">({completedGames.length})</span><span className="hidden sm:inline"> ({completedGames.length})</span>
+                    </button>
+                    <button
+                        onClick={() => setTab('table')}
+                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+                            tab === 'table' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
+                        }`}
+                    >
+                        <TableProperties className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Table</span>
                     </button>
                     <button
                         onClick={() => setTab('stats')}
@@ -330,6 +339,16 @@ const LeaguePage: React.FC = () => {
                         completedGames={completedGames}
                         scorerTotals={stats.scorerTotals}
                         motmTotals={stats.motmTotals}
+                        lookup={lookup}
+                    />
+                )}
+
+                {tab === 'table' && (
+                    <LeagueTableTab
+                        completedGames={completedGames}
+                        seasons={league.seasons ?? {}}
+                        activeSeasonId={league.activeSeasonId}
+                        myId={myId}
                         lookup={lookup}
                     />
                 )}

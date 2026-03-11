@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Plus, Users, Calendar, Trophy, ArrowRight, Copy, Check, Goal, Star, Pencil } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
@@ -6,10 +6,9 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserLeagues, createLeague, joinLeagueByCode, getLeagueMembers } from '../utils/firestore';
+import { createLeague, joinLeagueByCode, getLeagueMembers, subscribeToUserLeagues, getLeagueGames } from '../utils/firestore';
 import { League, Game } from '../types';
 import NotificationSettings from '../components/NotificationSettings';
-import { getLeagueGames } from '../utils/firestore';
 import { buildLookup, resolvePlayerName } from '../utils/playerLookup';
 import { geocodeLocation, GeoResult } from '../utils/weather';
 import { PLAYER_POSITIONS } from '../constants/playerPositions';
@@ -49,75 +48,40 @@ const DashboardPage: React.FC = () => {
 
     const [leagueStats, setLeagueStats] = useState<Map<string, LeagueStats>>(new Map());
 
+    // Real-time subscription to user's leagues
     useEffect(() => {
         if (!user) return;
-        loadData();
-        loadPlayerProfile();
+        const unsubscribe = subscribeToUserLeagues(user.uid, (updatedLeagues) => {
+            setLeagues(updatedLeagues);
+        });
+        return unsubscribe;
     }, [user]);
 
-    const openEditProfile = (profile: { tags: string[]; positions: string[]; bio: string }) => {
-        setEditPositions(profile.positions);
-        setEditTags(profile.tags);
-        setEditBio(profile.bio);
-        setIsEditingProfile(true);
-    };
-
-    const handleSaveProfile = async () => {
-        if (editTags.length !== MAX_TAGS || editPositions.length === 0) return;
-        setSavingProfile(true);
-        try {
-            await updatePlayerTags(editTags, editPositions);
-            await updateBio(editBio.trim());
-            setPlayerProfile(prev => prev ? { ...prev, tags: editTags, positions: editPositions, bio: editBio.trim(), hasSetTags: true } : prev);
-            setIsEditingProfile(false);
-        } catch (err) {
-            console.error('[saveProfile]', err);
+    // Load games and stats whenever leagues change
+    const loadGamesAndStats = useCallback(async () => {
+        if (!user || leagues.length === 0) {
+            setLoading(false);
+            setUpcomingGames([]);
+            setLeagueStats(new Map());
+            setPlayerStats(null);
+            setPlayerBadges([]);
+            return;
         }
-        setSavingProfile(false);
-    };
 
-    const loadPlayerProfile = async () => {
-        if (!user) return;
         try {
-            const snap = await getDoc(doc(db, 'users', user.uid));
-            if (snap.exists()) {
-                const data = snap.data();
-                setPlayerProfile({
-                    tags: data.playerTags ?? [],
-                    positions: data.preferredPositions ?? [],
-                    hasSetTags: data.hasSetTags === true,
-                    bio: data.bio ?? '',
-                });
-            }
-        } catch (err) {
-            console.error('[loadPlayerProfile]', err);
-        }
-    };
-
-    const loadData = async () => {
-        if (!user) return;
-        setLoading(true);
-        try {
-            const userLeagues = await getUserLeagues(user.uid);
-            setLeagues(userLeagues);
-
             const upcomingList: Game[] = [];
             const allCompleted: Game[] = [];
             const statsMap = new Map<string, LeagueStats>();
 
-            const combinedLookup: Record<string, string> = {};
-
-            for (const league of userLeagues) {
+            for (const league of leagues) {
                 const [games, members] = await Promise.all([
                     getLeagueGames(league.id),
                     getLeagueMembers(league.memberIds),
                 ]);
                 const leagueLookup = buildLookup(members);
-                Object.assign(combinedLookup, leagueLookup);
 
                 upcomingList.push(...games.filter(g => g.status !== 'completed'));
 
-                // Aggregate stats from completed games
                 const completed = games.filter(g => g.status === 'completed');
                 allCompleted.push(...completed);
 
@@ -144,7 +108,7 @@ const DashboardPage: React.FC = () => {
             setUpcomingGames(upcomingList.slice(0, 5));
             setLeagueStats(statsMap);
 
-            // Compute personal stats from all completed games
+            // Personal stats
             const myId = user.uid;
             let goals = 0, assists = 0, motm = 0, gamesPlayed = 0;
             for (const g of allCompleted) {
@@ -156,12 +120,10 @@ const DashboardPage: React.FC = () => {
                 if (assisterEntry) assists += assisterEntry.goals;
                 if (g.manOfTheMatch === myId) motm++;
             }
-            const stats = { goals, assists, motm, games: gamesPlayed };
-            setPlayerStats(stats);
+            setPlayerStats({ goals, assists, motm, games: gamesPlayed });
 
-            // Compute badges
+            // Badges
             const badges: { emoji: string; label: string }[] = [];
-
             const hasHatTrick = allCompleted.some(g =>
                 (g.goalScorers?.find(s => s.playerId === myId)?.goals ?? 0) >= 3
             );
@@ -194,9 +156,56 @@ const DashboardPage: React.FC = () => {
 
             setPlayerBadges(badges);
         } catch (err) {
-            console.error('[loadData]', err);
+            console.error('[loadGamesAndStats]', err);
         }
         setLoading(false);
+    }, [user, leagues]);
+
+    useEffect(() => {
+        if (user) loadGamesAndStats();
+    }, [loadGamesAndStats]);
+
+    // One-shot player profile load
+    useEffect(() => {
+        if (!user) return;
+        const loadPlayerProfile = async () => {
+            try {
+                const snap = await getDoc(doc(db, 'users', user.uid));
+                if (snap.exists()) {
+                    const data = snap.data();
+                    setPlayerProfile({
+                        tags: data.playerTags ?? [],
+                        positions: data.preferredPositions ?? [],
+                        hasSetTags: data.hasSetTags === true,
+                        bio: data.bio ?? '',
+                    });
+                }
+            } catch (err) {
+                console.error('[loadPlayerProfile]', err);
+            }
+        };
+        loadPlayerProfile();
+    }, [user]);
+
+    const openEditProfile = (profile: { tags: string[]; positions: string[]; bio: string }) => {
+        setEditPositions(profile.positions);
+        setEditTags(profile.tags);
+        setEditBio(profile.bio);
+        setIsEditingProfile(true);
+    };
+
+    const handleSaveProfile = async () => {
+        if (editTags.length !== MAX_TAGS || editPositions.length === 0) return;
+        setSavingProfile(true);
+        try {
+            await updatePlayerTags(editTags, editPositions);
+            await updateBio(editBio.trim());
+            setPlayerProfile(prev => prev ? { ...prev, tags: editTags, positions: editPositions, bio: editBio.trim(), hasSetTags: true } : prev);
+            setIsEditingProfile(false);
+        } catch (err) {
+            console.error('[saveProfile]', err);
+        }
+        setSavingProfile(false);
     };
 
     const handleVerifyVenue = async () => {
@@ -228,7 +237,7 @@ const DashboardPage: React.FC = () => {
             setNewLeagueVenue('');
             setVerifiedVenue(null);
             setShowCreateModal(false);
-            await loadData();
+            // No need to manually reload — real-time listener picks it up
         } catch (err) {
             console.error('[createLeague]', err);
             setError('Failed to create league');

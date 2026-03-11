@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Users, Copy, Check, Trash2, Pencil, X, LogOut } from 'lucide-react';
+import { Users, Copy, Check, Trash2, Pencil, X, LogOut, Trophy, Archive } from 'lucide-react';
 import { Button } from '../../components/ui/button';
-import { League } from '../../types';
-import { removeMember, updateUserDisplayName, updateLeagueAdmins } from '../../utils/firestore';
+import { League, Season } from '../../types';
+import { removeMember, updateUserDisplayName, updateLeagueAdmins, createSeason, archiveSeason } from '../../utils/firestore';
 import type { User } from 'firebase/auth';
 
 interface Member {
@@ -32,6 +32,27 @@ const MembersTab: React.FC<MembersTabProps> = ({
 }) => {
     const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
     const [editingMemberName, setEditingMemberName] = useState('');
+    const [showNewSeason, setShowNewSeason] = useState(false);
+    const [newSeasonName, setNewSeasonName] = useState('');
+    const [savingSeason, setSavingSeason] = useState(false);
+    const [seasonError, setSeasonError] = useState('');
+
+    const handleCreateSeason = async () => {
+        const trimmed = newSeasonName.trim();
+        if (!trimmed) return;
+        setSavingSeason(true);
+        setSeasonError('');
+        try {
+            await createSeason(leagueId, trimmed);
+            setNewSeasonName('');
+            setShowNewSeason(false);
+        } catch (err) {
+            console.error('[createSeason]', err);
+            setSeasonError('Failed to create season. Please try again.');
+        } finally {
+            setSavingSeason(false);
+        }
+    };
 
     return (
         <div className="space-y-3">
@@ -151,6 +172,115 @@ const MembersTab: React.FC<MembersTabProps> = ({
                 </div>
                 <p className="text-green-300/70 text-xs mt-2">Share this code with others so they can join your league.</p>
             </div>
+
+            {/* Season Management — admin only */}
+            {isAdmin && (
+                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <Trophy className="w-4 h-4 text-yellow-400" />
+                            <span className="text-white font-medium text-sm">Seasons</span>
+                        </div>
+                        {!league.activeSeasonId && !showNewSeason && (
+                            <button
+                                onClick={() => setShowNewSeason(true)}
+                                className="text-xs text-green-400 hover:text-green-300 transition-colors"
+                            >
+                                + New Season
+                            </button>
+                        )}
+                    </div>
+
+                    {showNewSeason && (
+                        <div className="flex gap-2 mb-3">
+                            <input
+                                type="text"
+                                value={newSeasonName}
+                                onChange={e => setNewSeasonName(e.target.value)}
+                                placeholder='e.g. "Spring 2026"'
+                                maxLength={30}
+                                autoFocus
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter' && newSeasonName.trim()) {
+                                        handleCreateSeason();
+                                    }
+                                }}
+                                className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-green-400"
+                            />
+                            <button
+                                onClick={() => {
+                                    if (!newSeasonName.trim()) return;
+                                    handleCreateSeason();
+                                }}
+                                disabled={!newSeasonName.trim() || savingSeason}
+                                className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm px-3 py-2 rounded-lg transition-colors"
+                            >
+                                {savingSeason ? '…' : 'Start'}
+                            </button>
+                            <button
+                                onClick={() => { setShowNewSeason(false); setNewSeasonName(''); }}
+                                className="text-white/40 hover:text-white/70 px-1"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
+
+                    {seasonError && (
+                        <p className="text-red-400 text-xs mb-2">{seasonError}</p>
+                    )}
+
+                    {(() => {
+                        const seasons = Object.values(league.seasons ?? {}) as Season[];
+                        if (seasons.length === 0 && !showNewSeason) {
+                            return <p className="text-white/30 text-xs">No seasons yet. Create one to track league standings over time.</p>;
+                        }
+
+                        const active = seasons.find(s => s.id === league.activeSeasonId);
+                        const archived = seasons.filter(s => s.status === 'archived').sort((a, b) => (b.endDate ?? 0) - (a.endDate ?? 0));
+
+                        return (
+                            <div className="space-y-2">
+                                {active && (
+                                    <div className="flex items-center justify-between bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
+                                        <div>
+                                            <span className="text-white text-sm font-medium">{active.name}</span>
+                                            <span className="text-green-400 text-xs ml-2">Active</span>
+                                        </div>
+                                        <button
+                                            onClick={async () => {
+                                                if (confirm(`End "${active.name}"? You can start a new season afterwards.`)) {
+                                                    setSeasonError('');
+                                                    try {
+                                                        await archiveSeason(leagueId, active.id);
+                                                    } catch (err) {
+                                                        console.error('[archiveSeason]', err);
+                                                        setSeasonError('Failed to end season. Please try again.');
+                                                    }
+                                                }
+                                            }}
+                                            className="text-xs text-white/40 hover:text-yellow-400 transition-colors flex items-center gap-1"
+                                        >
+                                            <Archive className="w-3 h-3" /> End
+                                        </button>
+                                    </div>
+                                )}
+                                {archived.map(s => (
+                                    <div key={s.id} className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
+                                        <div>
+                                            <span className="text-white/60 text-sm">{s.name}</span>
+                                            <span className="text-white/25 text-xs ml-2">
+                                                {new Date(s.startDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                                                {s.endDate && ` – ${new Date(s.endDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}`}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })()}
+                </div>
+            )}
 
             {league.createdBy !== user.uid && (
                 <Button
