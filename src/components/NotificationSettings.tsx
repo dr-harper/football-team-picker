@@ -28,6 +28,7 @@ const NotificationSettings: React.FC = () => {
     const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES);
     const [loading, setLoading] = useState(false);
     const [permissionDenied, setPermissionDenied] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const supported = isPushSupported();
     const installed = isInstalledPwa();
@@ -51,27 +52,49 @@ const NotificationSettings: React.FC = () => {
 
     const handleSubscribe = async () => {
         setLoading(true);
-        const success = await subscribeToPush(user.uid);
-        if (success) {
-            setSubscribed(true);
-            setPermissionDenied(false);
-        } else {
-            setPermissionDenied(getPermissionState() === 'denied');
+        setError(null);
+        try {
+            const success = await subscribeToPush(user.uid);
+            if (success) {
+                setSubscribed(true);
+                setPermissionDenied(false);
+            } else {
+                setPermissionDenied(getPermissionState() === 'denied');
+                if (getPermissionState() !== 'denied') {
+                    setError('Failed to enable notifications. Please try again.');
+                }
+            }
+        } catch (err) {
+            console.error('Notification subscribe error:', err);
+            setError('Something went wrong. Please try again.');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleUnsubscribe = async () => {
         setLoading(true);
-        await unsubscribeFromPush(user.uid);
-        setSubscribed(false);
-        setLoading(false);
+        setError(null);
+        try {
+            await unsubscribeFromPush(user.uid);
+            setSubscribed(false);
+        } catch (err) {
+            console.error('Notification unsubscribe error:', err);
+            setError('Failed to disable notifications. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleToggle = async (key: keyof NotificationPreferences) => {
         const updated = { ...prefs, [key]: !prefs[key] };
         setPrefs(updated);
-        await saveNotificationPreferences(user.uid, updated);
+        try {
+            await saveNotificationPreferences(user.uid, updated);
+        } catch (err) {
+            console.error('Failed to save notification preferences:', err);
+            setPrefs(prefs); // revert on failure
+        }
     };
 
     // iOS not installed — show guidance
@@ -121,6 +144,9 @@ const NotificationSettings: React.FC = () => {
                 <p className="text-white/50 text-sm mb-3">
                     Get notified about new games, team selections, results, and payment reminders.
                 </p>
+                {error && (
+                    <p className="text-red-400 text-xs mb-2">{error}</p>
+                )}
                 <button
                     onClick={handleSubscribe}
                     disabled={loading}
