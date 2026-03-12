@@ -71,6 +71,14 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
         setEditLocation(game.location || '');
     };
 
+    const cancelEditGame = () => {
+        setEditingGameId(null);
+        setEditTitle('');
+        setEditDate('');
+        setEditTime('');
+        setEditLocation('');
+    };
+
     const handleSaveGameEdit = async () => {
         if (!editingGameId || !editTitle.trim() || !editDate) return;
         const date = new Date(`${editDate}T${editTime}`).getTime();
@@ -79,7 +87,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
             date,
             location: editLocation.trim(),
         });
-        setEditingGameId(null);
+        cancelEditGame();
     };
 
     const handleSetAvailability = useCallback(async (gameId: string, status: AvailabilityStatus, currentStatus?: AvailabilityStatus) => {
@@ -422,7 +430,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                                         <button onClick={handleSaveGameEdit} disabled={!editTitle.trim() || !editDate} className="text-green-400 hover:text-green-300 disabled:opacity-40 flex items-center gap-1 text-xs">
                                             <Check className="w-3.5 h-3.5" /> Save
                                         </button>
-                                        <button onClick={() => setEditingGameId(null)} className="text-white/40 hover:text-white flex items-center gap-1 text-xs">
+                                        <button onClick={cancelEditGame} className="text-white/40 hover:text-white flex items-center gap-1 text-xs">
                                             <X className="w-3.5 h-3.5" /> Cancel
                                         </button>
                                     </div>
