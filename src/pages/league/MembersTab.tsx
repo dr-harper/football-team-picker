@@ -1,15 +1,17 @@
 import React, { useState, useMemo } from 'react';
-import { Users, Copy, Check, Trash2, Pencil, X, LogOut, Trophy, Archive, UserPlus, Link2, Calendar } from 'lucide-react';
+import { Users, Copy, Check, Trash2, Pencil, X, LogOut, Trophy, Archive, UserPlus, Link2, Calendar, Settings, MapPin } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { League, Game, Season } from '../../types';
 import {
     removeMember, updateUserDisplayName, updateLeagueAdmins,
     createSeason, archiveSeason, updateSeason, deleteSeason,
     extractGuestsFromGames, linkGuestToMember,
-    updateLeagueEnableAssists,
+    updateLeagueEnableAssists, updateLeagueDefaultVenue,
 } from '../../utils/firestore';
 import type { User } from 'firebase/auth';
 import { logger } from '../../utils/logger';
+import CollapsibleSection from '../../components/CollapsibleSection';
+import { geocodeLocation, GeoResult } from '../../utils/weather';
 
 interface Member {
     id: string;
@@ -63,6 +65,12 @@ const MembersTab: React.FC<MembersTabProps> = ({
     const [selectedMemberId, setSelectedMemberId] = useState('');
     const [linkingInProgress, setLinkingInProgress] = useState(false);
     const [linkResult, setLinkResult] = useState<{ guestId: string; count: number } | null>(null);
+
+    // Venue editing state
+    const [editingVenue, setEditingVenue] = useState(false);
+    const [venueInput, setVenueInput] = useState('');
+    const [verifiedVenue, setVerifiedVenue] = useState<GeoResult | null>(null);
+    const [verifyingVenue, setVerifyingVenue] = useState(false);
 
     const guests = useMemo(() => extractGuestsFromGames(games), [games]);
 
@@ -125,6 +133,15 @@ const MembersTab: React.FC<MembersTabProps> = ({
         return games.filter(g => g.status === 'completed' && g.date >= start && g.date <= end).length;
     };
 
+    const handleSaveVenue = async () => {
+        const name = verifiedVenue?.displayName || venueInput.trim();
+        if (!name) return;
+        await updateLeagueDefaultVenue(leagueId, name, verifiedVenue?.lat, verifiedVenue?.lon);
+        setEditingVenue(false);
+        setVenueInput('');
+        setVerifiedVenue(null);
+    };
+
     return (
         <div className="space-y-3">
             {/* Invite others */}
@@ -145,7 +162,7 @@ const MembersTab: React.FC<MembersTabProps> = ({
             </div>
 
             {/* Members list */}
-            <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden">
+            <CollapsibleSection title="Members" icon={<Users className="w-4 h-4 text-green-400" />} badge={`${members.length}`} defaultOpen>
                 {members.map((member, i) => {
                     const isEditing = editingMemberId === member.id;
                     return (
@@ -243,16 +260,11 @@ const MembersTab: React.FC<MembersTabProps> = ({
                         </div>
                     );
                 })}
-            </div>
+            </CollapsibleSection>
 
             {/* Guest Players — admin only */}
             {isAdmin && guests.length > 0 && (
-                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                        <UserPlus className="w-4 h-4 text-orange-400" />
-                        <span className="text-white font-medium text-sm">Guest Players</span>
-                        <span className="text-white/30 text-xs ml-auto">{guests.length} guests</span>
-                    </div>
+                <CollapsibleSection title="Guest Players" icon={<UserPlus className="w-4 h-4 text-orange-400" />} badge={`${guests.length} guests`}>
                     <p className="text-white/40 text-xs mb-3">
                         Link a guest to a signed-up member to merge their stats (goals, assists, MoTM, attendance).
                     </p>
@@ -312,42 +324,113 @@ const MembersTab: React.FC<MembersTabProps> = ({
                             </div>
                         )}
                     </div>
-                </div>
+                </CollapsibleSection>
             )}
 
             {/* League Settings — admin only */}
             {isAdmin && (
-                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                    <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">League Settings</span>
-                    <div className="mt-3 flex items-center justify-between">
+                <CollapsibleSection title="League Settings" icon={<Settings className="w-4 h-4 text-white/50" />}>
+                    <div className="space-y-4">
+                        {/* Default venue */}
                         <div>
-                            <div className="text-white text-sm font-medium">Track assists</div>
-                            <div className="text-white/30 text-xs">Record assists alongside goals</div>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="text-white text-sm font-medium">Default venue</div>
+                                    <div className="text-white/30 text-xs">
+                                        {league.defaultVenue || 'Not set'}
+                                    </div>
+                                </div>
+                                {!editingVenue ? (
+                                    <button
+                                        onClick={() => { setEditingVenue(true); setVenueInput(league.defaultVenue || ''); }}
+                                        className="text-white/30 hover:text-white/70 transition-colors"
+                                    >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                    </button>
+                                ) : (
+                                    <button onClick={() => { setEditingVenue(false); setVenueInput(''); setVerifiedVenue(null); }} className="text-white/40 hover:text-white">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                            {editingVenue && (
+                                <div className="mt-2 space-y-2">
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={venueInput}
+                                            onChange={e => { setVenueInput(e.target.value); setVerifiedVenue(null); }}
+                                            onKeyDown={async e => {
+                                                if (e.key === 'Enter' && venueInput.trim()) {
+                                                    e.preventDefault();
+                                                    setVerifyingVenue(true);
+                                                    const result = await geocodeLocation(venueInput.trim());
+                                                    setVerifiedVenue(result);
+                                                    setVerifyingVenue(false);
+                                                }
+                                            }}
+                                            placeholder="e.g. Hackney Marshes, London"
+                                            className="flex-1 bg-white/10 border border-white/20 rounded-lg px-2.5 py-1.5 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-green-400"
+                                            autoFocus
+                                        />
+                                        <button
+                                            type="button"
+                                            disabled={!venueInput.trim() || verifyingVenue}
+                                            onClick={async () => {
+                                                setVerifyingVenue(true);
+                                                const result = await geocodeLocation(venueInput.trim());
+                                                setVerifiedVenue(result);
+                                                setVerifyingVenue(false);
+                                            }}
+                                            className="px-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white text-xs transition-colors disabled:opacity-40"
+                                        >
+                                            {verifyingVenue ? '…' : 'Verify'}
+                                        </button>
+                                    </div>
+                                    {verifiedVenue && (
+                                        <div className="flex items-center gap-1.5 text-xs text-green-300">
+                                            <MapPin className="w-3 h-3" />
+                                            <span>{verifiedVenue.displayName}</span>
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={handleSaveVenue}
+                                        disabled={!venueInput.trim()}
+                                        className="text-xs text-green-400 hover:text-green-300 disabled:opacity-40 transition-colors"
+                                    >
+                                        Save venue
+                                    </button>
+                                </div>
+                            )}
                         </div>
-                        <button
-                            onClick={async () => {
-                                await updateLeagueEnableAssists(leagueId, !(league.enableAssists === true));
-                            }}
-                            className={`relative w-11 h-6 rounded-full transition-colors ${
-                                league.enableAssists ? 'bg-green-500' : 'bg-white/20'
-                            }`}
-                        >
-                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                                league.enableAssists ? 'translate-x-5' : ''
-                            }`} />
-                        </button>
+
+                        {/* Track assists */}
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="text-white text-sm font-medium">Track assists</div>
+                                <div className="text-white/30 text-xs">Record assists alongside goals</div>
+                            </div>
+                            <button
+                                onClick={async () => {
+                                    await updateLeagueEnableAssists(leagueId, !(league.enableAssists === true));
+                                }}
+                                className={`relative w-11 h-6 rounded-full transition-colors ${
+                                    league.enableAssists ? 'bg-green-500' : 'bg-white/20'
+                                }`}
+                            >
+                                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                                    league.enableAssists ? 'translate-x-5' : ''
+                                }`} />
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </CollapsibleSection>
             )}
 
             {/* Season Management — admin only */}
             {isAdmin && (
-                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            <Trophy className="w-4 h-4 text-yellow-400" />
-                            <span className="text-white font-medium text-sm">Seasons</span>
-                        </div>
+                <CollapsibleSection title="Seasons" icon={<Trophy className="w-4 h-4 text-yellow-400" />}>
+                    <div className="flex items-center justify-end mb-3">
                         {!showNewSeason && (
                             <button
                                 onClick={() => setShowNewSeason(true)}
@@ -552,7 +635,7 @@ const MembersTab: React.FC<MembersTabProps> = ({
                             </div>
                         );
                     })()}
-                </div>
+                </CollapsibleSection>
             )}
 
             {league.createdBy !== user.uid && (
