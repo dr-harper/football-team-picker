@@ -122,13 +122,15 @@ const AvailabilityGrid: React.FC<AvailabilityGridProps> = ({
     const handleAddGuest = async () => {
         const name = newGuestName.trim();
         if (!name) return;
-        // Add guest to all upcoming games as available
-        for (const game of upcomingGames) {
+        // Case-insensitive duplicate check
+        if (allGuests.some(g => g.toLowerCase() === name.toLowerCase())) return;
+        // Just register the name — don't auto-add to all games
+        // Admin can set per-game availability from the grid
+        if (upcomingGames.length > 0) {
+            const game = upcomingGames[0];
             const currentGuests = game.guestPlayers ?? [];
             if (!currentGuests.includes(name)) {
                 await updateGameGuests(game.id, [...currentGuests, name]);
-                const currentAvail = game.guestAvailability ?? {};
-                await updateGuestAvailability(game.id, { ...currentAvail, [name]: 'available' });
             }
         }
         setNewGuestName('');

@@ -280,6 +280,32 @@ export async function updateGameAttendees(gameId: string, attendees: string[]): 
     await updateDoc(doc(db, 'games', gameId), { attendees });
 }
 
+export async function updateGameDetails(
+    gameId: string,
+    details: { title?: string; date?: number; location?: string; locationLat?: number; locationLon?: number },
+): Promise<void> {
+    const updates: Record<string, unknown> = {};
+    if (details.title !== undefined) updates.title = details.title;
+    if (details.date !== undefined) updates.date = details.date;
+    if (details.location !== undefined) updates.location = details.location;
+    if (details.locationLat !== undefined) updates.locationLat = details.locationLat;
+    if (details.locationLon !== undefined) updates.locationLon = details.locationLon;
+    await updateDoc(doc(db, 'games', gameId), updates);
+}
+
+export async function updateLeagueDefaultVenue(
+    leagueId: string,
+    venue: string,
+    lat?: number,
+    lon?: number,
+): Promise<void> {
+    await updateDoc(doc(db, 'leagues', leagueId), {
+        defaultVenue: venue,
+        ...(lat !== undefined ? { defaultVenueLat: lat } : {}),
+        ...(lon !== undefined ? { defaultVenueLon: lon } : {}),
+    });
+}
+
 // ---- Availability ----
 
 export async function setAvailability(

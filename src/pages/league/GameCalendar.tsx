@@ -8,7 +8,7 @@ interface GameCalendarProps {
     scheduleAvailability: Map<string, PlayerAvailability[]>;
     currentUserId: string;
     code: string;
-    onSetAvailability: (gameId: string, status: AvailabilityStatus) => void;
+    onSetAvailability: (gameId: string, status: AvailabilityStatus, currentStatus?: AvailabilityStatus) => void;
 }
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -136,6 +136,7 @@ const GameCalendar: React.FC<GameCalendarProps> = ({
 
                                 {/* Game chips */}
                                 {dayGames.map(game => {
+                                    const isCompleted = game.status === 'completed';
                                     const avail = scheduleAvailability.get(game.id) ?? [];
                                     const myStatus = avail.find(a => a.userId === currentUserId)?.status;
                                     const guestStatusMap = game.guestAvailability ?? {};
@@ -149,16 +150,24 @@ const GameCalendar: React.FC<GameCalendarProps> = ({
                                             <button
                                                 onClick={() => setExpandedGameId(isExpanded ? null : game.id)}
                                                 className={`w-full text-left rounded-md px-1.5 py-1 transition-colors ${
-                                                    isExpanded
+                                                    isCompleted
+                                                        ? 'bg-white/5 opacity-60'
+                                                        : isExpanded
                                                         ? 'bg-green-500/25 ring-1 ring-green-400/30'
                                                         : 'bg-white/8 hover:bg-white/15'
                                                 }`}
                                             >
                                                 <div className="flex items-center gap-1">
-                                                    <MyStatusDot status={myStatus} />
+                                                    {!isCompleted && <MyStatusDot status={myStatus} />}
                                                     <span className="text-[10px] text-white/80 font-medium truncate">{time}</span>
                                                 </div>
-                                                <div className="text-[9px] text-green-400 mt-0.5 tabular-nums">{inCount} in</div>
+                                                {isCompleted && game.score ? (
+                                                    <div className="text-[9px] text-white/50 mt-0.5 tabular-nums">
+                                                        {game.score.team1}–{game.score.team2}
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-[9px] text-green-400 mt-0.5 tabular-nums">{inCount} in</div>
+                                                )}
                                             </button>
                                         </div>
                                     );
@@ -173,6 +182,7 @@ const GameCalendar: React.FC<GameCalendarProps> = ({
             {expandedGameId && (() => {
                 const game = games.find(g => g.id === expandedGameId);
                 if (!game) return null;
+                const isCompleted = game.status === 'completed';
                 const avail = scheduleAvailability.get(game.id) ?? [];
                 const myStatus = avail.find(a => a.userId === currentUserId)?.status;
                 const guestStatusMap = game.guestAvailability ?? {};
@@ -195,30 +205,40 @@ const GameCalendar: React.FC<GameCalendarProps> = ({
                                     })}
                                     {game.location && <span className="text-white/30 ml-1.5">· {game.location}</span>}
                                 </div>
-                                <div className="flex items-center gap-2 mt-1.5 text-xs">
-                                    <span className="text-green-400">{inCount} in</span>
-                                    {maybeCount > 0 && <span className="text-yellow-400">{maybeCount} maybe</span>}
-                                </div>
+                                {isCompleted && game.score ? (
+                                    <div className="flex items-center gap-2 mt-1.5 text-xs">
+                                        <span className="text-white/60">
+                                            {game.teams?.[0]?.name ?? 'Team 1'} {game.score.team1} – {game.score.team2} {game.teams?.[1]?.name ?? 'Team 2'}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 mt-1.5 text-xs">
+                                        <span className="text-green-400">{inCount} in</span>
+                                        {maybeCount > 0 && <span className="text-yellow-400">{maybeCount} maybe</span>}
+                                    </div>
+                                )}
                             </Link>
-                            <div className="flex gap-1 shrink-0">
-                                {(['available', 'maybe', 'unavailable'] as AvailabilityStatus[]).map(s => (
-                                    <button
-                                        key={s}
-                                        onClick={() => onSetAvailability(game.id, s)}
-                                        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
-                                            myStatus === s
-                                                ? s === 'available' ? 'bg-green-600 text-white'
-                                                : s === 'maybe' ? 'bg-yellow-600 text-white'
-                                                : 'bg-red-600 text-white'
-                                                : 'bg-white/10 text-white/40 hover:bg-white/20'
-                                        }`}
-                                    >
-                                        {s === 'available' ? <CheckCircle className="w-4 h-4" /> :
-                                         s === 'maybe' ? <HelpCircle className="w-4 h-4" /> :
-                                         <XCircle className="w-4 h-4" />}
-                                    </button>
-                                ))}
-                            </div>
+                            {!isCompleted && (
+                                <div className="flex gap-1 shrink-0">
+                                    {(['available', 'maybe', 'unavailable'] as AvailabilityStatus[]).map(s => (
+                                        <button
+                                            key={s}
+                                            onClick={() => onSetAvailability(game.id, s, myStatus)}
+                                            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
+                                                myStatus === s
+                                                    ? s === 'available' ? 'bg-green-600 text-white'
+                                                    : s === 'maybe' ? 'bg-yellow-600 text-white'
+                                                    : 'bg-red-600 text-white'
+                                                    : 'bg-white/10 text-white/40 hover:bg-white/20'
+                                            }`}
+                                        >
+                                            {s === 'available' ? <CheckCircle className="w-4 h-4" /> :
+                                             s === 'maybe' ? <HelpCircle className="w-4 h-4" /> :
+                                             <XCircle className="w-4 h-4" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 );

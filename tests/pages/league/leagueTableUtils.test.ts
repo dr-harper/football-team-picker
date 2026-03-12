@@ -167,6 +167,91 @@ describe('computeLeagueTable', () => {
         expect(p2.won).toBe(1);
     });
 
+    describe('form tracking', () => {
+        it('records W/L/D results in the form array', () => {
+            const game = makeCompletedGame({
+                team1Players: [{ playerId: 'p1', name: 'Alice' }],
+                team2Players: [{ playerId: 'p2', name: 'Bob' }],
+                score: { team1: 2, team2: 0 },
+            });
+            const table = computeLeagueTable([game]);
+            expect(table.find(r => r.playerId === 'p1')!.form).toEqual(['W']);
+            expect(table.find(r => r.playerId === 'p2')!.form).toEqual(['L']);
+        });
+
+        it('records draws in form', () => {
+            const game = makeCompletedGame({
+                team1Players: [{ playerId: 'p1', name: 'Alice' }],
+                team2Players: [{ playerId: 'p2', name: 'Bob' }],
+                score: { team1: 1, team2: 1 },
+            });
+            const table = computeLeagueTable([game]);
+            expect(table.find(r => r.playerId === 'p1')!.form).toEqual(['D']);
+            expect(table.find(r => r.playerId === 'p2')!.form).toEqual(['D']);
+        });
+
+        it('preserves chronological order in form', () => {
+            const game1 = makeCompletedGame({
+                team1Players: [{ playerId: 'p1', name: 'Alice' }],
+                team2Players: [{ playerId: 'p2', name: 'Bob' }],
+                score: { team1: 2, team2: 0 },
+                date: 1000,
+            });
+            const game2 = makeCompletedGame({
+                team1Players: [{ playerId: 'p1', name: 'Alice' }],
+                team2Players: [{ playerId: 'p2', name: 'Bob' }],
+                score: { team1: 0, team2: 1 },
+                date: 2000,
+            });
+            const game3 = makeCompletedGame({
+                team1Players: [{ playerId: 'p1', name: 'Alice' }],
+                team2Players: [{ playerId: 'p2', name: 'Bob' }],
+                score: { team1: 1, team2: 1 },
+                date: 3000,
+            });
+            // Pass in reverse order to verify sorting
+            const table = computeLeagueTable([game3, game1, game2]);
+            expect(table.find(r => r.playerId === 'p1')!.form).toEqual(['W', 'L', 'D']);
+            expect(table.find(r => r.playerId === 'p2')!.form).toEqual(['L', 'W', 'D']);
+        });
+
+        it('trims form to last 5 results', () => {
+            const games = Array.from({ length: 7 }, (_, i) =>
+                makeCompletedGame({
+                    team1Players: [{ playerId: 'p1', name: 'Alice' }],
+                    team2Players: [{ playerId: 'p2', name: 'Bob' }],
+                    score: { team1: i % 2 === 0 ? 1 : 0, team2: i % 2 === 0 ? 0 : 1 },
+                    date: (i + 1) * 1000,
+                }),
+            );
+            const table = computeLeagueTable(games);
+            const p1Form = table.find(r => r.playerId === 'p1')!.form;
+            expect(p1Form).toHaveLength(5);
+            // Games: W L W L W L W → last 5: W L W L W
+            expect(p1Form).toEqual(['W', 'L', 'W', 'L', 'W']);
+        });
+
+        it('tracks form correctly when player switches teams', () => {
+            const game1 = makeCompletedGame({
+                team1Players: [{ playerId: 'p1', name: 'Alice' }],
+                team2Players: [{ playerId: 'p2', name: 'Bob' }],
+                score: { team1: 2, team2: 0 },
+                date: 1000,
+            });
+            const game2 = makeCompletedGame({
+                team1Players: [{ playerId: 'p2', name: 'Bob' }],
+                team2Players: [{ playerId: 'p1', name: 'Alice' }],
+                score: { team1: 3, team2: 1 },
+                date: 2000,
+            });
+            const table = computeLeagueTable([game1, game2]);
+            // p1: W on team1, then L on team2
+            expect(table.find(r => r.playerId === 'p1')!.form).toEqual(['W', 'L']);
+            // p2: L on team2, then W on team1
+            expect(table.find(r => r.playerId === 'p2')!.form).toEqual(['L', 'W']);
+        });
+    });
+
     it('handles 0-0 draw correctly', () => {
         const game = makeCompletedGame({
             team1Players: [{ playerId: 'p1', name: 'Alice' }],

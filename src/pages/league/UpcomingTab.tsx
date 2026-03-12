@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, ArrowRight, CheckCircle, HelpCircle, XCircle, Grid3X3, List, CalendarDays } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, CheckCircle, HelpCircle, XCircle, Grid3X3, List, CalendarDays, Pencil, X, Check } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { League, Game, PlayerAvailability, AvailabilityStatus } from '../../types';
 import {
     createGame,
     deleteGame,
     setAvailability,
+    clearAvailability,
     subscribeToGameAvailability,
+    updateGameDetails,
 } from '../../utils/firestore';
 import CalendarPicker from '../../components/CalendarPicker';
 import { geocodeLocation, GeoResult } from '../../utils/weather';
@@ -54,10 +56,39 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
     const [scheduleAvailability, setScheduleAvailability] = useState<Map<string, PlayerAvailability[]>>(new Map());
     const [expandedAvailGame, setExpandedAvailGame] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'list' | 'grid' | 'calendar'>('list');
+    const [editingGameId, setEditingGameId] = useState<string | null>(null);
+    const [editTitle, setEditTitle] = useState('');
+    const [editDate, setEditDate] = useState('');
+    const [editTime, setEditTime] = useState('');
+    const [editLocation, setEditLocation] = useState('');
 
-    const handleSetAvailability = useCallback(async (gameId: string, status: AvailabilityStatus) => {
+    const startEditGame = (game: Game) => {
+        setEditingGameId(game.id);
+        setEditTitle(game.title);
+        const d = new Date(game.date);
+        setEditDate(d.toISOString().split('T')[0]);
+        setEditTime(d.toTimeString().slice(0, 5));
+        setEditLocation(game.location || '');
+    };
+
+    const handleSaveGameEdit = async () => {
+        if (!editingGameId || !editTitle.trim() || !editDate) return;
+        const date = new Date(`${editDate}T${editTime}`).getTime();
+        await updateGameDetails(editingGameId, {
+            title: editTitle.trim(),
+            date,
+            location: editLocation.trim(),
+        });
+        setEditingGameId(null);
+    };
+
+    const handleSetAvailability = useCallback(async (gameId: string, status: AvailabilityStatus, currentStatus?: AvailabilityStatus) => {
         if (!user) return;
-        await setAvailability(gameId, user.uid, user.displayName || user.email?.split('@')[0] || 'Player', status);
+        if (currentStatus === status) {
+            await clearAvailability(gameId, user.uid);
+        } else {
+            await setAvailability(gameId, user.uid, user.displayName || user.email?.split('@')[0] || 'Player', status);
+        }
     }, [user]);
 
     // Subscribe to availability for all upcoming games
@@ -335,11 +366,11 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                 />
             ) : viewMode === 'calendar' && upcomingGames.length > 0 ? (
                 <GameCalendar
-                    games={upcomingGames}
+                    games={allGames}
                     scheduleAvailability={scheduleAvailability}
                     currentUserId={user.uid}
                     code={code}
-                    onSetAvailability={(gameId, status) => handleSetAvailability(gameId, status)}
+                    onSetAvailability={(gameId, status, currentStatus) => handleSetAvailability(gameId, status, currentStatus)}
                 />
             ) : upcomingGames.length === 0 ? (
                 <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
@@ -357,6 +388,46 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                     const isExpanded = expandedAvailGame === game.id;
                     return (
                         <div key={game.id} className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                            {editingGameId === game.id ? (
+                                <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                        value={editTitle}
+                                        onChange={e => setEditTitle(e.target.value)}
+                                        className="w-full bg-white/10 border border-white/20 rounded-lg px-2.5 py-1.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-400"
+                                        autoFocus
+                                    />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <input
+                                            type="date"
+                                            value={editDate}
+                                            onChange={e => setEditDate(e.target.value)}
+                                            className="bg-white/10 border border-white/20 rounded-lg px-2.5 py-1.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-400 [color-scheme:dark]"
+                                        />
+                                        <input
+                                            type="time"
+                                            value={editTime}
+                                            onChange={e => setEditTime(e.target.value)}
+                                            className="bg-white/10 border border-white/20 rounded-lg px-2.5 py-1.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-green-400 [color-scheme:dark]"
+                                        />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={editLocation}
+                                        onChange={e => setEditLocation(e.target.value)}
+                                        placeholder="Location (optional)"
+                                        className="w-full bg-white/10 border border-white/20 rounded-lg px-2.5 py-1.5 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-green-400"
+                                    />
+                                    <div className="flex gap-2">
+                                        <button onClick={handleSaveGameEdit} disabled={!editTitle.trim() || !editDate} className="text-green-400 hover:text-green-300 disabled:opacity-40 flex items-center gap-1 text-xs">
+                                            <Check className="w-3.5 h-3.5" /> Save
+                                        </button>
+                                        <button onClick={() => setEditingGameId(null)} className="text-white/40 hover:text-white flex items-center gap-1 text-xs">
+                                            <X className="w-3.5 h-3.5" /> Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (<>
                             <div className="flex items-center gap-3">
                                 <Link to={`/league/${code}/game/${game.gameCode || game.id}`} className="flex-1 min-w-0 hover:text-green-300 transition-colors">
                                     <div className="text-white font-bold">{game.title}</div>
@@ -384,10 +455,19 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                                     </div>
                                 </Link>
                                 <div className="flex items-center gap-2 shrink-0">
+                                    {user && isAdmin && (
+                                        <button
+                                            onClick={() => startEditGame(game)}
+                                            className="text-white/30 hover:text-white/70 transition-colors"
+                                            title="Edit game"
+                                        >
+                                            <Pencil className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
                                     {user && (
                                         <div className="flex gap-1">
                                             <button
-                                                onClick={() => handleSetAvailability(game.id, 'available')}
+                                                onClick={() => handleSetAvailability(game.id, 'available', myStatus)}
                                                 title="I'm in"
                                                 className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
                                                     myStatus === 'available'
@@ -398,7 +478,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                                                 <CheckCircle className="w-4 h-4" />
                                             </button>
                                             <button
-                                                onClick={() => handleSetAvailability(game.id, 'maybe')}
+                                                onClick={() => handleSetAvailability(game.id, 'maybe', myStatus)}
                                                 title="Maybe"
                                                 className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
                                                     myStatus === 'maybe'
@@ -409,7 +489,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                                                 <HelpCircle className="w-4 h-4" />
                                             </button>
                                             <button
-                                                onClick={() => handleSetAvailability(game.id, 'unavailable')}
+                                                onClick={() => handleSetAvailability(game.id, 'unavailable', myStatus)}
                                                 title="Can't make it"
                                                 className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
                                                     myStatus === 'unavailable'
@@ -471,6 +551,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                                     })}
                                 </div>
                             )}
+                            </>)}
                         </div>
                     );
                 })
