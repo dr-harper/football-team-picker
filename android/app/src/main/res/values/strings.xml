@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TeamShuffle</string>
+    <string name="title_activity_main">TeamShuffle</string>
+    <string name="package_name">uk.co.mlharper.teamshuffle</string>
+    <string name="custom_url_scheme">uk.co.mlharper.teamshuffle</string>
+    <string name="server_client_id">88950522814-q2irelc9ufgkf12gqe9tj9t30kbg5o1i.apps.googleusercontent.com</string>
+</resources>

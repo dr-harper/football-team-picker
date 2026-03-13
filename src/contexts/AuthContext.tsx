@@ -4,13 +4,13 @@ import {
     onAuthStateChanged,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
-    signInWithPopup,
     signOut,
     updateProfile,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db, googleProvider } from '../firebase';
+import { auth, db } from '../firebase';
 import { logger } from '../utils/logger';
+import { nativeGoogleSignIn } from '../utils/nativeAuth';
 
 interface AuthContextValue {
     user: User | null;
@@ -104,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signInWithGoogle = async () => {
-        await signInWithPopup(auth, googleProvider);
+        await nativeGoogleSignIn();
     };
 
     const logout = async () => {

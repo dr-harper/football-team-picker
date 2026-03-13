@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { hapticLight } from '../../utils/haptics';
 import { Link } from 'react-router-dom';
 import { Plus, Trash2, ArrowRight, CheckCircle, HelpCircle, XCircle, Grid3X3, List, CalendarDays, Pencil, X, Check } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -92,6 +93,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
 
     const handleSetAvailability = useCallback(async (gameId: string, status: AvailabilityStatus, currentStatus?: AvailabilityStatus) => {
         if (!user) return;
+        hapticLight();
         if (currentStatus === status) {
             await clearAvailability(gameId, user.uid);
         } else {

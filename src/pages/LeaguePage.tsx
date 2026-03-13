@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Calendar, Trophy, BarChart2, Users, User, Wallet, Copy, Check, TableProperties } from 'lucide-react';
+import { Calendar, Trophy, BarChart2, Users, User, Wallet, Copy, Check, TableProperties, MoreHorizontal } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -256,65 +256,28 @@ const LeaguePage: React.FC = () => {
                 }
             />
 
-            <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4">
-                {/* Tabs */}
-                <div className="grid grid-cols-7 gap-1 bg-white/5 rounded-lg p-1">
-                    <button
-                        onClick={() => setTab('upcoming')}
-                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                            tab === 'upcoming' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                        }`}
-                    >
-                        <Calendar className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Games</span><span className="sm:hidden">({upcomingGames.length})</span><span className="hidden sm:inline"> ({upcomingGames.length})</span>
-                    </button>
-                    <button
-                        onClick={() => setTab('completed')}
-                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                            tab === 'completed' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                        }`}
-                    >
-                        <Trophy className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Results</span><span className="sm:hidden">({completedGames.length})</span><span className="hidden sm:inline"> ({completedGames.length})</span>
-                    </button>
-                    <button
-                        onClick={() => setTab('table')}
-                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                            tab === 'table' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                        }`}
-                    >
-                        <TableProperties className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Table</span>
-                    </button>
-                    <button
-                        onClick={() => setTab('stats')}
-                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                            tab === 'stats' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                        }`}
-                    >
-                        <BarChart2 className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Stats</span>
-                    </button>
-                    <button
-                        onClick={() => setTab('finance')}
-                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                            tab === 'finance' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                        }`}
-                    >
-                        <Wallet className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Finance</span>
-                    </button>
-                    <button
-                        onClick={() => setTab('members')}
-                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                            tab === 'members' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                        }`}
-                    >
-                        <Users className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Settings</span>
-                    </button>
-                    <button
-                        onClick={() => setTab('profile')}
-                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                            tab === 'profile' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                        }`}
-                    >
-                        <User className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Me</span>
-                    </button>
+            <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-24 sm:pb-6 space-y-4">
+                {/* Desktop top tabs — hidden on mobile */}
+                <div className="hidden sm:grid grid-cols-7 gap-1 bg-white/5 rounded-lg p-1">
+                    {([
+                        { key: 'upcoming', icon: Calendar, label: `Games (${upcomingGames.length})` },
+                        { key: 'completed', icon: Trophy, label: `Results (${completedGames.length})` },
+                        { key: 'table', icon: TableProperties, label: 'Table' },
+                        { key: 'stats', icon: BarChart2, label: 'Stats' },
+                        { key: 'finance', icon: Wallet, label: 'Finance' },
+                        { key: 'members', icon: Users, label: 'Settings' },
+                        { key: 'profile', icon: User, label: 'Me' },
+                    ] as const).map(({ key, icon: Icon, label }) => (
+                        <button
+                            key={key}
+                            onClick={() => setTab(key)}
+                            className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+                                tab === key ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
+                            }`}
+                        >
+                            <Icon className="w-3.5 h-3.5 shrink-0" /> {label}
+                        </button>
+                    ))}
                 </div>
 
                 {tab === 'upcoming' && user && (
@@ -416,8 +379,107 @@ const LeaguePage: React.FC = () => {
                 )}
             </div>
 
+            {/* Mobile bottom nav — hidden on desktop */}
+            <MobileBottomNav tab={tab} setTab={setTab} upcomingCount={upcomingGames.length} />
+
         </div>
     );
 };
+
+// ─── Mobile Bottom Navigation ───────────────────────────────
+
+type TabKey = 'upcoming' | 'completed' | 'table' | 'stats' | 'members' | 'profile' | 'finance';
+
+const moreTabKeys: TabKey[] = ['finance', 'members', 'profile'];
+
+function MobileBottomNav({
+    tab,
+    setTab,
+    upcomingCount,
+}: {
+    tab: TabKey;
+    setTab: (t: TabKey) => void;
+    upcomingCount: number;
+}) {
+    const [moreOpen, setMoreOpen] = useState(false);
+    const moreRef = useRef<HTMLDivElement>(null);
+
+    // Close More menu when clicking outside
+    useEffect(() => {
+        if (!moreOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+                setMoreOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [moreOpen]);
+
+    const isMoreActive = moreTabKeys.includes(tab);
+
+    const primaryTabs: { key: TabKey; icon: typeof Calendar; label: string }[] = [
+        { key: 'upcoming', icon: Calendar, label: upcomingCount > 0 ? `Games` : 'Games' },
+        { key: 'completed', icon: Trophy, label: 'Results' },
+        { key: 'table', icon: TableProperties, label: 'Table' },
+        { key: 'stats', icon: BarChart2, label: 'Stats' },
+    ];
+
+    const moreTabs: { key: TabKey; icon: typeof Calendar; label: string }[] = [
+        { key: 'finance', icon: Wallet, label: 'Finance' },
+        { key: 'members', icon: Users, label: 'Settings' },
+        { key: 'profile', icon: User, label: 'Profile' },
+    ];
+
+    return (
+        <div className="sm:hidden fixed bottom-0 inset-x-0 z-40" ref={moreRef}>
+            {/* More menu popover */}
+            {moreOpen && (
+                <div className="mx-3 mb-1 bg-green-900/95 backdrop-blur-lg border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                    {moreTabs.map(({ key, icon: Icon, label }) => (
+                        <button
+                            key={key}
+                            onClick={() => { setTab(key); setMoreOpen(false); }}
+                            className={`w-full flex items-center gap-3 px-4 py-3.5 text-sm transition-colors ${
+                                tab === key ? 'text-green-400 bg-white/10' : 'text-white/70 hover:bg-white/5'
+                            }`}
+                        >
+                            <Icon className="w-4.5 h-4.5" />
+                            {label}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Bottom bar */}
+            <div className="bg-green-950/95 backdrop-blur-lg border-t border-white/10 px-2 pb-[env(safe-area-inset-bottom)] flex items-stretch">
+                {primaryTabs.map(({ key, icon: Icon, label }) => {
+                    const active = tab === key;
+                    return (
+                        <button
+                            key={key}
+                            onClick={() => { setTab(key); setMoreOpen(false); }}
+                            className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
+                                active ? 'text-green-400' : 'text-white/40'
+                            }`}
+                        >
+                            <Icon className="w-5 h-5" />
+                            <span className="text-[10px] font-medium">{label}</span>
+                        </button>
+                    );
+                })}
+                <button
+                    onClick={() => setMoreOpen(prev => !prev)}
+                    className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors ${
+                        isMoreActive || moreOpen ? 'text-green-400' : 'text-white/40'
+                    }`}
+                >
+                    <MoreHorizontal className="w-5 h-5" />
+                    <span className="text-[10px] font-medium">More</span>
+                </button>
+            </div>
+        </div>
+    );
+}
 
 export default LeaguePage;
