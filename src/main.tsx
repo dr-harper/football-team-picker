@@ -17,12 +17,22 @@ import PlayerProfilePage from './pages/PlayerProfilePage'
 import ProtectedRoute from './components/ProtectedRoute'
 import DemoLeaguePage from './pages/DemoLeaguePage'
 import FeaturesPage from './pages/FeaturesPage'
+import { useAndroidBackButton } from './hooks/useAndroidBackButton'
+import { initialiseNativeApp } from './utils/nativeSetup'
+
+initialiseNativeApp();
+
+function AndroidBackHandler({ children }: { children: React.ReactNode }) {
+  useAndroidBackButton()
+  return <>{children}</>
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
       <SettingsProvider>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
+      <AndroidBackHandler>
         <Routes>
           <Route path="/" element={<App />} />
           <Route path="/auth" element={<AuthPage />} />
@@ -38,6 +48,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/terms" element={<TermsPage />} />
         </Routes>
         <SetNameModal />
+      </AndroidBackHandler>
       </BrowserRouter>
       </SettingsProvider>
     </AuthProvider>

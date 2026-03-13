@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { hapticLight, hapticSuccess } from '../../utils/haptics';
 import {
     subscribeToGame,
     subscribeToGameAvailability,
@@ -148,6 +149,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
     // Handlers
     const handleSetAvailability = async (status: AvailabilityStatus) => {
         if (!userId || !gameDocId) return;
+        hapticLight();
         await setAvailability(gameDocId, userId, userDisplayName || userEmail?.split('@')[0] || 'Player', status);
     };
 
@@ -175,6 +177,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
             newSetups.push({ id: String(nextSetupIdRef.current++), teams, playersInput: text });
         }
         if (!hasError) {
+            hapticSuccess();
             setPlayerNumbers(lastNumbers);
             setPendingSetups(prev => [...prev, ...newSetups]);
             setGenError('');

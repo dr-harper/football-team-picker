@@ -18,6 +18,7 @@ import { League, Game, LeagueExpense } from '../types';
 import { computeGameStats, getPersonalStats } from './league/statsUtils';
 import { buildLookup } from '../utils/playerLookup';
 import UpcomingTab from './league/UpcomingTab';
+import MobileBottomNav, { type TabKey } from '../components/MobileBottomNav';
 import CompletedTab from './league/CompletedTab';
 import StatsTab from './league/StatsTab';
 import ProfileTab from './league/ProfileTab';
@@ -36,7 +37,7 @@ const LeaguePage: React.FC = () => {
     const [members, setMembers] = useState<{ id: string; displayName: string; email: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [copiedCode, setCopiedCode] = useState(false);
-    const [tab, setTab] = useState<'upcoming' | 'completed' | 'table' | 'stats' | 'members' | 'profile' | 'finance'>('upcoming');
+    const [tab, setTab] = useState<TabKey>('upcoming');
 
     // Expense modal state (rendered at root level, triggered from ProfileTab)
     const [showMyExpenseForm, setShowMyExpenseForm] = useState(false);
@@ -256,65 +257,28 @@ const LeaguePage: React.FC = () => {
                 }
             />
 
-            <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4">
-                {/* Tabs */}
-                <div className="grid grid-cols-7 gap-1 bg-white/5 rounded-lg p-1">
-                    <button
-                        onClick={() => setTab('upcoming')}
-                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                            tab === 'upcoming' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                        }`}
-                    >
-                        <Calendar className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Games</span><span className="sm:hidden">({upcomingGames.length})</span><span className="hidden sm:inline"> ({upcomingGames.length})</span>
-                    </button>
-                    <button
-                        onClick={() => setTab('completed')}
-                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                            tab === 'completed' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                        }`}
-                    >
-                        <Trophy className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Results</span><span className="sm:hidden">({completedGames.length})</span><span className="hidden sm:inline"> ({completedGames.length})</span>
-                    </button>
-                    <button
-                        onClick={() => setTab('table')}
-                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                            tab === 'table' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                        }`}
-                    >
-                        <TableProperties className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Table</span>
-                    </button>
-                    <button
-                        onClick={() => setTab('stats')}
-                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                            tab === 'stats' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                        }`}
-                    >
-                        <BarChart2 className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Stats</span>
-                    </button>
-                    <button
-                        onClick={() => setTab('finance')}
-                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                            tab === 'finance' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                        }`}
-                    >
-                        <Wallet className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Finance</span>
-                    </button>
-                    <button
-                        onClick={() => setTab('members')}
-                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                            tab === 'members' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                        }`}
-                    >
-                        <Users className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Settings</span>
-                    </button>
-                    <button
-                        onClick={() => setTab('profile')}
-                        className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                            tab === 'profile' ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                        }`}
-                    >
-                        <User className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Me</span>
-                    </button>
+            <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-24 sm:pb-6 space-y-4">
+                {/* Desktop top tabs — hidden on mobile */}
+                <div className="hidden sm:grid grid-cols-7 gap-1 bg-white/5 rounded-lg p-1">
+                    {([
+                        { key: 'upcoming', icon: Calendar, label: `Games (${upcomingGames.length})` },
+                        { key: 'completed', icon: Trophy, label: `Results (${completedGames.length})` },
+                        { key: 'table', icon: TableProperties, label: 'Table' },
+                        { key: 'stats', icon: BarChart2, label: 'Stats' },
+                        { key: 'finance', icon: Wallet, label: 'Finance' },
+                        { key: 'members', icon: Users, label: 'Settings' },
+                        { key: 'profile', icon: User, label: 'Me' },
+                    ] as const).map(({ key, icon: Icon, label }) => (
+                        <button
+                            key={key}
+                            onClick={() => setTab(key)}
+                            className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+                                tab === key ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
+                            }`}
+                        >
+                            <Icon className="w-3.5 h-3.5 shrink-0" /> {label}
+                        </button>
+                    ))}
                 </div>
 
                 {tab === 'upcoming' && user && (
@@ -415,6 +379,9 @@ const LeaguePage: React.FC = () => {
                     />
                 )}
             </div>
+
+            {/* Mobile bottom nav — hidden on desktop */}
+            <MobileBottomNav tab={tab} setTab={setTab} upcomingCount={upcomingGames.length} />
 
         </div>
     );
