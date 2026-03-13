@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Game } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { Heart, MapPin, Zap, Activity, Smartphone } from 'lucide-react';
+import { Game, StoredGameHealth } from '../../types';
 import { computeExtendedStats } from './statsUtils';
+import { getSharedGameHealth } from '../../utils/firestore';
 import PlayerName from '../../components/PlayerName';
 import type { User } from 'firebase/auth';
 
@@ -11,10 +13,334 @@ interface StatsTabProps {
     user: User | null;
     lookup: Record<string, string>;
     enableAssists?: boolean;
+    leagueId?: string;
 }
 
-const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myId, myName, user, lookup, enableAssists }) => {
+// ─── Records Section ─────────────────────────────────────────────────
+
+interface RecordEntry {
+    playerId: string;
+    value: number;
+    gameTitle: string;
+    gameDate: number;
+}
+
+function RecordsSection({
+    games,
+    lookup,
+    myId,
+}: {
+    games: Game[];
+    lookup: Record<string, string>;
+    myId: string;
+}) {
+    // Most goals in a single game
+    let bestGoalGame: RecordEntry | null = null;
+    // Longest goal-scoring streak
+    const streakMap = new Map<string, number>();
+    const bestStreakMap = new Map<string, number>();
+    // Most consecutive games attended
+    const attendStreakMap = new Map<string, number>();
+    const bestAttendStreakMap = new Map<string, number>();
+
+    // Sort games chronologically for streak calculations
+    const chronoGames = [...games].sort((a, b) => a.date - b.date);
+
+    for (const g of chronoGames) {
+        // Track scorers this game
+        const scorersThisGame = new Set<string>();
+        for (const gs of g.goalScorers ?? []) {
+            if (gs.goals > 0) scorersThisGame.add(gs.playerId);
+            if (!bestGoalGame || gs.goals > bestGoalGame.value) {
+                bestGoalGame = { playerId: gs.playerId, value: gs.goals, gameTitle: g.title, gameDate: g.date };
+            }
+        }
+
+        // Goal-scoring streaks
+        const allPlayers = new Set([...streakMap.keys(), ...scorersThisGame]);
+        for (const pid of allPlayers) {
+            if (scorersThisGame.has(pid)) {
+                streakMap.set(pid, (streakMap.get(pid) ?? 0) + 1);
+            } else {
+                const current = streakMap.get(pid) ?? 0;
+                bestStreakMap.set(pid, Math.max(bestStreakMap.get(pid) ?? 0, current));
+                streakMap.set(pid, 0);
+            }
+        }
+
+        // Attendance streaks
+        const attendees = new Set(g.attendees ?? []);
+        const allTracked = new Set([...attendStreakMap.keys(), ...attendees]);
+        for (const pid of allTracked) {
+            if (attendees.has(pid)) {
+                attendStreakMap.set(pid, (attendStreakMap.get(pid) ?? 0) + 1);
+            } else {
+                const current = attendStreakMap.get(pid) ?? 0;
+                bestAttendStreakMap.set(pid, Math.max(bestAttendStreakMap.get(pid) ?? 0, current));
+                attendStreakMap.set(pid, 0);
+            }
+        }
+    }
+
+    // Finalise streaks (include current ongoing streaks)
+    for (const [pid, current] of streakMap) {
+        bestStreakMap.set(pid, Math.max(bestStreakMap.get(pid) ?? 0, current));
+    }
+    for (const [pid, current] of attendStreakMap) {
+        bestAttendStreakMap.set(pid, Math.max(bestAttendStreakMap.get(pid) ?? 0, current));
+    }
+
+    const bestStreak = [...bestStreakMap.entries()].sort((a, b) => b[1] - a[1])[0];
+    const ironMan = [...bestAttendStreakMap.entries()].sort((a, b) => b[1] - a[1])[0];
+
+    // Current ongoing goal streak per player (from most recent games)
+    const currentStreaks = [...streakMap.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+    const hotStreak = currentStreaks[0];
+
+    const records: { emoji: string; title: string; subtitle: string; playerId: string; value: string; colour: string }[] = [];
+
+    if (bestGoalGame && bestGoalGame.value >= 2) {
+        records.push({
+            emoji: '🔥',
+            title: 'Most Goals in a Game',
+            subtitle: `${bestGoalGame.gameTitle} · ${new Date(bestGoalGame.gameDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`,
+            playerId: bestGoalGame.playerId,
+            value: `${bestGoalGame.value} goals`,
+            colour: 'from-amber-500/20 to-amber-600/5 border-amber-500/20',
+        });
+    }
+
+    if (bestStreak && bestStreak[1] >= 2) {
+        records.push({
+            emoji: '🎯',
+            title: 'Longest Scoring Streak',
+            subtitle: `${bestStreak[1]} consecutive games with a goal`,
+            playerId: bestStreak[0],
+            value: `${bestStreak[1]} games`,
+            colour: 'from-green-500/20 to-green-600/5 border-green-500/20',
+        });
+    }
+
+    if (hotStreak && hotStreak[1] >= 2) {
+        records.push({
+            emoji: '🔥',
+            title: 'Currently On Fire',
+            subtitle: `Scored in the last ${hotStreak[1]} games`,
+            playerId: hotStreak[0],
+            value: `${hotStreak[1]} in a row`,
+            colour: 'from-orange-500/20 to-orange-600/5 border-orange-500/20',
+        });
+    }
+
+    if (ironMan && ironMan[1] >= 3) {
+        records.push({
+            emoji: '🦾',
+            title: 'Iron Man',
+            subtitle: `${ironMan[1]} games in a row without missing`,
+            playerId: ironMan[0],
+            value: `${ironMan[1]} straight`,
+            colour: 'from-purple-500/20 to-purple-600/5 border-purple-500/20',
+        });
+    }
+
+    if (records.length === 0) return null;
+
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center gap-2 px-1">
+                <span className="text-base">🏅</span>
+                <span className="font-semibold text-white text-sm">Records & Streaks</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+                {records.map(({ emoji, title, subtitle, playerId, value, colour }) => (
+                    <div
+                        key={title}
+                        className={`bg-gradient-to-br ${colour} border rounded-xl p-3 flex flex-col justify-between`}
+                    >
+                        <div>
+                            <div className="text-lg mb-1">{emoji}</div>
+                            <div className="text-white text-xs font-semibold leading-tight">{title}</div>
+                        </div>
+                        <div className="mt-2">
+                            <PlayerName
+                                id={playerId}
+                                lookup={lookup}
+                                className={`text-sm font-bold block truncate ${playerId === myId ? 'text-green-300' : 'text-white'}`}
+                            />
+                            <div className="text-white/70 text-xs font-semibold tabular-nums">{value}</div>
+                            <div className="text-white/30 text-[10px] mt-0.5 leading-tight">{subtitle}</div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ─── Fitness Section ─────────────────────────────────────────────────
+
+function FitnessSection({
+    healthByGame,
+    games,
+    lookup,
+    myId,
+}: {
+    healthByGame: Map<string, StoredGameHealth[]>;
+    games: Game[];
+    lookup: Record<string, string>;
+    myId: string;
+}) {
+    if (healthByGame.size === 0) return null;
+
+    // Find single-game records across all shared health data
+    let mostDistance: { playerId: string; value: number; gameTitle: string; gameDate: number } | null = null;
+    let highestHr: { playerId: string; value: number; gameTitle: string; gameDate: number } | null = null;
+    let mostSprints: { playerId: string; value: number; gameTitle: string; gameDate: number } | null = null;
+    let topSpeed: { playerId: string; value: number; gameTitle: string; gameDate: number } | null = null;
+    let highestIntensity: { playerId: string; value: number; gameTitle: string; gameDate: number } | null = null;
+
+    for (const game of games) {
+        const healthEntries = healthByGame.get(game.id);
+        if (!healthEntries) continue;
+
+        for (const h of healthEntries) {
+            if (h.distance && (!mostDistance || h.distance > mostDistance.value)) {
+                mostDistance = { playerId: h.userId, value: h.distance, gameTitle: game.title, gameDate: game.date };
+            }
+            if (h.heartRateMax && (!highestHr || h.heartRateMax > highestHr.value)) {
+                highestHr = { playerId: h.userId, value: h.heartRateMax, gameTitle: game.title, gameDate: game.date };
+            }
+            if (h.sprintCount > 0 && (!mostSprints || h.sprintCount > mostSprints.value)) {
+                mostSprints = { playerId: h.userId, value: h.sprintCount, gameTitle: game.title, gameDate: game.date };
+            }
+            if (h.topSpeedKmh && (!topSpeed || h.topSpeedKmh > topSpeed.value)) {
+                topSpeed = { playerId: h.userId, value: h.topSpeedKmh, gameTitle: game.title, gameDate: game.date };
+            }
+            if (h.intensityScore > 0 && (!highestIntensity || h.intensityScore > highestIntensity.value)) {
+                highestIntensity = { playerId: h.userId, value: h.intensityScore, gameTitle: game.title, gameDate: game.date };
+            }
+        }
+    }
+
+    const awards: { icon: React.ReactNode; title: string; funTitle: string; playerId: string; value: string; detail: string }[] = [];
+
+    if (mostDistance) {
+        const km = (mostDistance.value / 1000).toFixed(1);
+        awards.push({
+            icon: <MapPin className="w-4 h-4 text-blue-400" />,
+            title: 'Most Distance',
+            funTitle: 'The Engine',
+            playerId: mostDistance.playerId,
+            value: `${km} km`,
+            detail: `${mostDistance.gameTitle} · ${new Date(mostDistance.gameDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`,
+        });
+    }
+
+    if (highestHr) {
+        awards.push({
+            icon: <Heart className="w-4 h-4 text-red-400" />,
+            title: 'Highest Heart Rate',
+            funTitle: 'Nearly Died',
+            playerId: highestHr.playerId,
+            value: `${highestHr.value} bpm`,
+            detail: `${highestHr.gameTitle} · ${new Date(highestHr.gameDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`,
+        });
+    }
+
+    if (mostSprints) {
+        awards.push({
+            icon: <Zap className="w-4 h-4 text-amber-400" />,
+            title: 'Most Sprints',
+            funTitle: 'The Workhorse',
+            playerId: mostSprints.playerId,
+            value: `${mostSprints.value} sprints`,
+            detail: `${mostSprints.gameTitle} · ${new Date(mostSprints.gameDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`,
+        });
+    }
+
+    if (topSpeed) {
+        awards.push({
+            icon: <Zap className="w-4 h-4 text-cyan-400" />,
+            title: 'Top Speed',
+            funTitle: 'Fastest Man Alive',
+            playerId: topSpeed.playerId,
+            value: `${topSpeed.value} km/h`,
+            detail: `${topSpeed.gameTitle} · ${new Date(topSpeed.gameDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`,
+        });
+    }
+
+    if (highestIntensity) {
+        awards.push({
+            icon: <Activity className="w-4 h-4 text-purple-400" />,
+            title: 'Peak Intensity',
+            funTitle: 'Maximum Effort',
+            playerId: highestIntensity.playerId,
+            value: `${highestIntensity.value}`,
+            detail: `${highestIntensity.gameTitle} · ${new Date(highestIntensity.gameDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`,
+        });
+    }
+
+    if (awards.length === 0) return null;
+
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center gap-2 px-1">
+                <Activity className="w-4 h-4 text-red-400" />
+                <span className="font-semibold text-white text-sm">Fitness Records</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+                {awards.map(({ icon, title, funTitle, playerId, value, detail }) => (
+                    <div
+                        key={title}
+                        className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col justify-between"
+                    >
+                        <div>
+                            <div className="flex items-center gap-1.5 mb-1">
+                                {icon}
+                                <span className="text-white/40 text-[10px] uppercase tracking-wider">{title}</span>
+                            </div>
+                            <div className="text-white/60 text-[10px] italic">&ldquo;{funTitle}&rdquo;</div>
+                        </div>
+                        <div className="mt-2">
+                            <PlayerName
+                                id={playerId}
+                                lookup={lookup}
+                                className={`text-sm font-bold block truncate ${playerId === myId ? 'text-green-300' : 'text-white'}`}
+                            />
+                            <div className="text-white/70 text-xs font-semibold tabular-nums">{value}</div>
+                            <div className="text-white/30 text-[10px] mt-0.5 leading-tight">{detail}</div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+            <div className="flex items-center gap-1.5 px-1 pt-1">
+                <Smartphone className="w-3 h-3 text-white/20" />
+                <span className="text-white/20 text-[10px]">Only tracks players with the app installed and health permissions granted</span>
+            </div>
+        </div>
+    );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────
+
+const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myId, myName, user, lookup, enableAssists, leagueId }) => {
     const [statsFilter, setStatsFilter] = useState<'all' | 'month' | 'year'>('all');
+
+    // Fetch shared health data for fitness records
+    const [healthByGame, setHealthByGame] = useState<Map<string, StoredGameHealth[]>>(new Map());
+    useEffect(() => {
+        if (!leagueId || completedGames.length === 0) return;
+        const recentGames = completedGames.slice(0, 20); // limit to recent games
+        Promise.all(
+            recentGames.map(g => getSharedGameHealth(g.id).then(data => [g.id, data] as const))
+        ).then(results => {
+            const map = new Map<string, StoredGameHealth[]>();
+            for (const [gameId, data] of results) {
+                if (data.length > 0) map.set(gameId, data);
+            }
+            setHealthByGame(map);
+        }).catch(() => {});
+    }, [leagueId, completedGames]);
 
     const formDot = (r: 'W' | 'D' | 'L' | null) => (
         <span className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold ${
@@ -346,6 +672,21 @@ const StatsTab: React.FC<StatsTabProps> = ({ completedGames, myId, myName, user,
                                 ))}
                             </div>
                         )}
+
+                        {/* ── Records ── */}
+                        <RecordsSection
+                            games={filteredGames}
+                            lookup={lookup}
+                            myId={myId}
+                        />
+
+                        {/* ── Fitness Leaderboard ── */}
+                        <FitnessSection
+                            healthByGame={healthByGame}
+                            games={filteredGames}
+                            lookup={lookup}
+                            myId={myId}
+                        />
                     </>
                 );
             })()}

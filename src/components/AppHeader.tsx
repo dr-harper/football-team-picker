@@ -70,7 +70,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                 {showDashboardLink && (
                     <Link
                         to="/dashboard"
-                        className="text-green-300 hover:text-white text-sm flex items-center gap-1 transition-colors"
+                        className="hidden sm:flex text-green-300 hover:text-white text-sm items-center gap-1 transition-colors"
                     >
                         <LayoutDashboard className="w-4 h-4" />
                         <span>Dashboard</span>

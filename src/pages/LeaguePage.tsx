@@ -306,6 +306,7 @@ const LeaguePage: React.FC = () => {
                         scorerTotals={stats.scorerTotals}
                         motmTotals={stats.motmTotals}
                         lookup={lookup}
+                        userId={user?.uid}
                     />
                 )}
 
@@ -327,6 +328,7 @@ const LeaguePage: React.FC = () => {
                         user={user}
                         lookup={lookup}
                         enableAssists={league.enableAssists}
+                        leagueId={league.id}
                     />
                 )}
 

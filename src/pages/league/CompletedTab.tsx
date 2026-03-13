@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Game, League } from '../../types';
+import { Heart, MapPin, Flame, Footprints } from 'lucide-react';
+import { Game, League, StoredGameHealth } from '../../types';
+import { getMyHealthForGames } from '../../utils/firestore';
 import PlayerName from '../../components/PlayerName';
 
 const PAGE_SIZE = 10;
@@ -12,14 +14,68 @@ interface CompletedTabProps {
     scorerTotals: Map<string, number>;
     motmTotals: Map<string, number>;
     lookup: Record<string, string>;
+    userId?: string;
+}
+
+function HealthBadge({ health }: { health: StoredGameHealth }) {
+    const stats: { icon: React.ReactNode; value: string }[] = [];
+
+    if (health.heartRateAvg) {
+        stats.push({
+            icon: <Heart className="w-3 h-3 text-red-400" />,
+            value: `${health.heartRateAvg}`,
+        });
+    }
+    if (health.distance) {
+        const distStr = health.distance >= 1000
+            ? `${(health.distance / 1000).toFixed(1)}km`
+            : `${health.distance}m`;
+        stats.push({
+            icon: <MapPin className="w-3 h-3 text-blue-400" />,
+            value: distStr,
+        });
+    }
+    if (health.calories) {
+        stats.push({
+            icon: <Flame className="w-3 h-3 text-orange-400" />,
+            value: `${health.calories}`,
+        });
+    }
+    if (health.steps) {
+        stats.push({
+            icon: <Footprints className="w-3 h-3 text-green-400" />,
+            value: health.steps.toLocaleString(),
+        });
+    }
+
+    if (stats.length === 0) return null;
+
+    return (
+        <div className="flex items-center gap-2 mt-1.5">
+            {stats.map(({ icon, value }, i) => (
+                <span key={i} className="flex items-center gap-0.5 text-white/50 text-[11px]">
+                    {icon}
+                    <span>{value}</span>
+                </span>
+            ))}
+        </div>
+    );
 }
 
 const CompletedTab: React.FC<CompletedTabProps> = ({
-    code, league, completedGames, scorerTotals, motmTotals, lookup,
+    code, league, completedGames, scorerTotals, motmTotals, lookup, userId,
 }) => {
     const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+    const [healthMap, setHealthMap] = useState<Map<string, StoredGameHealth>>(new Map());
     const visibleGames = completedGames.slice(0, visibleCount);
     const hasMore = visibleCount < completedGames.length;
+
+    // Fetch health data for visible games
+    useEffect(() => {
+        if (!userId || visibleGames.length === 0) return;
+        const gameIds = visibleGames.map(g => g.id);
+        getMyHealthForGames(gameIds, userId).then(setHealthMap).catch(() => {});
+    }, [userId, visibleCount, completedGames]);
 
     return (
         <div className="space-y-3">
@@ -73,6 +129,7 @@ const CompletedTab: React.FC<CompletedTabProps> = ({
                 visibleGames.map(game => {
                     const gameCost = game.costPerPerson ?? league.defaultCostPerPerson;
                     const attendeeCount = game.attendees?.length;
+                    const health = healthMap.get(game.id);
                     return (
                         <Link
                             key={game.id}
@@ -96,6 +153,7 @@ const CompletedTab: React.FC<CompletedTabProps> = ({
                                             {attendeeCount !== undefined && `${attendeeCount} attended`}
                                         </div>
                                     )}
+                                    {health && <HealthBadge health={health} />}
                                 </div>
                                 {game.score && game.teams && (
                                     <div className="text-white font-bold text-lg">
