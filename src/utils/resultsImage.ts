@@ -13,6 +13,7 @@ export interface ResultsImageData {
     goalScorers: GoalScorer[];
     assisters: GoalScorer[];
     motm: string;
+    motmNotes?: string;
     lookup: Record<string, string>;
     enableAssists?: boolean;
     weatherEmoji?: string;
@@ -130,7 +131,8 @@ export async function generateResultsImage(data: ResultsImageData): Promise<stri
         const SECTION_HEADER_H = 48;
         const scorersHeight = hasGoals ? maxGoalRows * ROW_H + SECTION_HEADER_H : 0;
         const assistsHeight = hasAssists ? maxAssistRows * ROW_H + SECTION_HEADER_H : 0;
-        const motmHeight = hasMotm ? 64 : 0;
+        const hasMotmNotes = hasMotm && !!data.motmNotes;
+        const motmHeight = hasMotm ? (hasMotmNotes ? 110 : 64) : 0;
         const statsHeight = scorersHeight + assistsHeight + motmHeight > 0
             ? scorersHeight + assistsHeight + motmHeight + 40
             : 0;
@@ -303,6 +305,27 @@ export async function generateResultsImage(data: ResultsImageData): Promise<stri
                 ctx.fillStyle = GOLD;
                 ctx.font = `bold 24px ${FONT}`;
                 ctx.fillText(`🏆  Man of the Match: ${resolve(data.motm, data.lookup)}`, WIDTH / 2, statsY + 20);
+
+                if (hasMotmNotes && data.motmNotes) {
+                    ctx.fillStyle = WHITE_70;
+                    ctx.font = `italic 20px ${FONT}`;
+                    // Word-wrap notes within content width
+                    const maxW = CONTENT_WIDTH - 80;
+                    const words = data.motmNotes.split(' ');
+                    let line = '\u201C'; // opening quote
+                    let lineY = statsY + 56;
+                    for (const word of words) {
+                        const test = line + (line.length > 1 ? ' ' : '') + word;
+                        if (ctx.measureText(test).width > maxW && line.length > 1) {
+                            ctx.fillText(line, WIDTH / 2, lineY);
+                            line = word;
+                            lineY += 28;
+                        } else {
+                            line = test;
+                        }
+                    }
+                    ctx.fillText(line + '\u201D', WIDTH / 2, lineY); // closing quote
+                }
             }
 
             y += statsHeight + 16;

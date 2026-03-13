@@ -14,6 +14,7 @@ import {
     updateGameGoalScorers,
     updateGameAssisters,
     updateGameMotm,
+    updateMotmNotes,
     updateGameCost,
     updateGameAttendees,
     getLeague,
@@ -59,6 +60,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
     const [goalScorers, setGoalScorers] = useState<GoalScorer[]>([]);
     const [assisters, setAssisters] = useState<GoalScorer[]>([]);
     const [motm, setMotm] = useState('');
+    const [motmNotes, setMotmNotes] = useState('');
     const [isExporting, setIsExporting] = useState(false);
     const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
     const [attendees, setAttendees] = useState<string[] | null>(null);
@@ -92,6 +94,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
             if (g?.goalScorers) setGoalScorers(g.goalScorers);
             if (g?.assisters) setAssisters(g.assisters);
             if (g?.manOfTheMatch) setMotm(g.manOfTheMatch);
+            if (g?.motmNotes !== undefined) setMotmNotes(g.motmNotes);
             if (g?.attendees !== undefined) setAttendees(g.attendees);
             setLoading(false);
         });
@@ -140,11 +143,15 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
     const guestsUnavailable = (game?.guestPlayers ?? []).filter(n => guestStatusMap[n] === 'unavailable');
     const positionMap = game?.playerPositions ?? {};
     const totalAvailable = availablePlayers.length + guestsAvailable.length;
-    const allPlayerIds = [
+    const availabilityPlayerIds = [
         ...availablePlayers.map(a => a.userId),
         ...guestsAvailable.map(makeGuestId),
         ...guestsMaybe.map(makeGuestId),
     ];
+    // For completed/in-progress games, include attendees so historical scoring isn't lost
+    const allPlayerIds = (game?.status === 'completed' || game?.status === 'in_progress') && game?.attendees?.length
+        ? [...new Set([...availabilityPlayerIds, ...game.attendees])]
+        : availabilityPlayerIds;
 
     // Handlers
     const handleSetAvailability = async (status: AvailabilityStatus) => {
@@ -273,7 +280,15 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         if (!gameDocId) return;
         const newMotm = motm === playerId ? '' : playerId;
         setMotm(newMotm);
+        if (!newMotm) setMotmNotes('');
         await updateGameMotm(gameDocId, newMotm || null);
+        if (!newMotm) await updateMotmNotes(gameDocId, '');
+    };
+
+    const handleMotmNotesChange = async (notes: string) => {
+        if (!gameDocId) return;
+        setMotmNotes(notes);
+        await updateMotmNotes(gameDocId, notes);
     };
 
     const handleSaveScore = async () => {
@@ -377,7 +392,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         score1, score2, selectedPlayer,
         weather, weatherLoading,
         leagueMembers, lookup,
-        newGuestName, goalScorers, assisters, motm,
+        newGuestName, goalScorers, assisters, motm, motmNotes,
         isExporting, setIsExporting,
         wizardStep, setWizardStep,
         attendees, editingCost, costInput, showTextarea,
@@ -392,7 +407,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         generateFromAvailable, handleGenerateFromText,
         handlePickSetup, handleDeleteSetup, handleColorChange,
         handleAddGuest, handleGoalChange, handleAssistChange,
-        handleSetMotm, handleSaveScore, handleReopen,
+        handleSetMotm, handleMotmNotesChange, handleSaveScore, handleReopen,
         handleToggleAttendee, handleSaveGameCost,
         handleGuestStatusChange, handlePositionToggle,
         handlePlayerClick,

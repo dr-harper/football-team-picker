@@ -8,6 +8,7 @@ import { exportImage, shareImage, ImageHeader } from '../utils/imageExport';
 import { shareResultsImage, exportResultsImage, ResultsImageData } from '../utils/resultsImage';
 import ScoringControls from './game/ScoringControls';
 import AttendanceSection from './game/AttendanceSection';
+import ScoringTable from './game/ScoringTable';
 import GameHeader from './game/GameHeader';
 import WizardProgressBar from './game/WizardProgressBar';
 import AvailabilityStep from './game/AvailabilityStep';
@@ -17,6 +18,7 @@ import CompletedGameView from './game/CompletedGameView';
 import GameHealthCard from '../components/GameHealthCard';
 import SharedHealthCards from '../components/SharedHealthCards';
 import { useGameState } from './game/useGameState';
+import { makeGuestId } from '../utils/playerLookup';
 
 const WIZARD_STEPS = [
     { num: 1 as const, label: 'Availability' },
@@ -48,7 +50,7 @@ const GamePage: React.FC = () => {
         score1, score2, selectedPlayer,
         weather, weatherLoading,
         leagueMembers, lookup,
-        newGuestName, goalScorers, assisters, motm,
+        newGuestName, goalScorers, assisters, motm, motmNotes,
         isExporting, setIsExporting,
         wizardStep, setWizardStep,
         attendees, editingCost, costInput, showTextarea,
@@ -59,7 +61,7 @@ const GamePage: React.FC = () => {
         generateFromAvailable, handleGenerateFromText,
         handlePickSetup, handleDeleteSetup, handleColorChange,
         handleAddGuest, handleGoalChange, handleAssistChange,
-        handleSetMotm, handleSaveScore, handleReopen,
+        handleSetMotm, handleMotmNotesChange, handleSaveScore, handleReopen,
         handleToggleAttendee, handleSaveGameCost,
         handleGuestStatusChange, handlePositionToggle,
         handlePlayerClick,
@@ -101,6 +103,7 @@ const GamePage: React.FC = () => {
             goalScorers,
             assisters,
             motm,
+            motmNotes,
             lookup,
             enableAssists,
             weatherEmoji: emoji,
@@ -157,10 +160,12 @@ const GamePage: React.FC = () => {
             goalScorers={goalScorers}
             assisters={assisters}
             motm={motm}
+            motmNotes={motmNotes}
             enableAssists={enableAssists}
             onGoalChange={handleGoalChange}
             onAssistChange={handleAssistChange}
             onSetMotm={handleSetMotm}
+            onMotmNotesChange={handleMotmNotesChange}
         />
     );
 
@@ -180,6 +185,43 @@ const GamePage: React.FC = () => {
             onToggleAttendee={handleToggleAttendee}
         />
     );
+
+    // Effective attendees for the unified scoring table
+    const defaultAttendeeList = [
+        ...availability.filter(a => a.status === 'available').map(a => a.userId),
+        ...(game.guestPlayers ?? [])
+            .filter(n => (game.guestAvailability ?? {})[n] === 'available' || !(game.guestAvailability ?? {})[n])
+            .map(makeGuestId),
+    ];
+    const effectiveAttendees = attendees ?? defaultAttendeeList;
+    const effectiveCost = game.costPerPerson ?? league?.defaultCostPerPerson ?? 0;
+
+    const scoringTableElement = generatedTeams && generatedTeams.length === 2 ? (
+        <ScoringTable
+            teams={generatedTeams}
+            allPlayerIds={allPlayerIds}
+            goalScorers={goalScorers}
+            assisters={assisters}
+            motm={motm}
+            motmNotes={motmNotes}
+            lookup={lookup}
+            enableAssists={enableAssists}
+            attendees={effectiveAttendees}
+            effectiveCost={effectiveCost}
+            editingCost={editingCost}
+            costInput={costInput}
+            isLeagueDefault={league?.defaultCostPerPerson !== undefined && game.costPerPerson === undefined}
+            onGoalChange={handleGoalChange}
+            onAssistChange={handleAssistChange}
+            onSetMotm={handleSetMotm}
+            onMotmNotesChange={handleMotmNotesChange}
+            onToggleAttendee={handleToggleAttendee}
+            onCostInputChange={setCostInput}
+            onEditCost={() => { setCostInput(String(game.costPerPerson ?? league?.defaultCostPerPerson ?? '')); setEditingCost(true); }}
+            onSaveCost={handleSaveGameCost}
+            onCancelCost={() => setEditingCost(false)}
+        />
+    ) : null;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
@@ -265,10 +307,9 @@ const GamePage: React.FC = () => {
                 {isCompleted && generatedTeams && generatedTeams.length === 2 && (
                     <CompletedGameView
                         game={game} generatedTeams={generatedTeams} isAdmin={isAdmin}
-                        goalScorers={goalScorers} assisters={assisters} motm={motm}
+                        goalScorers={goalScorers} assisters={assisters} motm={motm} motmNotes={motmNotes}
                         lookup={lookup} allPlayerIds={allPlayerIds} selectedPlayer={selectedPlayer}
-                        scoringControlsElement={scoringControlsElement}
-                        attendanceSectionElement={attendanceSectionElement}
+                        scoringTableElement={scoringTableElement}
                         isExporting={isExporting} enableAssists={enableAssists} leagueName={league?.name}
                         onPlayerClick={handlePlayerClick} onReopen={handleReopen}
                         onShareResults={handleShareResults} onExportResults={handleExportResults}

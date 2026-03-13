@@ -106,6 +106,7 @@ export interface Game {
     goalScorers?: GoalScorer[];    // tally per playerId
     assisters?: GoalScorer[];      // assist tally per playerId (reuses GoalScorer shape)
     manOfTheMatch?: string;        // playerId of player picked by admin
+    motmNotes?: string;            // optional admin write-up for MOTM award
     gameCode?: string;             // short 6-char shareable code
     costPerPerson?: number;        // overrides league default; undefined = use league default
     attendees?: string[];          // playerIds who actually attended; set by admin post-game
@@ -159,6 +160,7 @@ export interface StoredGameHealth {
     speedSamples: { timestamp: string; speedKmh: number }[];
     heartRateZones: { zone: number; label: string; colour: string; minutes: number; percentage: number }[];
     activePeriods: { startMin: number; endMin: number; active: boolean; avgHr?: number }[];
+    distanceBuckets?: { startMin: number; endMin: number; distanceM: number }[];
     // Privacy
     shared: boolean; // whether this data is visible to league members
 }

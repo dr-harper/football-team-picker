@@ -252,6 +252,10 @@ export async function updateGameMotm(gameId: string, manOfTheMatch: string | nul
     await updateDoc(doc(db, 'games', gameId), { manOfTheMatch: manOfTheMatch ?? '' });
 }
 
+export async function updateMotmNotes(gameId: string, motmNotes: string): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { motmNotes });
+}
+
 export async function updateLeagueAdmins(leagueId: string, adminIds: string[]): Promise<void> {
     await updateDoc(doc(db, 'leagues', leagueId), { adminIds });
 }
@@ -476,7 +480,17 @@ export function extractGuestsFromGames(games: Game[]): { guestId: string; guestN
         .sort((a, b) => b.gameCount - a.gameCount);
 }
 
-/** Replace all occurrences of a guest ID with a member's userId across all league games */
+/** Merge goal/assist entries with the same playerId by summing goals */
+function mergeScorers(scorers: GoalScorer[]): GoalScorer[] {
+    const map = new Map<string, number>();
+    for (const gs of scorers) {
+        map.set(gs.playerId, (map.get(gs.playerId) ?? 0) + gs.goals);
+    }
+    return Array.from(map, ([playerId, goals]) => ({ playerId, goals }));
+}
+
+/** Replace all occurrences of a guest ID with a member's userId across all league games.
+ *  Handles the case where memberId already exists in the same game by merging/deduplicating. */
 export async function linkGuestToMember(
     leagueId: string,
     guestId: string,
@@ -489,42 +503,52 @@ export async function linkGuestToMember(
         const updates: Record<string, unknown> = {};
         let changed = false;
 
-        // Replace in teams
+        // Replace in teams — deduplicate players by playerId within each team
         if (game.teams) {
-            const newTeams = game.teams.map(team => ({
-                ...team,
-                players: team.players.map(p => {
+            const newTeams = game.teams.map(team => {
+                const replaced = team.players.map(p => {
                     const pid = p.playerId ?? p.name;
                     if (pid === guestId) {
                         return { ...p, playerId: memberId };
                     }
                     return p;
-                }),
-            }));
+                });
+                // Deduplicate: keep first occurrence of each playerId
+                const seen = new Set<string>();
+                const deduped = replaced.filter(p => {
+                    const pid = p.playerId ?? p.name;
+                    if (seen.has(pid)) return false;
+                    seen.add(pid);
+                    return true;
+                });
+                return { ...team, players: deduped };
+            });
             if (JSON.stringify(newTeams) !== JSON.stringify(game.teams)) {
                 updates.teams = newTeams;
                 changed = true;
             }
         }
 
-        // Replace in goalScorers
+        // Replace in goalScorers — merge entries with same playerId
         if (game.goalScorers) {
-            const newGs = game.goalScorers.map(gs =>
+            const replaced = game.goalScorers.map(gs =>
                 gs.playerId === guestId ? { ...gs, playerId: memberId } : gs,
             );
-            if (JSON.stringify(newGs) !== JSON.stringify(game.goalScorers)) {
-                updates.goalScorers = newGs;
+            const merged = mergeScorers(replaced);
+            if (JSON.stringify(merged) !== JSON.stringify(game.goalScorers)) {
+                updates.goalScorers = merged;
                 changed = true;
             }
         }
 
-        // Replace in assisters
+        // Replace in assisters — merge entries with same playerId
         if (game.assisters) {
-            const newA = game.assisters.map(a =>
+            const replaced = game.assisters.map(a =>
                 a.playerId === guestId ? { ...a, playerId: memberId } : a,
             );
-            if (JSON.stringify(newA) !== JSON.stringify(game.assisters)) {
-                updates.assisters = newA;
+            const merged = mergeScorers(replaced);
+            if (JSON.stringify(merged) !== JSON.stringify(game.assisters)) {
+                updates.assisters = merged;
                 changed = true;
             }
         }
@@ -535,19 +559,25 @@ export async function linkGuestToMember(
             changed = true;
         }
 
-        // Replace in attendees
+        // Replace in attendees — deduplicate
         if (game.attendees) {
-            const newAtt = game.attendees.map(a => a === guestId ? memberId : a);
-            if (JSON.stringify(newAtt) !== JSON.stringify(game.attendees)) {
-                updates.attendees = newAtt;
+            const replaced = game.attendees.map(a => a === guestId ? memberId : a);
+            const deduped = [...new Set(replaced)];
+            if (JSON.stringify(deduped) !== JSON.stringify(game.attendees)) {
+                updates.attendees = deduped;
                 changed = true;
             }
         }
 
-        // Replace in playerPositions
+        // Replace in playerPositions — keep member's existing position if present
         if (game.playerPositions && guestId in game.playerPositions) {
-            const { [guestId]: posVal, ...rest } = game.playerPositions;
-            updates.playerPositions = { ...rest, [memberId]: posVal };
+            const { [guestId]: guestPos, ...rest } = game.playerPositions;
+            // Only use guest's position if member doesn't already have one
+            if (!(memberId in rest)) {
+                updates.playerPositions = { ...rest, [memberId]: guestPos };
+            } else {
+                updates.playerPositions = rest; // just remove the guest entry
+            }
             changed = true;
         }
 
@@ -558,7 +588,9 @@ export async function linkGuestToMember(
             changed = true;
         }
 
-        // Replace in guestAvailability
+        // Migrate guest availability → member availability subcollection record
+        const guestStatus = game.guestAvailability?.[guestName];
+        const wasGuestPlayer = game.guestPlayers?.includes(guestName);
         if (game.guestAvailability && guestName in game.guestAvailability) {
             const { [guestName]: _removedAvail, ...restAvail } = game.guestAvailability;
             void _removedAvail;
@@ -568,6 +600,26 @@ export async function linkGuestToMember(
 
         if (changed) {
             await updateDoc(doc(db, 'games', game.id), updates);
+
+            // Create availability record for the member if the guest had availability
+            if (wasGuestPlayer || guestStatus) {
+                const availId = `${game.id}_${memberId}`;
+                const availRef = doc(db, 'availability', availId);
+                const existingAvail = await getDoc(availRef);
+                if (!existingAvail.exists()) {
+                    const status = guestStatus === 'unavailable' ? 'unavailable'
+                        : guestStatus === 'maybe' ? 'maybe'
+                        : 'available'; // guests default to available
+                    await setDoc(availRef, {
+                        gameId: game.id,
+                        userId: memberId,
+                        displayName: guestName,
+                        status,
+                        updatedAt: Date.now(),
+                    });
+                }
+            }
+
             updatedCount++;
         }
     }
@@ -580,7 +632,9 @@ export async function linkGuestToMember(
 /** Save health data for a game (doc ID = gameId_userId) */
 export async function saveGameHealth(data: StoredGameHealth): Promise<void> {
     const id = `${data.gameId}_${data.userId}`;
-    await setDoc(doc(db, 'gameHealth', id), data);
+    // Firestore rejects undefined values — strip them via JSON round-trip
+    const clean = JSON.parse(JSON.stringify(data));
+    await setDoc(doc(db, 'gameHealth', id), clean);
 }
 
 /** Get my health data for a game */
@@ -600,6 +654,21 @@ export async function getSharedGameHealth(gameId: string): Promise<StoredGameHea
     );
     const snap = await getDocs(q);
     return snap.docs.map(d => d.data() as StoredGameHealth);
+}
+
+/** Get my health data for multiple games (batch) */
+export async function getMyHealthForGames(gameIds: string[], userId: string): Promise<Map<string, StoredGameHealth>> {
+    const results = new Map<string, StoredGameHealth>();
+    // Firestore getDoc is fast for known IDs — fetch in parallel
+    const fetches = gameIds.map(async (gameId) => {
+        const id = `${gameId}_${userId}`;
+        const snap = await getDoc(doc(db, 'gameHealth', id));
+        if (snap.exists()) {
+            results.set(gameId, snap.data() as StoredGameHealth);
+        }
+    });
+    await Promise.all(fetches);
+    return results;
 }
 
 /** Toggle health sharing for a specific game */

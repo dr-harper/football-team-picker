@@ -38,53 +38,77 @@ interface ScoringControlsProps {
     goalScorers: GoalScorer[];
     assisters: GoalScorer[];
     motm: string;
+    motmNotes: string;
     lookup: Record<string, string>;
     enableAssists?: boolean;
     onGoalChange: (playerId: string, delta: number) => void;
     onAssistChange: (playerId: string, delta: number) => void;
     onSetMotm: (playerId: string) => void;
+    onMotmNotesChange: (notes: string) => void;
 }
 
 const ScoringControls: React.FC<ScoringControlsProps> = ({
-    allPlayerIds, goalScorers, assisters, motm, lookup, enableAssists,
-    onGoalChange, onAssistChange, onSetMotm,
-}) => (
-    <div className="border-t border-white/10 pt-4 mt-4 space-y-4">
-        <div>
-            <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
-                <Goal className="w-4 h-4 text-green-400" /> Goal Scorers
-            </h4>
-            <TallyRows allPlayerIds={allPlayerIds} tally={goalScorers} onChange={onGoalChange} accentClass="text-green-400 hover:text-green-300" lookup={lookup} />
-        </div>
-        {enableAssists && (
-        <div>
-            <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
-                <span className="text-blue-400 font-bold text-xs bg-blue-400/20 px-1.5 py-0.5 rounded">A</span> Assists
-            </h4>
-            <TallyRows allPlayerIds={allPlayerIds} tally={assisters} onChange={onAssistChange} accentClass="text-blue-400 hover:text-blue-300" lookup={lookup} />
-        </div>
-        )}
-        <div>
-            <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
-                <Award className="w-4 h-4 text-yellow-400" /> Man of the Match
-            </h4>
-            <div className="flex flex-wrap gap-2">
-                {allPlayerIds.map(pid => (
-                    <button
-                        key={pid}
-                        onClick={() => onSetMotm(pid)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                            motm === pid
-                                ? 'bg-yellow-500 text-green-900'
-                                : 'bg-white/10 text-white hover:bg-white/20'
-                        }`}
-                    >
-                        {motm === pid && <Star className="w-3 h-3 inline mr-1" />}<PlayerName id={pid} lookup={lookup} />
-                    </button>
-                ))}
+    allPlayerIds, goalScorers, assisters, motm, motmNotes, lookup, enableAssists,
+    onGoalChange, onAssistChange, onSetMotm, onMotmNotesChange,
+}) => {
+    const notesTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [localNotes, setLocalNotes] = React.useState(motmNotes);
+    React.useEffect(() => { setLocalNotes(motmNotes); }, [motmNotes]);
+
+    const handleNotesInput = (value: string) => {
+        setLocalNotes(value);
+        if (notesTimer.current) clearTimeout(notesTimer.current);
+        notesTimer.current = setTimeout(() => onMotmNotesChange(value), 600);
+    };
+
+    return (
+        <div className="border-t border-white/10 pt-4 mt-4 space-y-4">
+            <div>
+                <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
+                    <Goal className="w-4 h-4 text-green-400" /> Goal Scorers
+                </h4>
+                <TallyRows allPlayerIds={allPlayerIds} tally={goalScorers} onChange={onGoalChange} accentClass="text-green-400 hover:text-green-300" lookup={lookup} />
+            </div>
+            {enableAssists && (
+            <div>
+                <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
+                    <span className="text-blue-400 font-bold text-xs bg-blue-400/20 px-1.5 py-0.5 rounded">A</span> Assists
+                </h4>
+                <TallyRows allPlayerIds={allPlayerIds} tally={assisters} onChange={onAssistChange} accentClass="text-blue-400 hover:text-blue-300" lookup={lookup} />
+            </div>
+            )}
+            <div>
+                <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
+                    <Award className="w-4 h-4 text-yellow-400" /> Man of the Match
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                    {allPlayerIds.map(pid => (
+                        <button
+                            key={pid}
+                            onClick={() => onSetMotm(pid)}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                                motm === pid
+                                    ? 'bg-yellow-500 text-green-900'
+                                    : 'bg-white/10 text-white hover:bg-white/20'
+                            }`}
+                        >
+                            {motm === pid && <Star className="w-3 h-3 inline mr-1" />}<PlayerName id={pid} lookup={lookup} />
+                        </button>
+                    ))}
+                </div>
+                {motm && (
+                    <textarea
+                        value={localNotes}
+                        onChange={e => handleNotesInput(e.target.value)}
+                        placeholder="Add MOTM notes (shown in shared results)..."
+                        className="mt-2 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-yellow-500/50 resize-none"
+                        rows={2}
+                        maxLength={200}
+                    />
+                )}
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 export default ScoringControls;
