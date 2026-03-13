@@ -24,6 +24,7 @@ export interface GameHealthData {
     activePeriods: ActivePeriod[];
     activeMinutes: number;
     sprintCount: number;
+    distanceBuckets?: { startMin: number; endMin: number; distanceM: number }[];
 }
 
 interface UseGameHealthResult {
@@ -196,12 +197,13 @@ export function useGameHealth(
                         avgSpeedKmh: stored.avgSpeedKmh,
                         topSpeedKmh: stored.topSpeedKmh,
                         paceMinPerKm: stored.paceMinPerKm,
-                        speedSamples: stored.speedSamples,
+                        speedSamples: stored.speedSamples ?? [],
                         heartRateZones: stored.heartRateZones,
                         intensityScore: stored.intensityScore,
                         activePeriods: stored.activePeriods,
                         activeMinutes: stored.activeMinutes,
                         sprintCount: stored.sprintCount,
+                        distanceBuckets: stored.distanceBuckets,
                     });
                     setShared(stored.shared);
                     setFromStore(true);
@@ -268,6 +270,34 @@ export function useGameHealth(
                         maxHr: maxHr ? Math.max(maxHr, 180) : 190,
                     });
 
+                    // Query distance in 5-min buckets from Health Connect
+                    const BUCKET_MIN = 5;
+                    const bucketCount = Math.ceil(matchDurationMinutes / BUCKET_MIN);
+                    const distanceBuckets: { startMin: number; endMin: number; distanceM: number }[] = [];
+
+                    try {
+                        const bucketPromises = Array.from({ length: bucketCount }, (_, i) => {
+                            const bucketStartMs = gameDate + i * BUCKET_MIN * 60_000;
+                            const bucketEndMs = gameDate + (i + 1) * BUCKET_MIN * 60_000;
+                            return Health.queryAggregated({
+                                startDate: new Date(bucketStartMs).toISOString(),
+                                endDate: new Date(bucketEndMs).toISOString(),
+                                dataType: 'distance' as 'steps', // Android supports 'distance' despite TS types
+                                bucket: 'day',
+                            }).then(result => ({
+                                startMin: i * BUCKET_MIN,
+                                endMin: (i + 1) * BUCKET_MIN,
+                                distanceM: Math.round(
+                                    result.aggregatedData.reduce((sum, d) => sum + d.value, 0)
+                                ),
+                            }));
+                        });
+                        const buckets = await Promise.all(bucketPromises);
+                        distanceBuckets.push(...buckets);
+                    } catch (err) {
+                        logger.error('Failed to query distance buckets:', err);
+                    }
+
                     const healthData: GameHealthData = {
                         steps: workout.steps,
                         calories: Math.round(workout.calories),
@@ -278,6 +308,7 @@ export function useGameHealth(
                         duration: durSecs,
                         workoutType: workout.workoutType,
                         ...derived,
+                        distanceBuckets: distanceBuckets.length > 0 ? distanceBuckets : undefined,
                     };
 
                     setData(healthData);
@@ -308,6 +339,7 @@ export function useGameHealth(
                             speedSamples: downsampleTimeSeries(derived.speedSamples, MAX_SPEED_SAMPLES),
                             heartRateZones: derived.heartRateZones,
                             activePeriods: derived.activePeriods,
+                            distanceBuckets: healthData.distanceBuckets,
                             shared: shareDefault,
                         };
                         setShared(shareDefault);

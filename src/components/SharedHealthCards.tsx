@@ -17,7 +17,7 @@ const SharedHealthCards: React.FC<SharedHealthCardsProps> = ({ gameId, userId, l
     if (entries.length === 0) return null;
 
     return (
-        <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4 space-y-3">
+        <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4 space-y-3 max-w-4xl mx-auto">
             <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-blue-400" />
                 <h3 className="text-white font-semibold text-sm">Team Health</h3>

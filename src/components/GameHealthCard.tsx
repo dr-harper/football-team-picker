@@ -1,5 +1,9 @@
 import React from 'react';
 import { Heart, Flame, Footprints, MapPin, Activity, Timer, Zap, TrendingUp, Share2, ShieldCheck } from 'lucide-react';
+import {
+    ResponsiveContainer, AreaChart, Area, BarChart, Bar,
+    XAxis, YAxis, Tooltip, type TooltipProps,
+} from 'recharts';
 import { useGameHealth, type GameHealthData } from '../hooks/useGameHealth';
 import { intensityLabel, hrZoneColour, type ActivePeriod, type HrZone } from '../utils/healthMetrics';
 
@@ -94,6 +98,7 @@ const GameHealthCard: React.FC<GameHealthCardProps> = ({
     return (
         <HealthDataCard
             data={data}
+            gameDate={gameDate}
             matchDurationMinutes={matchDurationMinutes}
             shared={shared}
             sharingLoading={sharingLoading}
@@ -106,9 +111,10 @@ const GameHealthCard: React.FC<GameHealthCardProps> = ({
 // ─── Main data display ───────────────────────────────────────────────
 
 function HealthDataCard({
-    data, matchDurationMinutes, shared, sharingLoading, onToggleSharing, fromStore,
+    data, gameDate, matchDurationMinutes, shared, sharingLoading, onToggleSharing, fromStore,
 }: {
     data: GameHealthData;
+    gameDate: number;
     matchDurationMinutes: number;
     shared: boolean;
     sharingLoading: boolean;
@@ -191,7 +197,7 @@ function HealthDataCard({
     if (!hasHeroStats && secondaryStats.length === 0) return null;
 
     return (
-        <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4 space-y-3">
+        <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4 space-y-3 overflow-hidden max-w-4xl mx-auto">
             {/* Header */}
             <div className="flex items-center gap-2">
                 <Activity className="w-5 h-5 text-red-400" />
@@ -238,12 +244,21 @@ function HealthDataCard({
             {/* HR Zones */}
             {hasZones && <HeartRateZonesBar zones={data.heartRateZones} />}
 
-            {/* Enhanced HR chart */}
+            {/* HR chart */}
             {hasHrChart && (
-                <EnhancedHeartRateChart
+                <HeartRateChart
                     samples={data.heartRateSamples!}
-                    speedSamples={data.speedSamples}
+                    gameDate={gameDate}
+                    matchDurationMinutes={matchDurationMinutes}
                     activePeriods={data.activePeriods}
+                />
+            )}
+
+            {/* Distance chart */}
+            {data.distanceBuckets && data.distanceBuckets.length > 0 && (
+                <DistanceChart
+                    buckets={data.distanceBuckets}
+                    totalDistance={data.distance ?? 0}
                 />
             )}
 
@@ -306,7 +321,6 @@ function HealthDataCard({
 
 function GameTimeline({ activePeriods, totalMinutes }: { activePeriods: ActivePeriod[]; totalMinutes: number }) {
     const displayMin = Math.max(totalMinutes, 30);
-    // Generate time markers at sensible intervals
     const interval = displayMin <= 30 ? 10 : 15;
     const markers: number[] = [];
     for (let m = 0; m <= displayMin; m += interval) markers.push(m);
@@ -316,46 +330,37 @@ function GameTimeline({ activePeriods, totalMinutes }: { activePeriods: ActivePe
             <div className="flex items-center justify-between mb-1">
                 <span className="text-white/40 text-[10px] uppercase tracking-wider">Match Timeline</span>
             </div>
-            <svg viewBox={`0 0 320 28`} className="w-full h-7">
-                {/* Background bar — inset to leave room for edge labels */}
-                <rect x="10" y="2" width="300" height="16" rx="4" fill="rgba(255,255,255,0.05)" />
-
-                {/* Active period segments */}
+            {/* Bar */}
+            <div className="relative w-full h-4 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}>
                 {activePeriods.map((p, i) => {
-                    const x = 10 + (p.startMin / displayMin) * 300;
-                    const w = Math.max(((p.endMin - p.startMin) / displayMin) * 300, 1);
                     if (!p.active) return null;
-
+                    const left = (p.startMin / displayMin) * 100;
+                    const width = Math.max(((p.endMin - p.startMin) / displayMin) * 100, 0.5);
                     const colour = p.avgHr ? hrZoneColour(p.avgHr) : '#22C55E';
                     return (
-                        <rect
+                        <div
                             key={i}
-                            x={x}
-                            y="2"
-                            width={w}
-                            height="16"
-                            rx={i === 0 ? 4 : 0}
-                            fill={colour}
-                            fillOpacity="0.6"
+                            className="absolute top-0 h-full"
+                            style={{ left: `${left}%`, width: `${width}%`, backgroundColor: colour, opacity: 0.6 }}
                         />
                     );
                 })}
-
-                {/* Time labels */}
+            </div>
+            {/* Time labels */}
+            <div className="relative w-full h-4 mt-0.5">
                 {markers.map((m, i) => (
-                    <text
+                    <span
                         key={m}
-                        x={10 + (m / displayMin) * 300}
-                        y="27"
-                        textAnchor={i === 0 ? 'start' : i === markers.length - 1 ? 'end' : 'middle'}
-                        fill="rgba(255,255,255,0.3)"
-                        fontSize="7"
-                        fontFamily="system-ui"
+                        className="absolute text-white/30 text-[10px]"
+                        style={{
+                            left: `${(m / displayMin) * 100}%`,
+                            transform: i === 0 ? 'none' : i === markers.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)',
+                        }}
                     >
-                        {m}&apos;
-                    </text>
+                        {m}&prime;
+                    </span>
                 ))}
-            </svg>
+            </div>
         </div>
     );
 }
@@ -396,161 +401,160 @@ function HeartRateZonesBar({ zones }: { zones: HrZone[] }) {
     );
 }
 
-// ─── Enhanced HR Chart ───────────────────────────────────────────────
+// ─── Shared chart helpers ────────────────────────────────────────────
 
-function EnhancedHeartRateChart({
+function ChartTooltipContent({ active, payload, labelFormatter }: TooltipProps<number, string> & { labelFormatter?: (v: number) => string }) {
+    if (!active || !payload?.length) return null;
+    const label = labelFormatter ? labelFormatter(payload[0].payload.min as number) : '';
+    return (
+        <div className="bg-green-950/95 border border-white/20 rounded-lg px-2.5 py-1.5 text-xs shadow-lg">
+            <div className="text-white/50 mb-0.5">{label}</div>
+            {payload.map((p, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
+                    <span className="text-white font-medium">{p.value}{p.unit ?? ''}</span>
+                    <span className="text-white/40">{p.name}</span>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// ─── Heart Rate Chart (Recharts) ─────────────────────────────────────
+
+function HeartRateChart({
     samples,
-    speedSamples,
+    gameDate,
+    matchDurationMinutes,
     activePeriods,
 }: {
     samples: { timestamp: string; bpm: number }[];
-    speedSamples: { timestamp: string; speedKmh: number }[];
+    gameDate: number;
+    matchDurationMinutes: number;
     activePeriods: ActivePeriod[];
 }) {
-    const width = 300;
-    const height = 80;
-    const padding = 4;
-    const chartH = height - 16; // leave room for labels
+    void activePeriods; // reserved for future inactive-band overlay
+
+    const data = samples.map(s => ({
+        min: (new Date(s.timestamp).getTime() - gameDate) / 60000,
+        bpm: s.bpm,
+    }));
 
     const bpms = samples.map(s => s.bpm);
     const minBpm = Math.min(...bpms);
     const maxBpm = Math.max(...bpms);
-    const range = maxBpm - minBpm || 1;
 
-    const startMs = new Date(samples[0].timestamp).getTime();
-    const endMs = new Date(samples[samples.length - 1].timestamp).getTime();
-    const totalMs = endMs - startMs || 1;
-
-    const toX = (ts: string) => padding + ((new Date(ts).getTime() - startMs) / totalMs) * (width - 2 * padding);
-    const toY = (bpm: number) => padding + chartH - ((bpm - minBpm) / range) * (chartH - 2 * padding);
-
-    // Build HR polyline points
-    const points = samples.map(s => `${toX(s.timestamp)},${toY(s.bpm)}`).join(' ');
-
-    // Build speed polyline (if GPS data available)
-    const hasSpeed = speedSamples.length > 1;
-    let speedPoints = '';
-    let maxSpeed = 0;
-    if (hasSpeed) {
-        maxSpeed = Math.max(...speedSamples.map(s => s.speedKmh));
-        const speedRange = maxSpeed || 1;
-        speedPoints = speedSamples.map(s => {
-            const x = toX(s.timestamp);
-            const y = padding + chartH - (s.speedKmh / speedRange) * (chartH - 2 * padding);
-            return `${x},${y}`;
-        }).join(' ');
-    }
-
-    // Build zone-coloured gradient stops
-    const zoneStops = [
-        { offset: '0%', colour: '#EF4444' },   // top = max zone (red)
-        { offset: '30%', colour: '#F97316' },   // hard (orange)
-        { offset: '50%', colour: '#EAB308' },   // cardio (yellow)
-        { offset: '75%', colour: '#22C55E' },   // easy (green)
-        { offset: '100%', colour: '#94A3B8' },  // recovery (grey)
-    ];
-
-    // Inactive period grey bands
-    const inactiveBands = activePeriods.filter(p => !p.active).map(p => {
-        const pStartMs = startMs + (p.startMin * 60 * 1000);
-        const pEndMs = startMs + (p.endMin * 60 * 1000);
-        const x1 = padding + ((pStartMs - startMs) / totalMs) * (width - 2 * padding);
-        const x2 = padding + ((pEndMs - startMs) / totalMs) * (width - 2 * padding);
-        return { x: x1, w: Math.max(x2 - x1, 1) };
-    });
+    // X-axis spans from kickoff (0) to at least match duration or last sample
+    const lastMin = data[data.length - 1].min;
+    const xMax = Math.max(matchDurationMinutes, Math.ceil(lastMin));
 
     return (
-        <div className="pt-1">
+        <div className="pt-1" style={{ WebkitTapHighlightColor: 'transparent' }}>
             <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-3">
-                    <span className="text-white/40 text-[10px] uppercase tracking-wider">Heart Rate</span>
-                    {hasSpeed && (
-                        <span className="text-cyan-400/40 text-[10px] uppercase tracking-wider">+ Movement</span>
-                    )}
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-white/30 text-[10px]">{minBpm}–{maxBpm} bpm</span>
-                    {hasSpeed && (
-                        <span className="text-cyan-400/30 text-[10px]">{Math.round(maxSpeed)} km/h</span>
-                    )}
-                </div>
+                <span className="text-white/40 text-[10px] uppercase tracking-wider">Heart Rate</span>
+                <span className="text-white/30 text-[10px]">{minBpm}–{maxBpm} bpm</span>
             </div>
-            <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ height: '5rem' }} preserveAspectRatio="none">
-                <defs>
-                    <linearGradient id="hrZoneGradient" x1="0" y1="0" x2="0" y2="1">
-                        {zoneStops.map(s => (
-                            <stop key={s.offset} offset={s.offset} stopColor={s.colour} stopOpacity="0.25" />
-                        ))}
-                    </linearGradient>
-                    <linearGradient id="hrLineGradient" x1="0" y1="0" x2="0" y2="1">
-                        {zoneStops.map(s => (
-                            <stop key={s.offset} offset={s.offset} stopColor={s.colour} stopOpacity="1" />
-                        ))}
-                    </linearGradient>
-                    <clipPath id="hrClip">
-                        <polygon points={`${padding},${chartH} ${points} ${width - padding},${chartH}`} />
-                    </clipPath>
-                </defs>
-
-                {/* Inactive period bands */}
-                {inactiveBands.map((band, i) => (
-                    <rect
-                        key={i}
-                        x={band.x}
-                        y={0}
-                        width={band.w}
-                        height={chartH}
-                        fill="rgba(255,255,255,0.05)"
+            <ResponsiveContainer width="100%" height="100%" className="!h-[100px] sm:!h-[80px]">
+                <AreaChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+                    <defs>
+                        <linearGradient id="hrFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#EF4444" stopOpacity={0.35} />
+                            <stop offset="40%" stopColor="#F97316" stopOpacity={0.2} />
+                            <stop offset="70%" stopColor="#22C55E" stopOpacity={0.1} />
+                            <stop offset="100%" stopColor="#94A3B8" stopOpacity={0.05} />
+                        </linearGradient>
+                        <linearGradient id="hrStroke" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#EF4444" />
+                            <stop offset="40%" stopColor="#F97316" />
+                            <stop offset="70%" stopColor="#22C55E" />
+                            <stop offset="100%" stopColor="#94A3B8" />
+                        </linearGradient>
+                    </defs>
+                    <XAxis
+                        dataKey="min"
+                        type="number"
+                        domain={[0, xMax]}
+                        tick={{ fill: 'rgba(255,255,255,0.25)', fontSize: 10 }}
+                        tickFormatter={v => `${Math.round(v)}'`}
+                        axisLine={false}
+                        tickLine={false}
+                        tickCount={5}
                     />
-                ))}
+                    <YAxis hide domain={[minBpm - 5, maxBpm + 5]} />
+                    <Tooltip
+                        content={<ChartTooltipContent labelFormatter={v => `${Math.round(v)}'`} />}
+                        cursor={{ stroke: 'rgba(255,255,255,0.15)' }}
+                    />
+                    <Area
+                        type="monotone"
+                        dataKey="bpm"
+                        name="bpm"
+                        stroke="url(#hrStroke)"
+                        fill="url(#hrFill)"
+                        strokeWidth={1.5}
+                        dot={false}
+                        activeDot={{ r: 3, fill: '#EF4444', stroke: '#fff', strokeWidth: 1 }}
+                    />
+                </AreaChart>
+            </ResponsiveContainer>
+        </div>
+    );
+}
 
-                {/* Zone-coloured fill under the curve */}
-                <rect
-                    x={padding}
-                    y={padding}
-                    width={width - 2 * padding}
-                    height={chartH - padding}
-                    fill="url(#hrZoneGradient)"
-                    clipPath="url(#hrClip)"
-                />
+// ─── Distance Per 5 Min Bar Chart (Recharts) ─────────────────────────
 
-                {/* Speed/movement line (behind HR line) */}
-                {hasSpeed && (
-                    <>
-                        <polyline
-                            points={speedPoints}
-                            fill="none"
-                            stroke="rgba(34,211,238,0.2)"
-                            strokeWidth="3"
-                            strokeLinejoin="round"
-                        />
-                        <polyline
-                            points={speedPoints}
-                            fill="none"
-                            stroke="rgba(34,211,238,0.5)"
-                            strokeWidth="1"
-                            strokeLinejoin="round"
-                        />
-                    </>
-                )}
+function DistanceChart({
+    buckets,
+    totalDistance,
+}: {
+    buckets: { startMin: number; endMin: number; distanceM: number }[];
+    totalDistance: number; // metres
+}) {
+    const data = buckets.map(b => ({
+        label: `${b.startMin}'–${b.endMin}'`,
+        distM: b.distanceM,
+    }));
 
-                {/* HR line */}
-                <polyline
-                    points={points}
-                    fill="none"
-                    stroke="url(#hrLineGradient)"
-                    strokeWidth="1.5"
-                    strokeLinejoin="round"
-                />
+    const totalKm = totalDistance / 1000;
+    const maxDist = Math.max(...buckets.map(b => b.distanceM), 1);
 
-                {/* Time labels */}
-                <text x={padding} y={height - 2} fill="rgba(255,255,255,0.25)" fontSize="7" fontFamily="system-ui">
-                    0&apos;
-                </text>
-                <text x={width - padding} y={height - 2} fill="rgba(255,255,255,0.25)" fontSize="7" fontFamily="system-ui" textAnchor="end">
-                    {Math.round(totalMs / 60000)}&apos;
-                </text>
-            </svg>
+    return (
+        <div className="pt-1" style={{ WebkitTapHighlightColor: 'transparent' }}>
+            <div className="flex items-center justify-between mb-1">
+                <span className="text-cyan-400/50 text-[10px] uppercase tracking-wider">Distance Per 5 Min</span>
+                <span className="text-cyan-400/30 text-[10px]">{totalKm.toFixed(1)} km total</span>
+            </div>
+            <ResponsiveContainer width="100%" height="100%" className="!h-[92px] sm:!h-[72px]">
+                <BarChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+                    <XAxis
+                        dataKey="label"
+                        tick={{ fill: 'rgba(255,255,255,0.25)', fontSize: 9 }}
+                        axisLine={false}
+                        tickLine={false}
+                        interval={1}
+                    />
+                    <YAxis hide domain={[0, maxDist * 1.1]} />
+                    <Tooltip
+                        content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0].payload;
+                            return (
+                                <div className="bg-green-950/95 border border-white/20 rounded-lg px-2.5 py-1.5 text-xs shadow-lg">
+                                    <div className="text-white/50 mb-0.5">{d.label}</div>
+                                    <div className="text-cyan-400 font-medium">{d.distM}m</div>
+                                </div>
+                            );
+                        }}
+                        cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    />
+                    <Bar
+                        dataKey="distM"
+                        fill="#22D3EE"
+                        fillOpacity={0.6}
+                        radius={[3, 3, 0, 0]}
+                    />
+                </BarChart>
+            </ResponsiveContainer>
         </div>
     );
 }
