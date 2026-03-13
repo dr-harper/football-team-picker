@@ -37,6 +37,8 @@ interface UseGameHealthResult {
     openPlayStore: () => Promise<void>;
     /** Whether the stored data is shared with league members */
     shared: boolean;
+    /** Whether a sharing toggle is in progress */
+    sharingLoading: boolean;
     /** Toggle sharing for this game's health data */
     toggleSharing: () => Promise<void>;
     /** Whether data was loaded from Firestore (not live from device) */
@@ -70,6 +72,7 @@ export function useGameHealth(
     const [available, setAvailable] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
     const [shared, setShared] = useState(false);
+    const [sharingLoading, setSharingLoading] = useState(false);
     const [fromStore, setFromStore] = useState(false);
 
     const isNative = Capacitor.isNativePlatform();
@@ -157,7 +160,8 @@ export function useGameHealth(
 
     // Toggle sharing for this game's health data
     const toggleSharing = useCallback(async () => {
-        if (!gameId || !userId) return;
+        if (!gameId || !userId || sharingLoading) return;
+        setSharingLoading(true);
         try {
             const { updateGameHealthSharing } = await import('../utils/firestore');
             const newShared = !shared;
@@ -165,8 +169,10 @@ export function useGameHealth(
             setShared(newShared);
         } catch (err) {
             logger.error('Failed to toggle health sharing:', err);
+        } finally {
+            setSharingLoading(false);
         }
-    }, [gameId, userId, shared]);
+    }, [gameId, userId, shared, sharingLoading]);
 
     // On web (or native with no Health Connect): try loading from Firestore
     useEffect(() => {
@@ -344,5 +350,5 @@ export function useGameHealth(
         fetchData();
     }, [isNative, available, permissionGranted, gameDate, isCompletedOrInProgress, matchDurationMinutes, gameId, userId, leagueId]);
 
-    return { data, loading, error, isNative, available, permissionGranted, requestPermission, openPlayStore, shared, toggleSharing, fromStore };
+    return { data, loading, error, isNative, available, permissionGranted, requestPermission, openPlayStore, shared, sharingLoading, toggleSharing, fromStore };
 }

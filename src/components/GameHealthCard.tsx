@@ -18,7 +18,7 @@ const GameHealthCard: React.FC<GameHealthCardProps> = ({
 }) => {
     const {
         data, loading, error, isNative, available, permissionGranted,
-        requestPermission, openPlayStore, shared, toggleSharing, fromStore,
+        requestPermission, openPlayStore, shared, sharingLoading, toggleSharing, fromStore,
     } = useGameHealth(gameDate, gameStatus, matchDurationMinutes, gameId, userId, leagueId);
 
     // On web with no stored data, show nothing (no install prompts)
@@ -96,6 +96,7 @@ const GameHealthCard: React.FC<GameHealthCardProps> = ({
             data={data}
             matchDurationMinutes={matchDurationMinutes}
             shared={shared}
+            sharingLoading={sharingLoading}
             onToggleSharing={gameId && userId ? toggleSharing : undefined}
             fromStore={fromStore}
         />
@@ -105,11 +106,12 @@ const GameHealthCard: React.FC<GameHealthCardProps> = ({
 // ─── Main data display ───────────────────────────────────────────────
 
 function HealthDataCard({
-    data, matchDurationMinutes, shared, onToggleSharing, fromStore,
+    data, matchDurationMinutes, shared, sharingLoading, onToggleSharing, fromStore,
 }: {
     data: GameHealthData;
     matchDurationMinutes: number;
     shared: boolean;
+    sharingLoading: boolean;
     onToggleSharing?: () => Promise<void>;
     fromStore: boolean;
 }) {
@@ -278,13 +280,14 @@ function HealthDataCard({
                     </div>
                     <button
                         onClick={onToggleSharing}
-                        className={`text-xs px-2 py-1 rounded transition-colors ${
+                        disabled={sharingLoading}
+                        className={`text-xs px-2 py-1 rounded transition-colors disabled:opacity-50 ${
                             shared
                                 ? 'text-white/40 hover:text-red-400'
                                 : 'text-green-400 hover:text-green-300'
                         }`}
                     >
-                        {shared ? 'Make Private' : 'Share'}
+                        {sharingLoading ? 'Saving...' : shared ? 'Make Private' : 'Share'}
                     </button>
                 </div>
             )}
