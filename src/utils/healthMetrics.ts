@@ -284,6 +284,28 @@ export function intensityLabel(score: number): { label: string; colour: string }
     return { label: 'Intense', colour: '#EF4444' };
 }
 
+/** Downsample a time-series array to at most `maxPoints` using LTTB-style min/max bucketing */
+export function downsampleTimeSeries<T extends { timestamp: string }>(
+    samples: T[],
+    maxPoints: number,
+): T[] {
+    if (samples.length <= maxPoints) return samples;
+
+    const bucketSize = samples.length / maxPoints;
+    const result: T[] = [samples[0]]; // always keep first
+
+    for (let i = 1; i < maxPoints - 1; i++) {
+        const start = Math.floor(i * bucketSize);
+        const end = Math.min(Math.floor((i + 1) * bucketSize), samples.length);
+        // Pick the middle sample from each bucket (simple but effective)
+        const mid = Math.floor((start + end) / 2);
+        result.push(samples[mid]);
+    }
+
+    result.push(samples[samples.length - 1]); // always keep last
+    return result;
+}
+
 /** Get colour for a HR value based on zone */
 export function hrZoneColour(bpm: number, maxHr = 190): string {
     const pct = bpm / maxHr;

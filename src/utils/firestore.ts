@@ -15,7 +15,7 @@ import {
     Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { League, Game, Season, PlayerAvailability, GameStatus, GameScore, Team, GoalScorer, PaymentRecord, LeagueExpense } from '../types';
+import { League, Game, Season, PlayerAvailability, GameStatus, GameScore, Team, GoalScorer, PaymentRecord, LeagueExpense, StoredGameHealth } from '../types';
 
 // ---- Leagues ----
 
@@ -573,4 +573,49 @@ export async function linkGuestToMember(
     }
 
     return updatedCount;
+}
+
+// ---- Game Health Data ----
+
+/** Save health data for a game (doc ID = gameId_userId) */
+export async function saveGameHealth(data: StoredGameHealth): Promise<void> {
+    const id = `${data.gameId}_${data.userId}`;
+    await setDoc(doc(db, 'gameHealth', id), data);
+}
+
+/** Get my health data for a game */
+export async function getMyGameHealth(gameId: string, userId: string): Promise<StoredGameHealth | null> {
+    const id = `${gameId}_${userId}`;
+    const snap = await getDoc(doc(db, 'gameHealth', id));
+    if (!snap.exists()) return null;
+    return snap.data() as StoredGameHealth;
+}
+
+/** Get all shared health data for a game (for league members to see) */
+export async function getSharedGameHealth(gameId: string): Promise<StoredGameHealth[]> {
+    const q = query(
+        collection(db, 'gameHealth'),
+        where('gameId', '==', gameId),
+        where('shared', '==', true),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => d.data() as StoredGameHealth);
+}
+
+/** Toggle health sharing for a specific game */
+export async function updateGameHealthSharing(gameId: string, userId: string, shared: boolean): Promise<void> {
+    const id = `${gameId}_${userId}`;
+    await updateDoc(doc(db, 'gameHealth', id), { shared });
+}
+
+/** Update health sharing preference on user profile (default for future games) */
+export async function updateHealthSharingDefault(userId: string, shareHealthByDefault: boolean): Promise<void> {
+    await setDoc(doc(db, 'users', userId), { shareHealthByDefault }, { merge: true });
+}
+
+/** Get user's health sharing preference */
+export async function getHealthSharingDefault(userId: string): Promise<boolean> {
+    const snap = await getDoc(doc(db, 'users', userId));
+    if (!snap.exists()) return false;
+    return snap.data().shareHealthByDefault ?? false;
 }
