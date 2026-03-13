@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Flame, Footprints, MapPin, Activity, Timer, Zap, TrendingUp } from 'lucide-react';
+import { Heart, Flame, Footprints, MapPin, Activity, Timer, Zap, TrendingUp, Share2, ShieldCheck } from 'lucide-react';
 import { useGameHealth, type GameHealthData } from '../hooks/useGameHealth';
 import { intensityLabel, hrZoneColour, type ActivePeriod, type HrZone } from '../utils/healthMetrics';
 
@@ -7,51 +7,64 @@ interface GameHealthCardProps {
     gameDate: number;
     gameStatus: string;
     matchDurationMinutes?: number;
+    gameId?: string;
+    userId?: string;
+    leagueId?: string;
 }
 
-const GameHealthCard: React.FC<GameHealthCardProps> = ({ gameDate, gameStatus, matchDurationMinutes = 60 }) => {
-    const { data, loading, error, isNative, available, permissionGranted, requestPermission, openPlayStore } = useGameHealth(gameDate, gameStatus, matchDurationMinutes);
+const GameHealthCard: React.FC<GameHealthCardProps> = ({
+    gameDate, gameStatus, matchDurationMinutes = 60,
+    gameId, userId, leagueId,
+}) => {
+    const {
+        data, loading, error, isNative, available, permissionGranted,
+        requestPermission, openPlayStore, shared, sharingLoading, toggleSharing, fromStore,
+    } = useGameHealth(gameDate, gameStatus, matchDurationMinutes, gameId, userId, leagueId);
 
-    if (!isNative) return null;
+    // On web with no stored data, show nothing (no install prompts)
+    if (!isNative && !fromStore && !data) return null;
 
-    if (!available) {
-        return (
-            <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                    <Activity className="w-5 h-5 text-red-400" />
-                    <h3 className="text-white font-semibold text-sm">Your Match Health</h3>
+    // Native: show install/permission prompts
+    if (isNative) {
+        if (!available) {
+            return (
+                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Activity className="w-5 h-5 text-red-400" />
+                        <h3 className="text-white font-semibold text-sm">Your Match Health</h3>
+                    </div>
+                    <p className="text-white/60 text-sm mb-3">
+                        Install Health Connect to see your heart rate, calories and distance from this match.
+                    </p>
+                    <button
+                        onClick={openPlayStore}
+                        className="bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                    >
+                        Install Health Connect
+                    </button>
                 </div>
-                <p className="text-white/60 text-sm mb-3">
-                    Install Health Connect to see your heart rate, calories and distance from this match.
-                </p>
-                <button
-                    onClick={openPlayStore}
-                    className="bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-                >
-                    Install Health Connect
-                </button>
-            </div>
-        );
-    }
+            );
+        }
 
-    if (!permissionGranted) {
-        return (
-            <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                    <Activity className="w-5 h-5 text-red-400" />
-                    <h3 className="text-white font-semibold text-sm">Your Match Health</h3>
+        if (!permissionGranted) {
+            return (
+                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Activity className="w-5 h-5 text-red-400" />
+                        <h3 className="text-white font-semibold text-sm">Your Match Health</h3>
+                    </div>
+                    <p className="text-white/60 text-sm mb-3">
+                        Connect Health Connect to see your stats from this match — heart rate, calories, distance and more.
+                    </p>
+                    <button
+                        onClick={requestPermission}
+                        className="bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                    >
+                        Connect Health Data
+                    </button>
                 </div>
-                <p className="text-white/60 text-sm mb-3">
-                    Connect Health Connect to see your stats from this match — heart rate, calories, distance and more.
-                </p>
-                <button
-                    onClick={requestPermission}
-                    className="bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-                >
-                    Connect Health Data
-                </button>
-            </div>
-        );
+            );
+        }
     }
 
     if (loading) {
@@ -78,12 +91,30 @@ const GameHealthCard: React.FC<GameHealthCardProps> = ({ gameDate, gameStatus, m
 
     if (!data) return null;
 
-    return <HealthDataCard data={data} matchDurationMinutes={matchDurationMinutes} />;
+    return (
+        <HealthDataCard
+            data={data}
+            matchDurationMinutes={matchDurationMinutes}
+            shared={shared}
+            sharingLoading={sharingLoading}
+            onToggleSharing={gameId && userId ? toggleSharing : undefined}
+            fromStore={fromStore}
+        />
+    );
 };
 
 // ─── Main data display ───────────────────────────────────────────────
 
-function HealthDataCard({ data, matchDurationMinutes }: { data: GameHealthData; matchDurationMinutes: number }) {
+function HealthDataCard({
+    data, matchDurationMinutes, shared, sharingLoading, onToggleSharing, fromStore,
+}: {
+    data: GameHealthData;
+    matchDurationMinutes: number;
+    shared: boolean;
+    sharingLoading: boolean;
+    onToggleSharing?: () => Promise<void>;
+    fromStore: boolean;
+}) {
     const intensity = data.intensityScore > 0 ? intensityLabel(data.intensityScore) : null;
 
     const heroStats = [
@@ -231,6 +262,40 @@ function HealthDataCard({ data, matchDurationMinutes }: { data: GameHealthData; 
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Sharing toggle */}
+            {onToggleSharing && (
+                <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                    <div className="flex items-center gap-2">
+                        {shared ? (
+                            <Share2 className="w-3.5 h-3.5 text-green-400" />
+                        ) : (
+                            <ShieldCheck className="w-3.5 h-3.5 text-white/30" />
+                        )}
+                        <span className="text-white/50 text-xs">
+                            {shared ? 'Shared with league' : 'Private — only you can see this'}
+                        </span>
+                    </div>
+                    <button
+                        onClick={onToggleSharing}
+                        disabled={sharingLoading}
+                        className={`text-xs px-2 py-1 rounded transition-colors disabled:opacity-50 ${
+                            shared
+                                ? 'text-white/40 hover:text-red-400'
+                                : 'text-green-400 hover:text-green-300'
+                        }`}
+                    >
+                        {sharingLoading ? 'Saving...' : shared ? 'Make Private' : 'Share'}
+                    </button>
+                </div>
+            )}
+
+            {/* From store indicator */}
+            {fromStore && (
+                <div className="text-white/20 text-[10px] text-center">
+                    Synced from your device
                 </div>
             )}
         </div>

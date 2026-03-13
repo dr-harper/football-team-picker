@@ -15,6 +15,7 @@ import TeamsStep from './game/TeamsStep';
 import MatchStep from './game/MatchStep';
 import CompletedGameView from './game/CompletedGameView';
 import GameHealthCard from '../components/GameHealthCard';
+import SharedHealthCards from '../components/SharedHealthCards';
 import { useGameState } from './game/useGameState';
 
 const WIZARD_STEPS = [
@@ -251,7 +252,15 @@ const GamePage: React.FC = () => {
                     />
                 )}
 
-                <GameHealthCard gameDate={game.date} gameStatus={game.status} matchDurationMinutes={league?.matchDurationMinutes ?? 60} />
+                <GameHealthCard
+                    gameDate={game.date}
+                    gameStatus={game.status}
+                    matchDurationMinutes={league?.matchDurationMinutes ?? 60}
+                    gameId={game.id}
+                    userId={user?.uid}
+                    leagueId={game.leagueId}
+                />
+                <SharedHealthCards gameId={game.id} userId={user?.uid} lookup={lookup} />
 
                 {isCompleted && generatedTeams && generatedTeams.length === 2 && (
                     <CompletedGameView

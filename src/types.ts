@@ -132,6 +132,37 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
     memberJoined: true,
 };
 
+// --- Stored Health Data ---
+
+export interface StoredGameHealth {
+    gameId: string;
+    leagueId: string;
+    userId: string;
+    savedAt: number;
+    // Summary stats
+    steps?: number;
+    calories?: number;
+    distance?: number;
+    heartRateAvg?: number;
+    heartRateMax?: number;
+    duration?: number;
+    workoutType?: string;
+    // Derived metrics
+    avgSpeedKmh?: number;
+    topSpeedKmh?: number;
+    paceMinPerKm?: number;
+    intensityScore: number;
+    activeMinutes: number;
+    sprintCount: number;
+    // Downsampled time-series (≤100 points each to keep doc <20KB)
+    heartRateSamples: { timestamp: string; bpm: number }[];
+    speedSamples: { timestamp: string; speedKmh: number }[];
+    heartRateZones: { zone: number; label: string; colour: string; minutes: number; percentage: number }[];
+    activePeriods: { startMin: number; endMin: number; active: boolean; avgHr?: number }[];
+    // Privacy
+    shared: boolean; // whether this data is visible to league members
+}
+
 export interface WeatherForecast {
     temperature: number;
     rainMm: number;

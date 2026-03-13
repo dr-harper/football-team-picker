@@ -60,6 +60,17 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
     }
 
+    match /gameHealth/{docId} {
+      // Owner can always read/write their own health data
+      // Other authenticated users can read if shared == true
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.userId ||
+        resource.data.shared == true
+      );
+      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
     match /availability/{docId} {
       // Anyone in the league can read availability
       allow read: if request.auth != null;

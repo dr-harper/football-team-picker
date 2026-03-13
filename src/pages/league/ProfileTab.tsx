@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, ReferenceLine, Tooltip } from 'recharts';
-import { Pencil, Check, X } from 'lucide-react';
+import { Pencil, Check, X, Share2, ShieldCheck } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { logger } from '../../utils/logger';
+import { getHealthSharingDefault, updateHealthSharingDefault } from '../../utils/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import { League, Game, PaymentRecord } from '../../types';
 import { PLAYER_POSITIONS } from '../../constants/playerPositions';
@@ -44,6 +45,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     const [nameInput, setNameInput] = useState('');
     const [nameSaving, setNameSaving] = useState(false);
     const [nameError, setNameError] = useState('');
+    const [shareHealth, setShareHealth] = useState(false);
     const { updateDisplayName } = useAuth();
 
     useEffect(() => {
@@ -59,6 +61,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                 });
             }
         });
+        getHealthSharingDefault(user.uid).then(setShareHealth).catch(() => {});
     }, [user]);
 
     const handleSave = async () => {
@@ -279,6 +282,44 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                         Set up your player profile →
                     </button>
                 )}
+            </div>
+
+            {/* Health data sharing toggle */}
+            <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                <label
+                    className="flex items-start gap-3 cursor-pointer"
+                    onClick={async () => {
+                        const newVal = !shareHealth;
+                        setShareHealth(newVal);
+                        try {
+                            await updateHealthSharingDefault(user.uid, newVal);
+                        } catch (err) {
+                            logger.error('Failed to update health sharing:', err);
+                            setShareHealth(!newVal); // revert
+                        }
+                    }}
+                >
+                    <div className="pt-0.5 shrink-0">
+                        <div className={`w-9 h-5 rounded-full transition-colors relative ${shareHealth ? 'bg-green-500' : 'bg-white/15'}`}>
+                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${shareHealth ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                            {shareHealth ? (
+                                <Share2 className="w-3.5 h-3.5 text-green-400" />
+                            ) : (
+                                <ShieldCheck className="w-3.5 h-3.5 text-white/40" />
+                            )}
+                            <span className="text-white text-sm">Share match health data</span>
+                        </div>
+                        <div className="text-white/40 text-xs mt-0.5">
+                            {shareHealth
+                                ? 'League members can see your health stats for future games'
+                                : 'Your health data is private — only you can see it'}
+                        </div>
+                    </div>
+                </label>
             </div>
 
             {/* Per-league stats */}
