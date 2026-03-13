@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Plus, Users, Calendar, Trophy, ArrowRight, Copy, Check, Goal, Star } from 'lucide-react';
+import { Plus, Users, Calendar, Trophy, ArrowRight, Copy, Check, Goal, Star, Activity } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -12,6 +12,7 @@ import NotificationSettings from '../components/NotificationSettings';
 import { buildLookup, resolvePlayerName } from '../utils/playerLookup';
 import { logger } from '../utils/logger';
 import { computeBadges, computePersonalStats, Badge } from '../utils/badgeUtils';
+import { useAutoHealthSync } from '../hooks/useAutoHealthSync';
 import PlayerProfileCard from './dashboard/PlayerProfileCard';
 import CreateLeagueModal from './dashboard/CreateLeagueModal';
 import JoinLeagueModal from './dashboard/JoinLeagueModal';
@@ -37,6 +38,9 @@ const DashboardPage: React.FC = () => {
     const [error, setError] = useState('');
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
     const [leagueStats, setLeagueStats] = useState<Map<string, LeagueStats>>(new Map());
+
+    // Auto-sync health data for recent games (native only)
+    const { syncing: healthSyncing, message: healthMessage } = useAutoHealthSync(user?.uid, leagues);
 
     // Real-time subscription to user's leagues
     useEffect(() => {
@@ -192,6 +196,16 @@ const DashboardPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
             <AppHeader />
+
+            {/* Health sync toast */}
+            {(healthSyncing || healthMessage) && (
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-3">
+                    <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-sm text-red-300 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <Activity className={`w-4 h-4 shrink-0 ${healthSyncing ? 'animate-pulse' : ''}`} />
+                        <span>{healthMessage ?? 'Syncing health data...'}</span>
+                    </div>
+                </div>
+            )}
 
             <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
                 {/* Welcome + Actions */}
