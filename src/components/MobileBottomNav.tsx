@@ -43,7 +43,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tab, setTab, upcoming
     ];
 
     return (
-        <div className="sm:hidden fixed bottom-0 inset-x-0 z-40" ref={moreRef}>
+        <div className="sm:hidden foldable-open:hidden fixed bottom-0 inset-x-0 z-40" ref={moreRef}>
             {/* More menu popover */}
             {moreOpen && (
                 <div className="mx-3 mb-1 bg-green-900/95 backdrop-blur-lg border border-white/10 rounded-2xl shadow-2xl overflow-hidden">

@@ -84,10 +84,35 @@
     grid-template-columns: env(viewport-segment-width 0 0) env(viewport-segment-width 1 0);
     column-gap: calc(env(viewport-segment-left 1 0) - env(viewport-segment-right 0 0));
   }
+
+  .foldable-hinge-pad-left {
+    padding-right: calc((env(viewport-segment-left 1 0) - env(viewport-segment-right 0 0)) / 2);
+  }
+
+  .foldable-hinge-pad-right {
+    padding-left: calc((env(viewport-segment-left 1 0) - env(viewport-segment-right 0 0)) / 2);
+  }
+
+  .foldable-divider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: env(viewport-segment-right 0 0);
+    width: calc(env(viewport-segment-left 1 0) - env(viewport-segment-right 0 0));
+    background: rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+    z-index: 10;
+  }
 }
 
 @media (vertical-viewport-segments: 2) {
   .foldable-grid-vertical {
+    grid-template-rows: env(viewport-segment-height 0 0) env(viewport-segment-height 0 1);
+    row-gap: calc(env(viewport-segment-top 0 1) - env(viewport-segment-bottom 0 0));
+  }
+
+  .tabletop-layout {
+    display: grid;
     grid-template-rows: env(viewport-segment-height 0 0) env(viewport-segment-height 0 1);
     row-gap: calc(env(viewport-segment-top 0 1) - env(viewport-segment-bottom 0 0));
   }

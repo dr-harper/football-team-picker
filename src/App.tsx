@@ -14,10 +14,12 @@ import { exportImage, shareImage } from './utils/imageExport';
 import { Team, TeamSetup } from './types';
 import { FIX_INPUT_PROMPT, SETUP_TAGLINE_PROMPT } from './constants/aiPrompts';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
+import { FoldableProvider, useFoldable } from './hooks/useFoldableDisplay';
 import { AI_FIX_INPUT_THROTTLE_MS } from './constants/gameConstants';
 import { callGemini } from './utils/geminiClient';
 
 const FootballTeamPickerInner = () => {
+    const { isTabletop } = useFoldable();
     const {
         places,
         selectedLocation,
@@ -201,8 +203,9 @@ const FootballTeamPickerInner = () => {
 
                 <div className="max-w-6xl mx-auto mt-4 space-y-6">
                 <HomeBanner />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 foldable-grid">
-                    <div className="space-y-4">
+                <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 foldable-grid relative ${isTabletop ? 'tabletop-layout' : ''}`}>
+                    <div className="foldable-divider" />
+                    <div className={`space-y-4 foldable-hinge-pad-left ${isTabletop ? 'order-2' : ''}`}>
                         <PlayerInput
                             playersText={playersText}
                             onPlayersTextChange={setPlayersText}
@@ -222,7 +225,7 @@ const FootballTeamPickerInner = () => {
                         />
                     </div>
 
-                    <div className="space-y-6">
+                    <div className={`space-y-6 foldable-hinge-pad-right ${isTabletop ? 'order-1' : ''}`}>
                         {teamSetups.length === 0 ? (
                             <PlaceholderPitch />
                         ) : (
@@ -282,11 +285,13 @@ const FootballTeamPickerInner = () => {
 
 const FootballTeamPicker = () => {
     return (
-        <SettingsProvider>
-            <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
-                <FootballTeamPickerInner />
-            </div>
-        </SettingsProvider>
+        <FoldableProvider>
+            <SettingsProvider>
+                <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
+                    <FootballTeamPickerInner />
+                </div>
+            </SettingsProvider>
+        </FoldableProvider>
     );
 };
 

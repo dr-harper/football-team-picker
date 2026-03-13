@@ -259,7 +259,7 @@ const LeaguePage: React.FC = () => {
 
             <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-24 sm:pb-6 space-y-4">
                 {/* Desktop top tabs — hidden on mobile */}
-                <div className="hidden sm:grid grid-cols-7 gap-1 bg-white/5 rounded-lg p-1">
+                <div className="hidden sm:grid foldable-open:grid grid-cols-7 gap-1 bg-white/5 rounded-lg p-1">
                     {([
                         { key: 'upcoming', icon: Calendar, label: `Games (${upcomingGames.length})` },
                         { key: 'completed', icon: Trophy, label: `Results (${completedGames.length})` },

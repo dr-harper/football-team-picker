@@ -17,6 +17,10 @@ export default {
       },
     },
     extend: {
+      screens: {
+        'foldable-open': { raw: '(horizontal-viewport-segments: 2)' },
+        'foldable-tabletop': { raw: '(vertical-viewport-segments: 2)' },
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

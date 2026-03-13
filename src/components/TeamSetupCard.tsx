@@ -42,7 +42,7 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = React.memo(({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.3 }}
-            className="bg-green-800/80 dark:bg-green-900/80 border border-green-600/40 p-5 shadow-xl text-white rounded-2xl"
+            className="bg-green-800/80 dark:bg-green-900/80 border border-green-600/40 p-5 foldable-open:p-7 shadow-xl text-white rounded-2xl"
         >
             <div className="flex justify-between items-center mb-3">
                 {totalSetups > 1 ? (

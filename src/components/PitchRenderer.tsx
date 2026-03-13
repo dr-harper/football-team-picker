@@ -70,7 +70,7 @@ const PitchRenderer: React.FC<PitchRendererProps> = React.memo(({
                     tabIndex={0}
                     role="button"
                     aria-label={`${position.player.name}${position.player.isGoalkeeper ? ', Goalkeeper' : ''}. Click to select for swap`}
-                    className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform ${playerRingClass(selectedPlayer, setupIndex, teamIndex, position.playerIndex)}`}
+                    className={`w-8 h-8 sm:w-12 sm:h-12 foldable-open:w-14 foldable-open:h-14 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform ${playerRingClass(selectedPlayer, setupIndex, teamIndex, position.playerIndex)}`}
                 >
                     <PlayerIcon
                         color={team.color}
@@ -83,18 +83,18 @@ const PitchRenderer: React.FC<PitchRendererProps> = React.memo(({
         ));
 
     return (
-        <div role="group" aria-label="Football pitch with team players" className="w-full aspect-video relative bg-green-600 border-2 border-white rounded-lg shadow-lg overflow-hidden sm:aspect-video sm:w-full sm:h-auto">
+        <div role="group" aria-label="Football pitch with team players" className="w-full aspect-video relative bg-green-600 border-2 foldable-open:border-4 border-white rounded-lg shadow-lg overflow-hidden sm:aspect-video sm:w-full sm:h-auto">
             {/* Football pitch lines */}
             <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-white"></div>
-            <div className="absolute top-1/2 left-1/2 w-16 h-16 sm:w-24 sm:h-24 rounded-full border-2 border-white transform -translate-x-1/2 -translate-y-1/2"></div>
+            <div className="absolute top-1/2 left-1/2 w-16 h-16 sm:w-24 sm:h-24 foldable-open:w-32 foldable-open:h-32 rounded-full border-2 border-white transform -translate-x-1/2 -translate-y-1/2"></div>
             <div className="absolute top-1/2 left-0 w-1 h-12 sm:w-2 sm:h-16 bg-white transform -translate-y-1/2"></div>
             <div className="absolute top-1/2 right-0 w-1 h-12 sm:w-2 sm:h-16 bg-white transform -translate-y-1/2"></div>
-            <div className="absolute top-1/2 left-0 w-8 h-24 sm:w-12 sm:h-32 border-2 border-white border-l-0 transform -translate-y-1/2"></div>
-            <div className="absolute top-1/2 right-0 w-8 h-24 sm:w-12 sm:h-32 border-2 border-white border-r-0 transform -translate-y-1/2"></div>
+            <div className="absolute top-1/2 left-0 w-8 h-24 sm:w-12 sm:h-32 foldable-open:w-16 foldable-open:h-40 border-2 border-white border-l-0 transform -translate-y-1/2"></div>
+            <div className="absolute top-1/2 right-0 w-8 h-24 sm:w-12 sm:h-32 foldable-open:w-16 foldable-open:h-40 border-2 border-white border-r-0 transform -translate-y-1/2"></div>
 
             {/* Swap hint icon */}
             <div className="swap-hint absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                <ArrowLeftRight className="w-4 h-4 sm:w-5 sm:h-5 text-white/30" />
+                <ArrowLeftRight className="w-4 h-4 sm:w-5 sm:h-5 foldable-open:w-6 foldable-open:h-6 text-white/30" />
             </div>
 
             {renderTeamPlayers(teams[0], 0, true)}

@@ -215,6 +215,8 @@ const DashboardPage: React.FC = () => {
                     </div>
                 </div>
 
+                <div className="grid grid-cols-1 foldable-open:grid-cols-2 gap-6 foldable-grid">
+                <div className="space-y-6 foldable-hinge-pad-left">
                 {/* Player Profile Card */}
                 {playerProfile && (
                     <PlayerProfileCard
@@ -228,7 +230,9 @@ const DashboardPage: React.FC = () => {
 
                 {/* Notification Settings */}
                 <NotificationSettings />
+                </div>
 
+                <div className="space-y-6 foldable-hinge-pad-right">
                 {/* Upcoming Games */}
                 {upcomingGames.length > 0 && (
                     <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-5">
@@ -327,6 +331,8 @@ const DashboardPage: React.FC = () => {
                             ))}
                         </div>
                     )}
+                </div>
+                </div>
                 </div>
             </div>
 
