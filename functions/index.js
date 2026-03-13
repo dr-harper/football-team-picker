@@ -161,6 +161,7 @@ const DEFAULT_PREFS = {
     teamsGenerated: true,
     resultRecorded: false,
     paymentReminder: false,
+    memberJoined: true,
 };
 
 function initVapid() {
@@ -277,6 +278,57 @@ exports.onGameUpdated = onDocumentUpdated(
                 icon: '/logo.png',
             }, after.createdBy);
         }
+    },
+);
+
+// ── Member Joined notification (admins only) ────────────────────────────────
+
+exports.onLeagueUpdated = onDocumentUpdated(
+    { document: 'leagues/{leagueId}', region: 'europe-west2', secrets: [vapidPrivateKey] },
+    async (event) => {
+        const before = event.data.before.data();
+        const after = event.data.after.data();
+
+        const oldMembers = new Set(before.memberIds || []);
+        const newMembers = (after.memberIds || []).filter(uid => !oldMembers.has(uid));
+
+        if (newMembers.length === 0) return;
+
+        initVapid();
+        const db = getFirestore();
+        const auth = getAuth();
+
+        // Resolve display names of new members
+        const names = await Promise.all(newMembers.map(async (uid) => {
+            try {
+                const user = await auth.getUser(uid);
+                return user.displayName || user.email || 'Someone';
+            } catch {
+                return 'Someone';
+            }
+        }));
+
+        const joinedText = names.length === 1
+            ? `${names[0]} joined ${after.name}`
+            : `${names.length} new players joined ${after.name}`;
+
+        const code = after.joinCode || '';
+        const payload = {
+            title: 'New Member Joined',
+            body: joinedText,
+            url: `/league/${code}`,
+            icon: '/logo.png',
+        };
+
+        // Notify admins and owner only
+        const adminIds = new Set([after.createdBy, ...(after.adminIds || [])]);
+        await Promise.all([...adminIds].map(async (uid) => {
+            // Don't notify if the admin is the one who just joined
+            if (newMembers.includes(uid)) return;
+            const wantsPush = await getUserPref(db, uid, 'memberJoined');
+            if (!wantsPush) return;
+            await sendPushToUser(db, uid, payload);
+        }));
     },
 );
 
