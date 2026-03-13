@@ -14,6 +14,7 @@ import AvailabilityStep from './game/AvailabilityStep';
 import TeamsStep from './game/TeamsStep';
 import MatchStep from './game/MatchStep';
 import CompletedGameView from './game/CompletedGameView';
+import GameHealthCard from '../components/GameHealthCard';
 import { useGameState } from './game/useGameState';
 
 const WIZARD_STEPS = [
@@ -249,6 +250,8 @@ const GamePage: React.FC = () => {
                         lookup={lookup}
                     />
                 )}
+
+                <GameHealthCard gameDate={game.date} gameStatus={game.status} matchDurationMinutes={league?.matchDurationMinutes ?? 60} />
 
                 {isCompleted && generatedTeams && generatedTeams.length === 2 && (
                     <CompletedGameView

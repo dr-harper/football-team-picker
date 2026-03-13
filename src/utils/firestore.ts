@@ -264,6 +264,10 @@ export async function updateLeagueDefaultCost(leagueId: string, cost: number | n
     await updateDoc(doc(db, 'leagues', leagueId), { defaultCostPerPerson: cost ?? null });
 }
 
+export async function updateLeagueMatchDuration(leagueId: string, minutes: number): Promise<void> {
+    await updateDoc(doc(db, 'leagues', leagueId), { matchDurationMinutes: minutes });
+}
+
 export async function updateLeaguePayments(leagueId: string, payments: Record<string, PaymentRecord[]>): Promise<void> {
     await updateDoc(doc(db, 'leagues', leagueId), { payments });
 }

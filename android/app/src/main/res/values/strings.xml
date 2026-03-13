@@ -5,4 +5,5 @@
     <string name="package_name">uk.co.mlharper.teamshuffle</string>
     <string name="custom_url_scheme">uk.co.mlharper.teamshuffle</string>
     <string name="server_client_id">88950522814-q2irelc9ufgkf12gqe9tj9t30kbg5o1i.apps.googleusercontent.com</string>
+    <string name="privacy_policy_url">https://teamshuffle.co.uk/privacy</string>
 </resources>

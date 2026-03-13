@@ -70,6 +70,7 @@ export interface League {
     payments?: Record<string, PaymentRecord[]>; // playerId (userId) → dated payment history
     expenses?: LeagueExpense[];                 // player-submitted expenses awaiting admin approval
     enableAssists?: boolean;                   // opt-in: track assists (default off)
+    matchDurationMinutes?: number;             // match length in minutes (default 60)
     seasons?: Record<string, Season>;          // season map keyed by ID
     activeSeasonId?: string;                   // which season is currently active
 }
@@ -119,6 +120,7 @@ export interface NotificationPreferences {
     teamsGenerated: boolean;
     resultRecorded: boolean;
     paymentReminder: boolean;
+    memberJoined: boolean;
 }
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
@@ -127,6 +129,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
     teamsGenerated: true,
     resultRecorded: false,
     paymentReminder: false,
+    memberJoined: true,
 };
 
 export interface WeatherForecast {

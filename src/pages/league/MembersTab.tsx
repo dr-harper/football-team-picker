@@ -6,7 +6,7 @@ import {
     removeMember, updateUserDisplayName, updateLeagueAdmins,
     createSeason, archiveSeason, updateSeason, deleteSeason,
     extractGuestsFromGames, linkGuestToMember,
-    updateLeagueEnableAssists, updateLeagueDefaultVenue,
+    updateLeagueEnableAssists, updateLeagueDefaultVenue, updateLeagueMatchDuration,
 } from '../../utils/firestore';
 import type { User } from 'firebase/auth';
 import { logger } from '../../utils/logger';
@@ -422,6 +422,28 @@ const MembersTab: React.FC<MembersTabProps> = ({
                                     league.enableAssists ? 'translate-x-5' : ''
                                 }`} />
                             </button>
+                        </div>
+
+                        {/* Match duration */}
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="text-white text-sm font-medium">Match duration</div>
+                                <div className="text-white/30 text-xs">Length of each game in minutes</div>
+                            </div>
+                            <select
+                                value={league.matchDurationMinutes ?? 60}
+                                onChange={async (e) => {
+                                    await updateLeagueMatchDuration(leagueId, Number(e.target.value));
+                                }}
+                                className="bg-white/10 text-white text-sm rounded-lg px-3 py-1.5 border border-white/10 focus:outline-none focus:ring-1 focus:ring-green-500"
+                            >
+                                <option value={30}>30 min</option>
+                                <option value={45}>45 min</option>
+                                <option value={60}>60 min</option>
+                                <option value={75}>75 min</option>
+                                <option value={90}>90 min</option>
+                                <option value={120}>120 min</option>
+                            </select>
                         </div>
                     </div>
                 </CollapsibleSection>
