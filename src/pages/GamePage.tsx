@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import AppHeader from '../components/AppHeader';
 import { useAuth } from '../contexts/AuthContext';
@@ -14,16 +14,20 @@ import WizardProgressBar from './game/WizardProgressBar';
 import AvailabilityStep from './game/AvailabilityStep';
 import TeamsStep from './game/TeamsStep';
 import MatchStep from './game/MatchStep';
+import ResultsStep from './game/ResultsStep';
 import CompletedGameView from './game/CompletedGameView';
 import GameHealthCard from '../components/GameHealthCard';
 import SharedHealthCards from '../components/SharedHealthCards';
 import { useGameState } from './game/useGameState';
 import { makeGuestId } from '../utils/playerLookup';
+import { sendGameToWatch, addWatchMessageListener, sendMatchStateToWatch } from '../utils/wear';
+import { updateMatchStartedAt, updateMatchPaused, updateMatchResumed, updateMatchEnded } from '../utils/firestore';
 
 const WIZARD_STEPS = [
     { num: 1 as const, label: 'Availability' },
     { num: 2 as const, label: 'Teams' },
-    { num: 3 as const, label: 'Match' },
+    { num: 3 as const, label: 'Live' },
+    { num: 4 as const, label: 'Results' },
 ];
 
 const GamePage: React.FC = () => {
@@ -50,7 +54,7 @@ const GamePage: React.FC = () => {
         score1, score2, selectedPlayer,
         weather, weatherLoading,
         leagueMembers, lookup,
-        newGuestName, goalScorers, assisters, motm, motmNotes,
+        newGuestName, goalScorers, assisters, motm, motmNotes, computedScores,
         isExporting, setIsExporting,
         wizardStep, setWizardStep,
         attendees, editingCost, costInput, showTextarea,
@@ -60,12 +64,201 @@ const GamePage: React.FC = () => {
         handleSetAvailability, handleAdminSetAvailability,
         generateFromAvailable, handleGenerateFromText,
         handlePickSetup, handleDeleteSetup, handleColorChange,
-        handleAddGuest, handleGoalChange, handleAssistChange,
+        handleAddGuest, handleGoalChange, handleAssistChange, handleStartMatch, handlePauseMatch, handleResumeMatch, handleEndMatch, handleUndoEnd,
         handleSetMotm, handleMotmNotesChange, handleSaveScore, handleReopen,
         handleToggleAttendee, handleSaveGameCost,
         handleGuestStatusChange, handlePositionToggle,
         handlePlayerClick,
     } = state;
+
+    const sendGameDataToWatch = useCallback(async (matchStarted = false) => {
+        if (!game || !generatedTeams || generatedTeams.length < 2) return;
+        const team1 = generatedTeams[0];
+        const team2 = generatedTeams[1];
+        await sendGameToWatch({
+            gameId: game.id,
+            title: game.title || '',
+            team1Name: team1.name || 'Team 1',
+            team2Name: team2.name || 'Team 2',
+            team1Colour: team1.color || '#22C55E',
+            team2Colour: team2.color || '#3B82F6',
+            team1Players: team1.players.map(p => p.name),
+            team2Players: team2.players.map(p => p.name),
+            score1: score1 !== '' ? Number(score1) : (computedScores?.team1 ?? 0),
+            score2: score2 !== '' ? Number(score2) : (computedScores?.team2 ?? 0),
+            startedAt: game.matchStartedAt ?? 0,
+            matchStarted,
+            totalPausedMs: game.totalPausedMs ?? 0,
+            pausedAt: game.matchPausedAt ?? 0,
+            matchEnded: !!game.matchEndedAt,
+        });
+    }, [game, generatedTeams, score1, score2, computedScores]);
+
+    const handleSendToWatch = async () => {
+        await sendGameDataToWatch(!!game?.matchStartedAt);
+    };
+
+    // Track watch-originated scores to avoid echoing them back
+    const watchScoreRef = useRef<{ s1: number; s2: number } | null>(null);
+    // Defer /game/score processing so /game/goal can cancel it (avoids double-counting)
+    const pendingScoreRef = useRef<{ s1: number; s2: number; timer: ReturnType<typeof setTimeout> } | null>(null);
+    // Track last scores sent to watch to avoid redundant sends
+    const lastSentScoreRef = useRef<string>('');
+
+    // Sync scores phone→watch whenever they change during an active match
+    useEffect(() => {
+        if (!game?.matchStartedAt || !game?.id) return;
+        const s1 = score1 !== '' ? Number(score1) : (computedScores?.team1 ?? 0);
+        const s2 = score2 !== '' ? Number(score2) : (computedScores?.team2 ?? 0);
+        const key = `${s1}:${s2}`;
+        // Don't echo back if this score came from the watch
+        if (watchScoreRef.current && watchScoreRef.current.s1 === s1 && watchScoreRef.current.s2 === s2) {
+            watchScoreRef.current = null;
+            lastSentScoreRef.current = key;
+            return;
+        }
+        // Don't re-send if already sent
+        if (lastSentScoreRef.current === key) return;
+        lastSentScoreRef.current = key;
+        sendMatchStateToWatch({ gameId: game.id, state: 'scoreUpdate', score1: s1, score2: s2 });
+    }, [score1, score2, computedScores, game?.matchStartedAt, game?.id]);
+
+    // Listen for watch messages (score updates, goals, end game)
+    const handleWatchMessage = useCallback(async (path: string, data: string) => {
+        if (!game || !gameDocId || !generatedTeams || generatedTeams.length < 2) return;
+
+        // Only handle messages for this game
+        const parts = data.split('|');
+        const messageGameId = (path === '/game/end') ? data.trim() : parts[0];
+        if (messageGameId !== game.id) return;
+
+        switch (path) {
+            case '/game/start': {
+                // data: "gameId|startedAtMs"
+                if (parts.length >= 2) {
+                    const startedAt = parseInt(parts[1]);
+                    if (!isNaN(startedAt)) {
+                        await updateMatchStartedAt(gameDocId, startedAt);
+                        // Echo back authoritative timestamp so watch uses identical value
+                        sendGameDataToWatch(true);
+                    }
+                }
+                break;
+            }
+            case '/game/score': {
+                // The watch sends /game/score (absolute) for ALL goals, then /game/goal
+                // (with scorer name) for named goals. To avoid double-counting:
+                // - Named goals: /game/goal fires handleGoalChange → computedScores updates
+                // - Unknown scorer goals: only /game/score arrives, so we apply it here
+                // We defer processing briefly: if a /game/goal arrives within 200ms, skip this.
+                if (parts.length === 3) {
+                    const s1 = parseInt(parts[1]) || 0;
+                    const s2 = parseInt(parts[2]) || 0;
+                    watchScoreRef.current = { s1, s2 };
+                    pendingScoreRef.current = { s1, s2, timer: setTimeout(() => {
+                        // Only apply if no /game/goal arrived to handle it
+                        if (pendingScoreRef.current) {
+                            setScore1(String(pendingScoreRef.current.s1));
+                            setScore2(String(pendingScoreRef.current.s2));
+                            pendingScoreRef.current = null;
+                        }
+                    }, 200) };
+                }
+                break;
+            }
+            case '/game/goal': {
+                // Named goal — handleGoalChange updates goalScorers → computedScores.
+                // Cancel any pending /game/score since this handles the scoring.
+                if (pendingScoreRef.current) {
+                    clearTimeout(pendingScoreRef.current.timer);
+                    pendingScoreRef.current = null;
+                }
+                if (parts.length >= 3) {
+                    const scorerName = parts[2];
+                    const allPlayers = generatedTeams.flatMap(t => t.players);
+                    const player = allPlayers.find(p => p.name === scorerName);
+                    const playerId = player?.playerId ?? `guest:${scorerName}`;
+                    const elapsedSec = parts.length >= 4 ? parseInt(parts[3]) : undefined;
+                    const goalTimeSec = elapsedSec !== undefined && !isNaN(elapsedSec) ? elapsedSec : undefined;
+                    handleGoalChange(playerId, 1, goalTimeSec);
+                }
+                break;
+            }
+            case '/game/pause': {
+                // data: "gameId|pausedAtMs"
+                if (parts.length >= 2) {
+                    const pausedAt = parseInt(parts[1]);
+                    if (!isNaN(pausedAt)) {
+                        updateMatchPaused(gameDocId, pausedAt, game.totalPausedMs ?? 0);
+                    }
+                }
+                break;
+            }
+            case '/game/resume': {
+                // data: "gameId|totalPausedMs"
+                if (parts.length >= 2) {
+                    const totalPaused = parseInt(parts[1]);
+                    if (!isNaN(totalPaused)) {
+                        updateMatchResumed(gameDocId, totalPaused);
+                    }
+                }
+                break;
+            }
+            case '/game/undo-goal': {
+                // data: "gameId|team|newScore1|newScore2"
+                if (parts.length >= 4) {
+                    const team = parseInt(parts[1]);
+                    const s1 = parseInt(parts[2]);
+                    const s2 = parseInt(parts[3]);
+                    watchScoreRef.current = { s1, s2 };
+                    // Remove the last goal from the specified team
+                    if (!isNaN(team)) {
+                        const teamIndex = team - 1;
+                        // Find the last scorer on this team and decrement
+                        const teamPlayers = generatedTeams[teamIndex]?.players ?? [];
+                        const teamPlayerIds = teamPlayers.map(p => p.playerId ?? p.name);
+                        // Find last goal scorer on this team (by most recent goal time)
+                        const teamScorers = goalScorers
+                            .filter(gs => teamPlayerIds.includes(gs.playerId) && gs.goals > 0)
+                            .sort((a, b) => {
+                                const aMax = Math.max(...(a.goalTimes ?? [0]));
+                                const bMax = Math.max(...(b.goalTimes ?? [0]));
+                                return bMax - aMax;
+                            });
+                        if (teamScorers.length > 0) {
+                            handleGoalChange(teamScorers[0].playerId, -1);
+                        } else {
+                            // Fallback: set scores directly
+                            if (!isNaN(s1)) setScore1(String(s1));
+                            if (!isNaN(s2)) setScore2(String(s2));
+                        }
+                    }
+                }
+                break;
+            }
+            case '/game/end': {
+                // data: "gameId|endedAtMs" or just "gameId"
+                const endedAt = parts.length >= 2 ? parseInt(parts[1]) : Date.now();
+                updateMatchEnded(gameDocId, isNaN(endedAt) ? Date.now() : endedAt);
+                handleSaveScore();
+                setWizardStep(4);
+                break;
+            }
+        }
+    }, [game, gameDocId, generatedTeams, score1, score2, goalScorers, handleGoalChange, handleSaveScore, setScore1, setScore2, setWizardStep, sendGameDataToWatch]);
+
+    useEffect(() => {
+        let cleanup: (() => void) | null = null;
+        addWatchMessageListener(handleWatchMessage).then(fn => { cleanup = fn; });
+        return () => { cleanup?.(); };
+    }, [handleWatchMessage]);
+
+    // Auto-send game data to watch when entering Live step with an active match
+    useEffect(() => {
+        if (wizardStep === 3 && game?.matchStartedAt && generatedTeams && generatedTeams.length >= 2) {
+            sendGameDataToWatch(true);
+        }
+    }, [wizardStep]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const buildImageHeader = (): ImageHeader => {
         const { emoji } = weather ? describeWeatherCode(weather.weatherCode) : { emoji: undefined };
@@ -153,6 +346,8 @@ const GamePage: React.FC = () => {
 
     const enableAssists = league?.enableAssists === true;
 
+    const scoringDisabled = !!game.matchPausedAt && !game.matchEndedAt;
+
     const scoringControlsElement = (
         <ScoringControls
             allPlayerIds={allPlayerIds}
@@ -162,6 +357,8 @@ const GamePage: React.FC = () => {
             motm={motm}
             motmNotes={motmNotes}
             enableAssists={enableAssists}
+            teams={generatedTeams ?? undefined}
+            disabled={scoringDisabled}
             onGoalChange={handleGoalChange}
             onAssistChange={handleAssistChange}
             onSetMotm={handleSetMotm}
@@ -281,16 +478,53 @@ const GamePage: React.FC = () => {
 
                 {!isCompleted && wizardStep === 3 && (
                     <MatchStep
+                        game={game} generatedTeams={generatedTeams} isAdmin={isAdmin}
+                        selectedPlayer={selectedPlayer}
+                        goalScorers={goalScorers}
+                        computedScores={computedScores}
+                        scoringControlsElement={scoringControlsElement}
+                        onPlayerClick={handlePlayerClick}
+                        onBack={() => setWizardStep(2)} onNext={() => setWizardStep(4)}
+                        onGoToTeams={() => setWizardStep(2)}
+                        onSendToWatch={handleSendToWatch}
+                        onStartMatch={async () => {
+                            await handleStartMatch();
+                            await sendGameDataToWatch(true);
+                        }}
+                        onPauseMatch={async () => {
+                            await handlePauseMatch();
+                            if (game) sendMatchStateToWatch({ gameId: game.id, state: 'paused', pausedAt: Date.now(), totalPausedMs: game.totalPausedMs ?? 0 });
+                        }}
+                        onResumeMatch={async () => {
+                            const prevPausedAt = game?.matchPausedAt ?? Date.now();
+                            const newTotal = (game?.totalPausedMs ?? 0) + (Date.now() - prevPausedAt);
+                            await handleResumeMatch();
+                            if (game) sendMatchStateToWatch({ gameId: game.id, state: 'resumed', totalPausedMs: newTotal });
+                        }}
+                        onEndMatch={async () => {
+                            await handleEndMatch();
+                            if (game) sendMatchStateToWatch({ gameId: game.id, state: 'ended', endedAt: Date.now() });
+                        }}
+                        onUndoEnd={async () => {
+                            await handleUndoEnd();
+                            if (game) sendMatchStateToWatch({ gameId: game.id, state: 'resumed', totalPausedMs: game.totalPausedMs ?? 0 });
+                        }}
+                        onOpenOnWatch={() => sendGameDataToWatch(!!game.matchStartedAt)}
+                        lookup={lookup}
+                    />
+                )}
+
+                {!isCompleted && wizardStep === 4 && (
+                    <ResultsStep
                         game={game} generatedTeams={generatedTeams} isAdmin={isAdmin} isPast={isPast}
                         score1={score1} score2={score2} isExporting={isExporting}
-                        selectedPlayer={selectedPlayer} allPlayerIds={allPlayerIds}
+                        allPlayerIds={allPlayerIds}
                         scoringControlsElement={scoringControlsElement}
                         attendanceSectionElement={attendanceSectionElement}
                         onScore1Change={setScore1} onScore2Change={setScore2}
-                        onSaveScore={handleSaveScore} onPlayerClick={handlePlayerClick}
+                        onSaveScore={handleSaveScore}
                         onShare={handleShare} onExport={handleExport}
-                        onBack={() => setWizardStep(2)} onGoToTeams={() => setWizardStep(2)}
-                        lookup={lookup}
+                        onBack={() => setWizardStep(3)} onGoToTeams={() => setWizardStep(2)}
                     />
                 )}
 

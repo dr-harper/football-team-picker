@@ -1,5 +1,5 @@
 import React from 'react';
-import { Goal, Award, Share2, Download } from 'lucide-react';
+import { Goal, Award, Share2, Download, Clock } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Game, Team, GoalScorer } from '../../types';
 import PitchRenderer from '../../components/PitchRenderer';
@@ -11,6 +11,10 @@ function findPlayerTeam(playerId: string, teams: Team[]): number {
         if (teams[t].players.some(p => (p.playerId ?? p.name) === playerId)) return t;
     }
     return -1;
+}
+
+function formatGoalTime(seconds: number): string {
+    return `${Math.floor(seconds / 60)}'`;
 }
 
 function TeamScorers({
@@ -32,6 +36,25 @@ function TeamScorers({
 }) {
     if (team1Items.length === 0 && team2Items.length === 0) return null;
 
+    const renderScorer = (gs: GoalScorer) => {
+        const hasTimes = gs.goalTimes && gs.goalTimes.length > 0;
+        return (
+            <div key={gs.playerId} className="bg-white/5 rounded px-2 py-1">
+                <div className="flex items-center justify-between">
+                    <span className="text-white text-xs truncate"><PlayerName id={gs.playerId} lookup={lookup} /></span>
+                    <span className={`${accentClass} text-xs font-bold ml-1 shrink-0`}>&times;{gs.goals}</span>
+                </div>
+                {hasTimes && (
+                    <div className="text-white/40 text-[10px] mt-0.5">
+                        {gs.goalTimes!.map((t, i) => (
+                            <span key={i}>{i > 0 ? ', ' : ''}{formatGoalTime(t)}</span>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     return (
         <div>
             <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-xs sm:text-sm">
@@ -41,28 +64,14 @@ function TeamScorers({
                 {/* Team 1 column */}
                 <div className="space-y-1">
                     <div className="text-[10px] text-green-300/60 uppercase tracking-wider mb-1 truncate">{teams[0]?.name}</div>
-                    {team1Items.length > 0 ? (
-                        team1Items.map(gs => (
-                            <div key={gs.playerId} className="bg-white/5 rounded px-2 py-1 flex items-center justify-between">
-                                <span className="text-white text-xs truncate"><PlayerName id={gs.playerId} lookup={lookup} /></span>
-                                <span className={`${accentClass} text-xs font-bold ml-1 shrink-0`}>&times;{gs.goals}</span>
-                            </div>
-                        ))
-                    ) : (
+                    {team1Items.length > 0 ? team1Items.map(renderScorer) : (
                         <div className="text-white/20 text-xs px-2">—</div>
                     )}
                 </div>
                 {/* Team 2 column */}
                 <div className="space-y-1">
                     <div className="text-[10px] text-green-300/60 uppercase tracking-wider mb-1 truncate">{teams[1]?.name}</div>
-                    {team2Items.length > 0 ? (
-                        team2Items.map(gs => (
-                            <div key={gs.playerId} className="bg-white/5 rounded px-2 py-1 flex items-center justify-between">
-                                <span className="text-white text-xs truncate"><PlayerName id={gs.playerId} lookup={lookup} /></span>
-                                <span className={`${accentClass} text-xs font-bold ml-1 shrink-0`}>&times;{gs.goals}</span>
-                            </div>
-                        ))
-                    ) : (
+                    {team2Items.length > 0 ? team2Items.map(renderScorer) : (
                         <div className="text-white/20 text-xs px-2">—</div>
                     )}
                 </div>
@@ -109,6 +118,15 @@ const CompletedGameView: React.FC<CompletedGameViewProps> = ({
     const hasAssists = enableAssists && assisters.length > 0;
     const hasMotm = !!motm;
 
+    // Build chronological timeline of all goals
+    const timelineEvents = goalScorers.flatMap(gs =>
+        (gs.goalTimes ?? []).map(timeSec => ({
+            playerId: gs.playerId,
+            timeSec,
+            teamIndex: findPlayerTeam(gs.playerId, generatedTeams),
+        }))
+    ).sort((a, b) => a.timeSec - b.timeSec);
+
     return (
         <div className="max-w-4xl mx-auto">
             <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-3 sm:p-5">
@@ -137,6 +155,38 @@ const CompletedGameView: React.FC<CompletedGameViewProps> = ({
                     onPlayerClick={(_, tIdx, pIdx) => onPlayerClick(0, tIdx, pIdx)}
                     lookup={lookup}
                 />
+
+                {/* Chronological goal timeline */}
+                {hasGoals && timelineEvents.length > 0 && (
+                    <div className="border-t border-white/10 pt-3 mt-3">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-xs sm:text-sm">
+                            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white/40" /> Match Timeline
+                        </h4>
+                        <div className="relative">
+                            {/* Centre line */}
+                            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/10" />
+                            <div className="space-y-1.5">
+                                {timelineEvents.map((evt, i) => {
+                                    const isTeam1 = evt.teamIndex === 0;
+                                    return (
+                                        <div key={i} className={`flex items-center gap-1.5 ${isTeam1 ? 'flex-row' : 'flex-row-reverse'}`}>
+                                            <div className={`flex-1 flex items-center gap-1.5 ${isTeam1 ? 'justify-end' : 'justify-end flex-row-reverse'}`}>
+                                                <PlayerName id={evt.playerId} lookup={lookup} className="text-white text-xs truncate" />
+                                                <span className="text-white/30 text-xs shrink-0">&#9917;</span>
+                                            </div>
+                                            <div className="w-10 text-center shrink-0">
+                                                <span className="text-white/50 font-mono text-[10px] bg-white/5 rounded px-1.5 py-0.5">
+                                                    {formatGoalTime(evt.timeSec)}
+                                                </span>
+                                            </div>
+                                            <div className="flex-1" />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Goal scorers & assists — split by team */}
                 {(hasGoals || hasAssists || hasMotm) && (

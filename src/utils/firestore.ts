@@ -240,6 +240,28 @@ export async function updatePlayerPositions(gameId: string, playerPositions: Rec
     await updateDoc(doc(db, 'games', gameId), { playerPositions });
 }
 
+export async function updateMatchStartedAt(gameId: string, matchStartedAt: number): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { matchStartedAt });
+}
+
+export async function updateMatchPaused(gameId: string, matchPausedAt: number, totalPausedMs: number): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { matchPausedAt, totalPausedMs });
+}
+
+export async function updateMatchResumed(gameId: string, totalPausedMs: number): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { matchPausedAt: deleteField(), totalPausedMs });
+}
+
+export async function updateMatchEnded(gameId: string, matchEndedAt: number, totalPausedMs?: number): Promise<void> {
+    const data: Record<string, unknown> = { matchEndedAt, matchPausedAt: deleteField() };
+    if (totalPausedMs !== undefined) data.totalPausedMs = totalPausedMs;
+    await updateDoc(doc(db, 'games', gameId), data);
+}
+
+export async function clearMatchEnded(gameId: string): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { matchEndedAt: deleteField() });
+}
+
 export async function updateGameGoalScorers(gameId: string, goalScorers: GoalScorer[]): Promise<void> {
     await updateDoc(doc(db, 'games', gameId), { goalScorers });
 }

@@ -1,37 +1,77 @@
 import React from 'react';
 import { Goal, Plus, Minus, Award, Star } from 'lucide-react';
-import { GoalScorer } from '../../types';
+import { GoalScorer, Team } from '../../types';
 import PlayerName from '../../components/PlayerName';
 
-interface TallyRowsProps {
-    allPlayerIds: string[];
+function findTeamIndex(playerId: string, teams: Team[]): number {
+    for (let t = 0; t < teams.length; t++) {
+        if (teams[t].players.some(p => (p.playerId ?? p.name) === playerId)) return t;
+    }
+    return -1;
+}
+
+function TallyRow({
+    pid, count, onChange, accentClass, lookup,
+}: {
+    pid: string;
+    count: number;
+    onChange: (playerId: string, delta: number) => void;
+    accentClass: string;
+    lookup: Record<string, string>;
+}) {
+    const [undoFlash, setUndoFlash] = React.useState(false);
+
+    const handleUndo = () => {
+        onChange(pid, -1);
+        setUndoFlash(true);
+        setTimeout(() => setUndoFlash(false), 600);
+    };
+
+    return (
+        <div className={`flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 transition-colors duration-300 ${undoFlash ? 'bg-red-500/20' : 'bg-white/5'}`}>
+            <PlayerName id={pid} lookup={lookup} className="text-white text-sm truncate" />
+            <div className="flex items-center gap-2 shrink-0">
+                <button onClick={handleUndo} disabled={count === 0} className="text-white/40 hover:text-white disabled:opacity-20 p-0.5">
+                    <Minus className="w-3.5 h-3.5" />
+                </button>
+                <span className={`font-bold text-sm w-4 text-center transition-colors duration-300 ${undoFlash ? 'text-red-400' : 'text-white'}`}>{count}</span>
+                <button onClick={() => onChange(pid, 1)} className={`${accentClass} p-0.5`}>
+                    <Plus className="w-3.5 h-3.5" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+function TeamColumnTally({
+    label, colour, playerIds, tally, onChange, accentClass, lookup,
+}: {
+    label: string;
+    colour?: string;
+    playerIds: string[];
     tally: GoalScorer[];
     onChange: (playerId: string, delta: number) => void;
     accentClass: string;
     lookup: Record<string, string>;
+}) {
+    return (
+        <div className="space-y-1.5">
+            <div className="text-[10px] uppercase tracking-wider mb-1 truncate" style={{ color: colour || 'rgba(134,239,172,0.7)' }}>
+                {label}
+            </div>
+            {playerIds.map(pid => (
+                <TallyRow
+                    key={pid}
+                    pid={pid}
+                    count={tally.find(t => t.playerId === pid)?.goals ?? 0}
+                    onChange={onChange}
+                    accentClass={accentClass}
+                    lookup={lookup}
+                />
+            ))}
+        </div>
+    );
 }
-
-const TallyRows: React.FC<TallyRowsProps> = ({ allPlayerIds, tally, onChange, accentClass, lookup }) => (
-    <div className="space-y-1.5">
-        {allPlayerIds.map(pid => {
-            const count = tally.find(t => t.playerId === pid)?.goals ?? 0;
-            return (
-                <div key={pid} className="flex items-center justify-between gap-2 bg-white/5 rounded-lg px-3 py-1.5">
-                    <PlayerName id={pid} lookup={lookup} className="text-white text-sm truncate" />
-                    <div className="flex items-center gap-2 shrink-0">
-                        <button onClick={() => onChange(pid, -1)} disabled={count === 0} className="text-white/40 hover:text-white disabled:opacity-20 p-0.5">
-                            <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="text-white font-bold text-sm w-4 text-center">{count}</span>
-                        <button onClick={() => onChange(pid, 1)} className={`${accentClass} p-0.5`}>
-                            <Plus className="w-3.5 h-3.5" />
-                        </button>
-                    </div>
-                </div>
-            );
-        })}
-    </div>
-);
 
 interface ScoringControlsProps {
     allPlayerIds: string[];
@@ -41,6 +81,8 @@ interface ScoringControlsProps {
     motmNotes: string;
     lookup: Record<string, string>;
     enableAssists?: boolean;
+    teams?: Team[];
+    disabled?: boolean;
     onGoalChange: (playerId: string, delta: number) => void;
     onAssistChange: (playerId: string, delta: number) => void;
     onSetMotm: (playerId: string) => void;
@@ -49,7 +91,7 @@ interface ScoringControlsProps {
 
 const ScoringControls: React.FC<ScoringControlsProps> = ({
     allPlayerIds, goalScorers, assisters, motm, motmNotes, lookup, enableAssists,
-    onGoalChange, onAssistChange, onSetMotm, onMotmNotesChange,
+    teams, disabled, onGoalChange, onAssistChange, onSetMotm, onMotmNotesChange,
 }) => {
     const notesTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const [localNotes, setLocalNotes] = React.useState(motmNotes);
@@ -61,21 +103,79 @@ const ScoringControls: React.FC<ScoringControlsProps> = ({
         notesTimer.current = setTimeout(() => onMotmNotesChange(value), 600);
     };
 
+    const hasTeams = teams && teams.length === 2;
+    const team0Ids = hasTeams ? allPlayerIds.filter(pid => findTeamIndex(pid, teams) === 0) : [];
+    const team1Ids = hasTeams ? allPlayerIds.filter(pid => findTeamIndex(pid, teams) === 1) : [];
+
+    const renderTallySection = (
+        label: string,
+        icon: React.ReactNode,
+        tally: GoalScorer[],
+        onChange: (playerId: string, delta: number) => void,
+        accentClass: string,
+    ) => (
+        <div>
+            <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
+                {icon} {label}
+            </h4>
+            {hasTeams ? (
+                <div className="grid grid-cols-2 gap-3">
+                    <TeamColumnTally
+                        label={teams[0].name}
+                        colour={teams[0].color}
+                        playerIds={team0Ids}
+                        tally={tally}
+                        onChange={onChange}
+                        accentClass={accentClass}
+                        lookup={lookup}
+                    />
+                    <TeamColumnTally
+                        label={teams[1].name}
+                        colour={teams[1].color}
+                        playerIds={team1Ids}
+                        tally={tally}
+                        onChange={onChange}
+                        accentClass={accentClass}
+                        lookup={lookup}
+                    />
+                </div>
+            ) : (
+                <div className="space-y-1.5">
+                    {allPlayerIds.map(pid => (
+                        <TallyRow
+                            key={pid}
+                            pid={pid}
+                            count={tally.find(t => t.playerId === pid)?.goals ?? 0}
+                            onChange={onChange}
+                            accentClass={accentClass}
+                            lookup={lookup}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+
     return (
-        <div className="border-t border-white/10 pt-4 mt-4 space-y-4">
-            <div>
-                <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
-                    <Goal className="w-4 h-4 text-green-400" /> Goal Scorers
-                </h4>
-                <TallyRows allPlayerIds={allPlayerIds} tally={goalScorers} onChange={onGoalChange} accentClass="text-green-400 hover:text-green-300" lookup={lookup} />
-            </div>
-            {enableAssists && (
-            <div>
-                <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
-                    <span className="text-blue-400 font-bold text-xs bg-blue-400/20 px-1.5 py-0.5 rounded">A</span> Assists
-                </h4>
-                <TallyRows allPlayerIds={allPlayerIds} tally={assisters} onChange={onAssistChange} accentClass="text-blue-400 hover:text-blue-300" lookup={lookup} />
-            </div>
+        <div className={`border-t border-white/10 pt-4 mt-4 space-y-4 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
+            {disabled && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2 text-yellow-300 text-xs text-center">
+                    Resume match to score
+                </div>
+            )}
+            {renderTallySection(
+                'Goal Scorers',
+                <Goal className="w-4 h-4 text-green-400" />,
+                goalScorers,
+                onGoalChange,
+                'text-green-400 hover:text-green-300',
+            )}
+            {enableAssists && renderTallySection(
+                'Assists',
+                <span className="text-blue-400 font-bold text-xs bg-blue-400/20 px-1.5 py-0.5 rounded">A</span>,
+                assisters,
+                onAssistChange,
+                'text-blue-400 hover:text-blue-300',
             )}
             <div>
                 <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">

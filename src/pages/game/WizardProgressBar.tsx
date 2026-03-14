@@ -2,14 +2,14 @@ import React from 'react';
 import { Check } from 'lucide-react';
 
 interface WizardStep {
-    num: 1 | 2 | 3;
+    num: 1 | 2 | 3 | 4;
     label: string;
 }
 
 interface WizardProgressBarProps {
     steps: WizardStep[];
-    currentStep: 1 | 2 | 3;
-    onStepClick: (step: 1 | 2 | 3) => void;
+    currentStep: 1 | 2 | 3 | 4;
+    onStepClick: (step: 1 | 2 | 3 | 4) => void;
 }
 
 const WizardProgressBar: React.FC<WizardProgressBarProps> = ({ steps, currentStep, onStepClick }) => (

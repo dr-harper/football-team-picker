@@ -43,6 +43,9 @@ dependencies {
 
     // Force newer Health Connect SDK that auto-detects system provider on Android 14+
     implementation 'androidx.health.connect:connect-client:1.1.0-alpha07'
+
+    // Wearable Data Layer for watch communication
+    implementation 'com.google.android.gms:play-services-wearable:18.1.0'
 }
 
 configurations.all {
