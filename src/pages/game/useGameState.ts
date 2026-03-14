@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { hapticLight, hapticSuccess } from '../../utils/haptics';
 import {
     subscribeToGame,
@@ -17,6 +17,11 @@ import {
     updateMotmNotes,
     updateGameCost,
     updateGameAttendees,
+    updateMatchStartedAt,
+    updateMatchPaused,
+    updateMatchResumed,
+    updateMatchEnded,
+    clearMatchEnded,
     getLeague,
     getLeagueMembers,
     getGameByCode,
@@ -62,7 +67,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
     const [motm, setMotm] = useState('');
     const [motmNotes, setMotmNotes] = useState('');
     const [isExporting, setIsExporting] = useState(false);
-    const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
+    const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1);
     const [attendees, setAttendees] = useState<string[] | null>(null);
     const [editingCost, setEditingCost] = useState(false);
     const [costInput, setCostInput] = useState('');
@@ -106,7 +111,8 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
     useEffect(() => {
         if (!game || didSetInitialStep.current) return;
         didSetInitialStep.current = true;
-        if (game.status === 'completed') setWizardStep(3);
+        if (game.status === 'completed') setWizardStep(4);
+        else if (game.matchEndedAt) setWizardStep(4);
         else if (game.status === 'in_progress') setWizardStep(game.teams?.length ? 3 : 2);
     }, [game]);
 
@@ -152,6 +158,15 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
     const allPlayerIds = (game?.status === 'completed' || game?.status === 'in_progress') && game?.attendees?.length
         ? [...new Set([...availabilityPlayerIds, ...game.attendees])]
         : availabilityPlayerIds;
+
+    // Auto-calculate score from goal tallies
+    const computedScores = useMemo(() => {
+        if (!generatedTeams || generatedTeams.length < 2 || goalScorers.length === 0) return null;
+        const team0Ids = new Set(generatedTeams[0].players.map(p => p.playerId ?? p.name));
+        const s1 = goalScorers.filter(g => team0Ids.has(g.playerId)).reduce((sum, g) => sum + g.goals, 0);
+        const s2 = goalScorers.filter(g => !team0Ids.has(g.playerId)).reduce((sum, g) => sum + g.goals, 0);
+        return { team1: s1, team2: s2 };
+    }, [goalScorers, generatedTeams]);
 
     // Handlers
     const handleSetAvailability = async (status: AvailabilityStatus) => {
@@ -242,21 +257,80 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         await updateGameGuests(gameDocId, [...current, name]);
     };
 
-    const handleGoalChange = async (playerId: string, delta: number) => {
+    const handleGoalChange = async (playerId: string, delta: number, goalTimeSec?: number) => {
         if (!gameDocId) return;
+        // Auto-calculate goal time if match has started and no explicit time given
+        const effectiveTimeSec = goalTimeSec ?? (
+            game?.matchStartedAt && delta > 0
+                ? Math.floor((Date.now() - game.matchStartedAt - (game.totalPausedMs ?? 0)) / 1000)
+                : undefined
+        );
         const existing = goalScorers.find(g => g.playerId === playerId);
         let updated: GoalScorer[];
         if (existing) {
             const newGoals = Math.max(0, existing.goals + delta);
-            updated = newGoals === 0
-                ? goalScorers.filter(g => g.playerId !== playerId)
-                : goalScorers.map(g => g.playerId === playerId ? { ...g, goals: newGoals } : g);
+            if (newGoals === 0) {
+                updated = goalScorers.filter(g => g.playerId !== playerId);
+            } else {
+                updated = goalScorers.map(g => {
+                    if (g.playerId !== playerId) return g;
+                    const times = [...(g.goalTimes ?? [])];
+                    if (delta > 0 && effectiveTimeSec !== undefined) {
+                        times.push(effectiveTimeSec);
+                    } else if (delta < 0 && times.length > 0) {
+                        times.pop();
+                    }
+                    return { ...g, goals: newGoals, goalTimes: times.length > 0 ? times : undefined };
+                });
+            }
         } else {
             if (delta <= 0) return;
-            updated = [...goalScorers, { playerId, goals: delta }];
+            const goalTimes = effectiveTimeSec !== undefined ? [effectiveTimeSec] : undefined;
+            updated = [...goalScorers, { playerId, goals: delta, goalTimes }];
         }
         setGoalScorers(updated);
         await updateGameGoalScorers(gameDocId, updated);
+    };
+
+    const handleStartMatch = async () => {
+        if (!gameDocId) return;
+        const now = Date.now();
+        await updateMatchStartedAt(gameDocId, now);
+    };
+
+    const handlePauseMatch = async () => {
+        if (!gameDocId || !game?.matchStartedAt) return;
+        const now = Date.now();
+        await updateMatchPaused(gameDocId, now, game.totalPausedMs ?? 0);
+    };
+
+    const handleResumeMatch = async () => {
+        if (!gameDocId || !game?.matchPausedAt) return;
+        const additionalPaused = Date.now() - game.matchPausedAt;
+        const newTotalPaused = (game.totalPausedMs ?? 0) + additionalPaused;
+        await updateMatchResumed(gameDocId, newTotalPaused);
+    };
+
+    const handleEndMatch = async () => {
+        if (!gameDocId) return;
+        const now = Date.now();
+        // Single atomic write: finalise paused time + set ended timestamp
+        const finalPausedMs = game?.matchPausedAt
+            ? (game.totalPausedMs ?? 0) + (now - game.matchPausedAt)
+            : undefined;
+        await updateMatchEnded(gameDocId, now, finalPausedMs);
+        // Auto-fill scores from goal tallies if not manually set
+        if (computedScores && score1 === '' && score2 === '') {
+            setScore1(String(computedScores.team1));
+            setScore2(String(computedScores.team2));
+        }
+        setWizardStep(4);
+    };
+
+    const handleUndoEnd = async () => {
+        if (!gameDocId) return;
+        await clearMatchEnded(gameDocId);
+        setWizardStep(3);
     };
 
     const handleAssistChange = async (playerId: string, delta: number) => {
@@ -392,7 +466,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         score1, score2, selectedPlayer,
         weather, weatherLoading,
         leagueMembers, lookup,
-        newGuestName, goalScorers, assisters, motm, motmNotes,
+        newGuestName, goalScorers, assisters, motm, motmNotes, computedScores,
         isExporting, setIsExporting,
         wizardStep, setWizardStep,
         attendees, editingCost, costInput, showTextarea,
@@ -406,7 +480,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         handleSetAvailability, handleAdminSetAvailability,
         generateFromAvailable, handleGenerateFromText,
         handlePickSetup, handleDeleteSetup, handleColorChange,
-        handleAddGuest, handleGoalChange, handleAssistChange,
+        handleAddGuest, handleGoalChange, handleAssistChange, handleStartMatch, handlePauseMatch, handleResumeMatch, handleEndMatch, handleUndoEnd,
         handleSetMotm, handleMotmNotesChange, handleSaveScore, handleReopen,
         handleToggleAttendee, handleSaveGameCost,
         handleGuestStatusChange, handlePositionToggle,

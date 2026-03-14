@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Zap, Users, Trophy, BarChart3, PoundSterling, Share2, Shield, Shuffle, Calendar, ClipboardList, Award } from 'lucide-react';
+import { ArrowLeft, Zap, Users, Trophy, BarChart3, PoundSterling, Share2, Shield, Shuffle, Calendar, ClipboardList, Award, Smartphone, Watch, Heart } from 'lucide-react';
 
 const features = [
     {
@@ -57,6 +57,21 @@ const features = [
         icon: <Shield className="w-6 h-6 text-indigo-400" />,
         title: 'Smart Team Generation',
         description: 'The algorithm respects position tags to ensure each team gets goalkeepers, defenders, and forwards. Lock specific players to the same team with #1 and #2 tags.',
+    },
+    {
+        icon: <Smartphone className="w-6 h-6 text-teal-400" />,
+        title: 'Android App',
+        description: 'Install Team Shuffle as a native Android app for quick access on the go. Manage your league, check availability, and organise games straight from your phone.',
+    },
+    {
+        icon: <Watch className="w-6 h-6 text-sky-400" />,
+        title: 'Watch Scoring',
+        description: 'Send a live game to your Wear OS watch and track goals from your wrist while you play. Scores sync in real time between your phone and watch.',
+    },
+    {
+        icon: <Heart className="w-6 h-6 text-rose-400" />,
+        title: 'Health Analysis',
+        description: 'Connect your health data to see calories burned, heart rate, and activity stats for each game. Track your fitness trends across the season.',
     },
 ];
 

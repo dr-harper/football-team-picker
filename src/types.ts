@@ -85,6 +85,7 @@ export interface GameScore {
 export interface GoalScorer {
     playerId: string;  // userId or 'guest:<name>' — was 'name' (displayName)
     goals: number;
+    goalTimes?: number[];  // elapsed seconds since matchStartedAt for each goal
 }
 
 export interface Game {
@@ -100,6 +101,10 @@ export interface Game {
     teams?: Team[];
     draftSetups?: TeamSetup[];
     score?: GameScore;
+    matchStartedAt?: number;           // timestamp (ms) when match was kicked off
+    matchPausedAt?: number;            // timestamp (ms) when match was paused (undefined = running)
+    totalPausedMs?: number;            // accumulated paused time in ms
+    matchEndedAt?: number;             // timestamp (ms) when match was ended
     guestPlayers?: string[];           // ringer names added by admin, no account needed
     guestAvailability?: Record<string, AvailabilityStatus>; // per-guest status override (default: available)
     playerPositions?: Record<string, 'g' | 'd' | 's'>;    // playerId → position tag (g=GK, d=DEF, s=FWD)
