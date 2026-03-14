@@ -20,11 +20,19 @@ function TallyRow({
     lookup: Record<string, string>;
 }) {
     const [undoFlash, setUndoFlash] = React.useState(false);
+    const undoTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    React.useEffect(() => {
+        return () => {
+            if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+        };
+    }, []);
 
     const handleUndo = () => {
         onChange(pid, -1);
         setUndoFlash(true);
-        setTimeout(() => setUndoFlash(false), 600);
+        if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+        undoTimerRef.current = setTimeout(() => setUndoFlash(false), 600);
     };
 
     return (

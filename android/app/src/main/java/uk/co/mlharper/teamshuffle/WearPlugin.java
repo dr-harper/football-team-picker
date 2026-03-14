@@ -12,6 +12,8 @@ import com.google.android.gms.wearable.DataClient;
 import com.google.android.gms.wearable.PutDataMapRequest;
 import com.google.android.gms.wearable.Wearable;
 
+import org.json.JSONException;
+
 import java.util.ArrayList;
 
 /**
@@ -192,7 +194,7 @@ public class WearPlugin extends Plugin {
                 for (int i = 0; i < jsArray.length(); i++) {
                     list.add(jsArray.getString(i));
                 }
-            } catch (Exception e) {
+            } catch (JSONException e) {
                 Log.e(TAG, "Failed to parse player array", e);
             }
         }
@@ -213,10 +215,7 @@ public class WearPlugin extends Plugin {
             })
             .addOnFailureListener(e -> {
                 Log.e(TAG, "Failed to check watch connection", e);
-                JSObject result = new JSObject();
-                result.put("connected", false);
-                result.put("nodeCount", 0);
-                call.resolve(result);
+                call.reject("Failed to check watch connection: " + e.getMessage());
             });
     }
 }

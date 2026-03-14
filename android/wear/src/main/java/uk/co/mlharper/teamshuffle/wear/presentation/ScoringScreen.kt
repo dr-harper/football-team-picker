@@ -116,18 +116,12 @@ private fun MainScoreScreen(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+/**
+ * Reusable composable that calculates elapsed match minutes,
+ * accounting for paused state and total paused duration.
+ */
 @Composable
-private fun ScorePage(
-    game: ActiveGame,
-    onScoreTap: (team: Int) -> Unit,
-    onUndoGoal: (team: Int) -> Unit,
-    showPageHint: Boolean,
-) {
-    val team1Colour = parseColour(game.team1Colour)
-    val team2Colour = parseColour(game.team2Colour)
-    val view = LocalView.current
-
+private fun rememberElapsedMinutes(game: ActiveGame): Int {
     var elapsedMs by remember { mutableLongStateOf(0L) }
     LaunchedEffect(game.startedAt, game.paused, game.pausedAt, game.totalPausedMs) {
         if (game.paused) {
@@ -139,7 +133,21 @@ private fun ScorePage(
             }
         }
     }
-    val elapsedMin = (elapsedMs / 60_000).toInt()
+    return (elapsedMs / 60_000).toInt()
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ScorePage(
+    game: ActiveGame,
+    onScoreTap: (team: Int) -> Unit,
+    onUndoGoal: (team: Int) -> Unit,
+    showPageHint: Boolean,
+) {
+    val team1Colour = parseColour(game.team1Colour)
+    val team2Colour = parseColour(game.team2Colour)
+    val view = LocalView.current
+    val elapsedMin = rememberElapsedMinutes(game)
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -310,19 +318,7 @@ private fun MatchControlsPage(
 ) {
     val view = LocalView.current
     var confirmEnd by remember { mutableStateOf(false) }
-
-    var elapsedMs by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(game.startedAt, game.paused, game.pausedAt, game.totalPausedMs) {
-        if (game.paused) {
-            elapsedMs = game.pausedAt - game.startedAt - game.totalPausedMs
-        } else {
-            while (true) {
-                elapsedMs = System.currentTimeMillis() - game.startedAt - game.totalPausedMs
-                delay(1_000L)
-            }
-        }
-    }
-    val elapsedMin = (elapsedMs / 60_000).toInt()
+    val elapsedMin = rememberElapsedMinutes(game)
 
     Box(
         modifier = Modifier
