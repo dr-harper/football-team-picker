@@ -1,10 +1,15 @@
 package uk.co.mlharper.teamshuffle.wear.presentation
 
+import android.app.Activity
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.speech.RecognizerIntent
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -14,6 +19,7 @@ import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import uk.co.mlharper.teamshuffle.wear.data.ActiveGame
@@ -23,8 +29,27 @@ import uk.co.mlharper.teamshuffle.wear.presentation.theme.TeamShuffleWearTheme
 
 class MainActivity : ComponentActivity() {
 
+    /** Flow that emits speech results for the composable to consume */
+    private val speechResult = MutableStateFlow<String?>(null)
+
+    private lateinit var speechLauncher: ActivityResultLauncher<Intent>
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Register speech recogniser before setContent
+        speechLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val text = result.data
+                    ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                    ?.firstOrNull()
+                if (!text.isNullOrBlank()) {
+                    speechResult.value = text
+                }
+            }
+        }
 
         // Init persistence — restores from SharedPreferences if available
         WatchDataStore.init(applicationContext)
@@ -38,8 +63,23 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             TeamShuffleWearTheme {
-                WatchApp()
+                WatchApp(
+                    onLaunchSpeech = { launchSpeechRecogniser() },
+                    speechResult = speechResult,
+                )
             }
+        }
+    }
+
+    private fun launchSpeechRecogniser() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Describe what happened...")
+        }
+        try {
+            speechLauncher.launch(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Speech recogniser not available", e)
         }
     }
 
@@ -84,10 +124,30 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun WatchApp() {
+private fun WatchApp(
+    onLaunchSpeech: () -> Unit,
+    speechResult: MutableStateFlow<String?>,
+) {
     val activeGame by WatchDataStore.activeGame.collectAsState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // Consume speech result and send to phone
+    val transcript by speechResult.collectAsState()
+    if (transcript != null) {
+        val game = activeGame
+        if (game != null) {
+            val text = transcript!!
+            speechResult.value = null // consume it
+            scope.launch {
+                try {
+                    PhoneMessenger.sendVoiceNote(context, game.gameId, text)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to send voice note to phone", e)
+                }
+            }
+        }
+    }
 
     val game = activeGame
     when {
@@ -180,6 +240,7 @@ private fun WatchApp() {
                         }
                     }
                 },
+                onVoiceNote = onLaunchSpeech,
             )
         }
     }

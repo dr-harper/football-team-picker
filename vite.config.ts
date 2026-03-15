@@ -2,9 +2,24 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 import packageJson from "./package.json";
+
+// Load .env so process.env has VITE_* vars at config time
+const envPath = resolve(__dirname, ".env");
+if (existsSync(envPath)) {
+  for (const line of readFileSync(envPath, "utf-8").split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx > 0) {
+      const key = trimmed.slice(0, eqIdx);
+      const val = trimmed.slice(eqIdx + 1);
+      if (!process.env[key]) process.env[key] = val;
+    }
+  }
+}
 
 /**
  * XOR-obfuscate the Gemini key so it doesn't appear as plain text in the

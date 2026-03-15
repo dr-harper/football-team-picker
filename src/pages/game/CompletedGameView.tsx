@@ -1,7 +1,7 @@
 import React from 'react';
-import { Goal, Award, Share2, Download, Clock } from 'lucide-react';
+import { Goal, Award, Share2, Download, Clock, Mic, Sparkles, RefreshCw } from 'lucide-react';
 import { Button } from '../../components/ui/button';
-import { Game, Team, GoalScorer } from '../../types';
+import { Game, Team, GoalScorer, MatchEvent } from '../../types';
 import PitchRenderer from '../../components/PitchRenderer';
 import PlayerName from '../../components/PlayerName';
 
@@ -88,6 +88,7 @@ interface CompletedGameViewProps {
     assisters: GoalScorer[];
     motm: string;
     motmNotes: string;
+    matchEvents?: MatchEvent[];
     lookup: Record<string, string>;
     allPlayerIds: string[];
     selectedPlayer: { setupIndex: number; teamIndex: number; playerIndex: number } | null;
@@ -99,14 +100,16 @@ interface CompletedGameViewProps {
     onReopen: () => void;
     onShareResults: () => void;
     onExportResults: () => void;
+    onGenerateSummary?: () => Promise<void>;
+    summaryLoading?: boolean;
 }
 
 const CompletedGameView: React.FC<CompletedGameViewProps> = ({
-    game, generatedTeams, isAdmin, goalScorers, assisters, motm, motmNotes,
+    game, generatedTeams, isAdmin, goalScorers, assisters, motm, motmNotes, matchEvents,
     lookup, allPlayerIds, selectedPlayer,
     scoringTableElement,
     isExporting, enableAssists,
-    onPlayerClick, onReopen, onShareResults, onExportResults,
+    onPlayerClick, onReopen, onShareResults, onExportResults, onGenerateSummary, summaryLoading,
 }) => {
     // Split scorers/assisters by team
     const team1Goals = goalScorers.filter(g => findPlayerTeam(g.playerId, generatedTeams) === 0).sort((a, b) => b.goals - a.goals);
@@ -146,6 +149,36 @@ const CompletedGameView: React.FC<CompletedGameViewProps> = ({
                         </div>
                     </div>
                 )}
+
+                {/* AI Match Summary */}
+                {game.matchSummary ? (
+                    <div className="pb-3 mb-3 border-b border-white/10">
+                        <div className="flex items-start gap-2">
+                            <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                            <p className="text-white/80 text-sm leading-relaxed">{game.matchSummary}</p>
+                        </div>
+                        {isAdmin && onGenerateSummary && (
+                            <button
+                                onClick={onGenerateSummary}
+                                disabled={summaryLoading}
+                                className="mt-2 flex items-center gap-1 text-white/20 hover:text-white/40 text-[10px] transition-colors"
+                            >
+                                <RefreshCw className={`w-3 h-3 ${summaryLoading ? 'animate-spin' : ''}`} /> Regenerate
+                            </button>
+                        )}
+                    </div>
+                ) : isAdmin && onGenerateSummary ? (
+                    <div className="pb-3 mb-3 border-b border-white/10 flex justify-center">
+                        <button
+                            onClick={onGenerateSummary}
+                            disabled={summaryLoading}
+                            className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 rounded-lg px-4 py-2 text-sm text-amber-300 font-medium transition-all disabled:opacity-50"
+                        >
+                            <Sparkles className={`w-4 h-4 ${summaryLoading ? 'animate-pulse' : ''}`} />
+                            {summaryLoading ? 'Generating...' : 'Generate Match Report'}
+                        </button>
+                    </div>
+                ) : null}
 
                 {/* Pitch */}
                 <PitchRenderer
@@ -226,6 +259,40 @@ const CompletedGameView: React.FC<CompletedGameViewProps> = ({
                                 )}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* Game notes audit trail */}
+                {matchEvents && matchEvents.length > 0 && (
+                    <div className="border-t border-white/10 pt-3 mt-3">
+                        <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-xs sm:text-sm">
+                            <Mic className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" /> Match Commentary
+                        </h4>
+                        <div className="space-y-1.5">
+                            {matchEvents
+                                .filter(e => e.elapsedSec !== undefined)
+                                .sort((a, b) => (a.elapsedSec ?? 0) - (b.elapsedSec ?? 0))
+                                .map(evt => (
+                                    <div key={evt.id} className="flex items-start gap-2 text-sm">
+                                        <span className="text-white/40 font-mono text-xs w-8 text-right shrink-0 pt-0.5">
+                                            {formatGoalTime(evt.elapsedSec!)}
+                                        </span>
+                                        {evt.type === 'goal' ? (
+                                            <span className="text-white/30 text-xs pt-0.5">&#9917;</span>
+                                        ) : evt.type === 'assist' ? (
+                                            <span className="text-blue-400 font-bold text-[10px] bg-blue-400/20 px-1 py-0.5 rounded shrink-0">A</span>
+                                        ) : (
+                                            <Mic className="w-3 h-3 text-red-400/60 shrink-0 mt-0.5" />
+                                        )}
+                                        <div className="min-w-0">
+                                            {evt.playerId && (
+                                                <PlayerName id={evt.playerId} lookup={lookup} className="text-white text-xs" />
+                                            )}
+                                            <p className="text-white/40 text-xs italic truncate">&ldquo;{evt.transcript}&rdquo;</p>
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
                     </div>
                 )}
 

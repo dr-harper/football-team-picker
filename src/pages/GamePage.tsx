@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import AppHeader from '../components/AppHeader';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,6 +22,10 @@ import { useGameState } from './game/useGameState';
 import { makeGuestId } from '../utils/playerLookup';
 import { sendGameToWatch, addWatchMessageListener, sendMatchStateToWatch } from '../utils/wear';
 import { updateMatchStartedAt, updateMatchPaused, updateMatchResumed, updateMatchEnded } from '../utils/firestore';
+import { parseVoiceTranscript } from '../utils/voiceEventParser';
+import { generateMatchSummary } from '../utils/matchSummary';
+import { updateGameMatchSummary } from '../utils/firestore';
+import { MatchEvent } from '../types';
 
 const WIZARD_STEPS = [
     { num: 1 as const, label: 'Availability' },
@@ -34,7 +38,7 @@ const GamePage: React.FC = () => {
     const { id: rawId } = useParams<{ id: string }>();
     const { user } = useAuth();
     const navigate = useNavigate();
-    const { places } = useSettings();
+    const { places, activeGeminiKey } = useSettings();
 
     const state = useGameState({
         rawId,
@@ -54,7 +58,7 @@ const GamePage: React.FC = () => {
         score1, score2, selectedPlayer,
         weather, weatherLoading,
         leagueMembers, lookup,
-        newGuestName, goalScorers, assisters, motm, motmNotes, computedScores,
+        newGuestName, goalScorers, assisters, motm, motmNotes, computedScores, matchEvents,
         isExporting, setIsExporting,
         wizardStep, setWizardStep,
         attendees, editingCost, costInput, showTextarea,
@@ -64,7 +68,7 @@ const GamePage: React.FC = () => {
         handleSetAvailability, handleAdminSetAvailability,
         generateFromAvailable, handleGenerateFromText,
         handlePickSetup, handleDeleteSetup, handleColorChange,
-        handleAddGuest, handleGoalChange, handleAssistChange, handleStartMatch, handlePauseMatch, handleResumeMatch, handleEndMatch, handleUndoEnd,
+        handleAddGuest, handleGoalChange, handleAssistChange, handleAddMatchEvents, handleUpdateMatchEvent, handleDeleteMatchEvent, handleStartMatch, handlePauseMatch, handleResumeMatch, handleRestartTimer, handleEndMatch, handleUndoEnd,
         handleSetMotm, handleMotmNotesChange, handleSaveScore, handleReopen,
         handleToggleAttendee, handleSaveGameCost,
         handleGuestStatusChange, handlePositionToggle,
@@ -125,12 +129,97 @@ const GamePage: React.FC = () => {
 
     // Listen for watch messages (score updates, goals, end game)
     const handleWatchMessage = useCallback(async (path: string, data: string) => {
-        if (!game || !gameDocId || !generatedTeams || generatedTeams.length < 2) return;
+        if (!game || !gameDocId) return;
 
         // Only handle messages for this game
         const parts = data.split('|');
         const messageGameId = (path === '/game/end') ? data.trim() : parts[0];
         if (messageGameId !== game.id) return;
+
+        // Voice notes don't require teams
+        if (path === '/game/voice') {
+            const pipeIdx = data.indexOf('|');
+            if (pipeIdx > 0) {
+                const transcript = data.substring(pipeIdx + 1);
+                const totalPaused = game.totalPausedMs ?? 0;
+                const elapsedSec = game.matchStartedAt
+                    ? Math.floor((Date.now() - game.matchStartedAt - totalPaused) / 1000)
+                    : undefined;
+
+                // Save immediately as a processing note so it appears in the UI
+                const placeholderId = crypto.randomUUID();
+                const placeholder: MatchEvent = {
+                    id: placeholderId,
+                    type: 'note',
+                    transcript,
+                    elapsedSec,
+                    source: 'voice',
+                    status: 'processing',
+                    createdAt: Date.now(),
+                };
+                handleAddMatchEvents([placeholder]);
+
+                // Parse in background if teams exist, otherwise keep as note
+                if (generatedTeams && generatedTeams.length >= 2) {
+                    const roster = generatedTeams.flatMap(t =>
+                        t.players.map(p => ({ playerId: p.playerId ?? p.name, displayName: p.name }))
+                    );
+                    parseVoiceTranscript(transcript, roster, elapsedSec, activeGeminiKey || undefined).then(result => {
+                        // Merge parsed events into one card
+                        // Goal+assist merge into a single event; other types use the primary event
+                        const primary = result.events[0];
+                        if (!primary) return;
+
+                        let mergedType = primary.type;
+                        let mergedPlayerId = primary.playerId;
+                        let mergedAssisterId = primary.assisterId;
+                        const mergedSwappedWithId = primary.swappedWithId;
+                        const mergedCardColour = primary.cardColour;
+                        let mergedDescription = primary.description;
+
+                        // If multiple events, merge assist into goal
+                        for (let i = 1; i < result.events.length; i++) {
+                            const evt = result.events[i];
+                            if (evt.type === 'goal' && mergedType !== 'goal') {
+                                mergedType = 'goal';
+                                mergedPlayerId = evt.playerId ?? mergedPlayerId;
+                                mergedAssisterId = evt.assisterId ?? mergedAssisterId;
+                                mergedDescription = evt.description ?? mergedDescription;
+                            } else if (evt.type === 'assist') {
+                                mergedAssisterId = evt.playerId ?? mergedAssisterId;
+                            }
+                        }
+
+                        handleUpdateMatchEvent(placeholderId, {
+                            type: mergedType,
+                            playerId: mergedPlayerId,
+                            assisterId: mergedAssisterId,
+                            swappedWithId: mergedSwappedWithId,
+                            cardColour: mergedCardColour,
+                            description: mergedDescription,
+                            status: 'applied',
+                        });
+
+                        // Apply goal and assist to the scoreboard
+                        if (mergedType === 'goal' && mergedPlayerId) {
+                            handleGoalChange(mergedPlayerId, 1, elapsedSec);
+                        }
+                        if (mergedAssisterId) {
+                            handleAssistChange(mergedAssisterId, 1);
+                        }
+                    }).catch(() => {
+                        handleUpdateMatchEvent(placeholderId, { status: 'parsed' });
+                    });
+                } else {
+                    // No teams — just mark as parsed note
+                    handleUpdateMatchEvent(placeholderId, { status: 'parsed' });
+                }
+            }
+            return;
+        }
+
+        // All other messages require teams
+        if (!generatedTeams || generatedTeams.length < 2) return;
 
         switch (path) {
             case '/game/start': {
@@ -245,13 +334,18 @@ const GamePage: React.FC = () => {
                 break;
             }
         }
-    }, [game, gameDocId, generatedTeams, score1, score2, goalScorers, handleGoalChange, handleSaveScore, setScore1, setScore2, setWizardStep, sendGameDataToWatch]);
+    }, [game, gameDocId, generatedTeams, score1, score2, goalScorers, handleGoalChange, handleAssistChange, handleSaveScore, setScore1, setScore2, setWizardStep, sendGameDataToWatch, handleAddMatchEvents, activeGeminiKey, handleUpdateMatchEvent]);
+
+    // Use a ref so the listener doesn't get torn down/recreated on every render
+    const watchMessageRef = useRef(handleWatchMessage);
+    watchMessageRef.current = handleWatchMessage;
 
     useEffect(() => {
         let cleanup: (() => void) | null = null;
-        addWatchMessageListener(handleWatchMessage).then(fn => { cleanup = fn; });
+        addWatchMessageListener((path, data) => watchMessageRef.current(path, data))
+            .then(fn => { cleanup = fn; });
         return () => { cleanup?.(); };
-    }, [handleWatchMessage]);
+    }, []);
 
     // Auto-send game data to watch when entering Live step with an active match
     useEffect(() => {
@@ -259,6 +353,58 @@ const GamePage: React.FC = () => {
             sendGameDataToWatch(true);
         }
     }, [wizardStep]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleAddStructuredEvent = useCallback((event: MatchEvent) => {
+        // Save the event
+        handleAddMatchEvents([event]);
+        // Apply scoring side effects
+        if ((event.type === 'goal' || event.type === 'penalty-scored') && event.playerId) {
+            handleGoalChange(event.playerId, 1, event.elapsedSec);
+        }
+        if (event.type === 'own-goal' && event.playerId && generatedTeams && generatedTeams.length >= 2) {
+            // Own goal: use og: prefix so the goal counts for the other team in computedScores
+            // Pick a player from the opposing team as proxy — the matchEvent has the real OG scorer
+            const ogProxyId = `og:${event.playerId}`;
+            handleGoalChange(ogProxyId, 1, event.elapsedSec);
+        }
+        if (event.assisterId) {
+            handleAssistChange(event.assisterId, 1);
+        }
+    }, [handleAddMatchEvents, handleGoalChange, handleAssistChange, generatedTeams]);
+
+    const handleApplyVoiceEvent = useCallback((event: MatchEvent) => {
+        if (event.type === 'goal' && event.playerId) {
+            handleGoalChange(event.playerId, 1, event.elapsedSec);
+        }
+        if (event.type === 'assist' && event.playerId) {
+            handleAssistChange(event.playerId, 1);
+        }
+        handleUpdateMatchEvent(event.id, { status: 'applied' });
+    }, [handleGoalChange, handleAssistChange, handleUpdateMatchEvent]);
+
+    const [summaryLoading, setSummaryLoading] = useState(false);
+
+    const handleGenerateSummary = useCallback(async () => {
+        if (!game || !gameDocId || !generatedTeams || generatedTeams.length < 2) return;
+        setSummaryLoading(true);
+        try {
+            const summary = await generateMatchSummary(
+                game, generatedTeams, goalScorers, matchEvents, lookup, activeGeminiKey || undefined,
+            );
+            await updateGameMatchSummary(gameDocId, summary);
+        } catch (err) {
+            console.error('Failed to generate match summary:', err);
+        } finally {
+            setSummaryLoading(false);
+        }
+    }, [game, gameDocId, generatedTeams, goalScorers, matchEvents, lookup, activeGeminiKey]);
+
+    // Auto-generate summary when viewing completed game without one
+    useEffect(() => {
+        if (game?.status === 'completed' && !game.matchSummary && generatedTeams?.length === 2 && gameDocId && !summaryLoading) {
+            handleGenerateSummary();
+        }
+    }, [game?.status, game?.matchSummary, generatedTeams?.length, gameDocId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const buildImageHeader = (): ImageHeader => {
         const { emoji } = weather ? describeWeatherCode(weather.weatherCode) : { emoji: undefined };
@@ -299,6 +445,7 @@ const GamePage: React.FC = () => {
             motmNotes,
             lookup,
             enableAssists,
+            matchSummary: game.matchSummary,
             weatherEmoji: emoji,
             temperature: weather?.temperature,
             rainProbability: weather?.rainProbability,
@@ -359,6 +506,26 @@ const GamePage: React.FC = () => {
             enableAssists={enableAssists}
             teams={generatedTeams ?? undefined}
             disabled={scoringDisabled}
+            onGoalChange={handleGoalChange}
+            onAssistChange={handleAssistChange}
+            onSetMotm={handleSetMotm}
+            onMotmNotesChange={handleMotmNotesChange}
+        />
+    );
+
+    const liveScoringControlsElement = (
+        <ScoringControls
+            allPlayerIds={allPlayerIds}
+            lookup={lookup}
+            goalScorers={goalScorers}
+            assisters={assisters}
+            motm={motm}
+            motmNotes={motmNotes}
+            enableAssists={enableAssists}
+            teams={generatedTeams ?? undefined}
+            disabled={scoringDisabled}
+            hideMotm
+            hideHeadings
             onGoalChange={handleGoalChange}
             onAssistChange={handleAssistChange}
             onSetMotm={handleSetMotm}
@@ -481,8 +648,9 @@ const GamePage: React.FC = () => {
                         game={game} generatedTeams={generatedTeams} isAdmin={isAdmin}
                         selectedPlayer={selectedPlayer}
                         goalScorers={goalScorers}
+                        matchEvents={matchEvents}
                         computedScores={computedScores}
-                        scoringControlsElement={scoringControlsElement}
+                        scoringControlsElement={liveScoringControlsElement}
                         onPlayerClick={handlePlayerClick}
                         onBack={() => setWizardStep(2)} onNext={() => setWizardStep(4)}
                         onGoToTeams={() => setWizardStep(2)}
@@ -509,7 +677,16 @@ const GamePage: React.FC = () => {
                             await handleUndoEnd();
                             if (game) sendMatchStateToWatch({ gameId: game.id, state: 'resumed', totalPausedMs: game.totalPausedMs ?? 0 });
                         }}
+                        onRestartTimer={async () => {
+                            await handleRestartTimer();
+                            await sendGameDataToWatch(true);
+                        }}
                         onOpenOnWatch={() => sendGameDataToWatch(!!game.matchStartedAt)}
+                        onGoalChange={handleGoalChange}
+                        onApplyVoiceEvent={handleApplyVoiceEvent}
+                        onUpdateMatchEvent={handleUpdateMatchEvent}
+                        onDeleteMatchEvent={handleDeleteMatchEvent}
+                        onAddMatchEvent={handleAddStructuredEvent}
                         lookup={lookup}
                     />
                 )}
@@ -525,6 +702,7 @@ const GamePage: React.FC = () => {
                         onSaveScore={handleSaveScore}
                         onShare={handleShare} onExport={handleExport}
                         onBack={() => setWizardStep(3)} onGoToTeams={() => setWizardStep(2)}
+                        onGenerateSummary={handleGenerateSummary} summaryLoading={summaryLoading}
                     />
                 )}
 
@@ -542,13 +720,16 @@ const GamePage: React.FC = () => {
                     <CompletedGameView
                         game={game} generatedTeams={generatedTeams} isAdmin={isAdmin}
                         goalScorers={goalScorers} assisters={assisters} motm={motm} motmNotes={motmNotes}
+                        matchEvents={matchEvents}
                         lookup={lookup} allPlayerIds={allPlayerIds} selectedPlayer={selectedPlayer}
                         scoringTableElement={scoringTableElement}
                         isExporting={isExporting} enableAssists={enableAssists} leagueName={league?.name}
                         onPlayerClick={handlePlayerClick} onReopen={handleReopen}
                         onShareResults={handleShareResults} onExportResults={handleExportResults}
+                        onGenerateSummary={handleGenerateSummary} summaryLoading={summaryLoading}
                     />
                 )}
+
             </div>
         </div>
     );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, Share2, Download, ChevronLeft } from 'lucide-react';
+import { Trophy, Share2, Download, ChevronLeft, Sparkles, RefreshCw } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Game, Team } from '../../types';
 
@@ -21,6 +21,8 @@ interface ResultsStepProps {
     onExport: (count: number) => void;
     onBack: () => void;
     onGoToTeams: () => void;
+    onGenerateSummary?: () => Promise<void>;
+    summaryLoading?: boolean;
 }
 
 const ResultsStep: React.FC<ResultsStepProps> = ({
@@ -28,7 +30,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({
     isExporting, allPlayerIds,
     scoringControlsElement, attendanceSectionElement,
     onScore1Change, onScore2Change, onSaveScore,
-    onShare, onExport, onBack, onGoToTeams,
+    onShare, onExport, onBack, onGoToTeams, onGenerateSummary, summaryLoading,
 }) => {
     const hasTeams = generatedTeams && generatedTeams.length === 2;
 
@@ -84,6 +86,36 @@ const ResultsStep: React.FC<ResultsStepProps> = ({
                         </Button>
                     </div>
                 )}
+                {/* Match Summary */}
+                {game.matchSummary ? (
+                    <div className="border-t border-white/10 pt-3 mt-3">
+                        <div className="flex items-start gap-2">
+                            <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                            <p className="text-white/80 text-sm leading-relaxed">{game.matchSummary}</p>
+                        </div>
+                        {isAdmin && onGenerateSummary && (
+                            <button
+                                onClick={onGenerateSummary}
+                                disabled={summaryLoading}
+                                className="mt-2 flex items-center gap-1 text-white/20 hover:text-white/40 text-[10px] transition-colors"
+                            >
+                                <RefreshCw className={`w-3 h-3 ${summaryLoading ? 'animate-spin' : ''}`} /> Regenerate
+                            </button>
+                        )}
+                    </div>
+                ) : isAdmin && onGenerateSummary ? (
+                    <div className="border-t border-white/10 pt-3 mt-3 flex justify-center">
+                        <button
+                            onClick={onGenerateSummary}
+                            disabled={summaryLoading}
+                            className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 rounded-lg px-4 py-2 text-sm text-amber-300 font-medium transition-all disabled:opacity-50"
+                        >
+                            <Sparkles className={`w-4 h-4 ${summaryLoading ? 'animate-pulse' : ''}`} />
+                            {summaryLoading ? 'Generating...' : 'Generate Match Report'}
+                        </button>
+                    </div>
+                ) : null}
+
                 {(isPast || game.status === 'in_progress') && isAdmin && allPlayerIds.length > 0 && scoringControlsElement}
                 {(isPast || game.status === 'in_progress') && isAdmin && attendanceSectionElement}
             </div>

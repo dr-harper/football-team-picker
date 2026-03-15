@@ -33,6 +33,10 @@ object PhoneMessenger {
         sendMessage(context, "/game/resume", "$gameId|$totalPausedMs")
     }
 
+    suspend fun sendVoiceNote(context: Context, gameId: String, transcript: String) {
+        sendMessage(context, "/game/voice", "$gameId|$transcript")
+    }
+
     suspend fun sendUndoGoal(context: Context, gameId: String, team: Int, newScore1: Int, newScore2: Int) {
         sendMessage(context, "/game/undo-goal", "$gameId|$team|$newScore1|$newScore2")
     }

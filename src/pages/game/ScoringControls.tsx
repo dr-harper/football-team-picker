@@ -91,6 +91,8 @@ interface ScoringControlsProps {
     enableAssists?: boolean;
     teams?: Team[];
     disabled?: boolean;
+    hideMotm?: boolean;
+    hideHeadings?: boolean;
     onGoalChange: (playerId: string, delta: number) => void;
     onAssistChange: (playerId: string, delta: number) => void;
     onSetMotm: (playerId: string) => void;
@@ -99,7 +101,7 @@ interface ScoringControlsProps {
 
 const ScoringControls: React.FC<ScoringControlsProps> = ({
     allPlayerIds, goalScorers, assisters, motm, motmNotes, lookup, enableAssists,
-    teams, disabled, onGoalChange, onAssistChange, onSetMotm, onMotmNotesChange,
+    teams, disabled, hideMotm, hideHeadings, onGoalChange, onAssistChange, onSetMotm, onMotmNotesChange,
 }) => {
     const notesTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const [localNotes, setLocalNotes] = React.useState(motmNotes);
@@ -115,6 +117,17 @@ const ScoringControls: React.FC<ScoringControlsProps> = ({
     const team0Ids = hasTeams ? allPlayerIds.filter(pid => findTeamIndex(pid, teams) === 0) : [];
     const team1Ids = hasTeams ? allPlayerIds.filter(pid => findTeamIndex(pid, teams) === 1) : [];
 
+    // Own goal IDs: og: scorer is on one team, goal counts for the other
+    const ogIds = goalScorers.filter(g => g.playerId.startsWith('og:')).map(g => g.playerId);
+    const team0OgIds = hasTeams ? ogIds.filter(id => {
+        const realId = id.slice(3);
+        return findTeamIndex(realId, teams) === 1; // team 1 player's OG counts for team 0
+    }) : [];
+    const team1OgIds = hasTeams ? ogIds.filter(id => {
+        const realId = id.slice(3);
+        return findTeamIndex(realId, teams) === 0; // team 0 player's OG counts for team 1
+    }) : [];
+
     const renderTallySection = (
         label: string,
         icon: React.ReactNode,
@@ -123,15 +136,17 @@ const ScoringControls: React.FC<ScoringControlsProps> = ({
         accentClass: string,
     ) => (
         <div>
-            <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
-                {icon} {label}
-            </h4>
+            {!hideHeadings && (
+                <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
+                    {icon} {label}
+                </h4>
+            )}
             {hasTeams ? (
                 <div className="grid grid-cols-2 gap-3">
                     <TeamColumnTally
                         label={teams[0].name}
                         colour={teams[0].color}
-                        playerIds={team0Ids}
+                        playerIds={[...team0Ids, ...(tally === goalScorers ? team0OgIds : [])]}
                         tally={tally}
                         onChange={onChange}
                         accentClass={accentClass}
@@ -140,7 +155,7 @@ const ScoringControls: React.FC<ScoringControlsProps> = ({
                     <TeamColumnTally
                         label={teams[1].name}
                         colour={teams[1].color}
-                        playerIds={team1Ids}
+                        playerIds={[...team1Ids, ...(tally === goalScorers ? team1OgIds : [])]}
                         tally={tally}
                         onChange={onChange}
                         accentClass={accentClass}
@@ -185,7 +200,7 @@ const ScoringControls: React.FC<ScoringControlsProps> = ({
                 onAssistChange,
                 'text-blue-400 hover:text-blue-300',
             )}
-            <div>
+            {!hideMotm && <div>
                 <h4 className="text-white font-semibold mb-2 flex items-center gap-2 text-sm">
                     <Award className="w-4 h-4 text-yellow-400" /> Man of the Match
                 </h4>
@@ -214,7 +229,7 @@ const ScoringControls: React.FC<ScoringControlsProps> = ({
                         maxLength={200}
                     />
                 )}
-            </div>
+            </div>}
         </div>
     );
 };

@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, Plus, Minus } from 'lucide-react';
 import PlayerIcon from './PlayerIcon';
-import { Team, PositionedPlayer } from '../types';
+import { Team, PositionedPlayer, GoalScorer } from '../types';
 import { positionsByTeamSizeAndSide } from '../constants/positionsConstants';
 import { resolvePlayerName } from '../utils/playerLookup';
 
@@ -18,6 +18,10 @@ interface PitchRendererProps {
     selectedPlayer: SelectedPlayer | null;
     onPlayerClick: (setupIndex: number, teamIndex: number, playerIndex: number) => void;
     lookup?: Record<string, string>;
+    /** When provided, show +/- goal buttons on each player */
+    goalScorers?: GoalScorer[];
+    onGoalChange?: (playerId: string, delta: number) => void;
+    scoringDisabled?: boolean;
 }
 
 function getPositionsForTeam(team: Team, isLeftSide: boolean): PositionedPlayer[] {
@@ -53,34 +57,64 @@ const PitchRenderer: React.FC<PitchRendererProps> = React.memo(({
     selectedPlayer,
     onPlayerClick,
     lookup,
+    goalScorers,
+    onGoalChange,
+    scoringDisabled,
 }) => {
     const renderTeamPlayers = (team: Team, teamIndex: number, isLeft: boolean) =>
-        getPositionsForTeam(team, isLeft).map((position: PositionedPlayer) => (
-            <div
-                key={getPlayerId(setupIndex, position.player)}
-                className="absolute"
-                style={{ top: position.top, left: position.left, transform: 'translate(-50%, -50%)' }}
-            >
-                <motion.div
-                    layoutId={getPlayerId(setupIndex, position.player)}
-                    layout
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    onClick={() => onPlayerClick(setupIndex, teamIndex, position.playerIndex)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPlayerClick(setupIndex, teamIndex, position.playerIndex); } }}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`${position.player.name}${position.player.isGoalkeeper ? ', Goalkeeper' : ''}. Click to select for swap`}
-                    className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform ${playerRingClass(selectedPlayer, setupIndex, teamIndex, position.playerIndex)}`}
+        getPositionsForTeam(team, isLeft).map((position: PositionedPlayer) => {
+            const playerId = position.player.playerId ?? position.player.name;
+            const goalCount = goalScorers?.find(g => g.playerId === playerId)?.goals ?? 0;
+            const showScoring = onGoalChange && !scoringDisabled;
+
+            return (
+                <div
+                    key={getPlayerId(setupIndex, position.player)}
+                    className="absolute"
+                    style={{ top: position.top, left: position.left, transform: 'translate(-50%, -50%)' }}
                 >
-                    <PlayerIcon
-                        color={team.color}
-                        number={position.player.shirtNumber}
-                        name={lookup && position.player.playerId ? resolvePlayerName(position.player.playerId, lookup) : position.player.name}
-                        isGoalkeeper={position.player.isGoalkeeper}
-                    />
-                </motion.div>
-            </div>
-        ));
+                    <motion.div
+                        layoutId={getPlayerId(setupIndex, position.player)}
+                        layout
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                        onClick={() => onPlayerClick(setupIndex, teamIndex, position.playerIndex)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPlayerClick(setupIndex, teamIndex, position.playerIndex); } }}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`${position.player.name}${position.player.isGoalkeeper ? ', Goalkeeper' : ''}. Click to select for swap`}
+                        className={`w-8 h-8 sm:w-12 sm:h-12 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform ${playerRingClass(selectedPlayer, setupIndex, teamIndex, position.playerIndex)}`}
+                    >
+                        <PlayerIcon
+                            color={team.color}
+                            number={position.player.shirtNumber}
+                            name={lookup && position.player.playerId ? resolvePlayerName(position.player.playerId, lookup) : position.player.name}
+                            isGoalkeeper={position.player.isGoalkeeper}
+                        />
+                    </motion.div>
+                    {/* Goal count badge + scoring buttons — below name label */}
+                    {showScoring && (
+                        <div className="flex items-center gap-0.5 justify-center mt-5 sm:mt-7 relative z-10">
+                            <button
+                                onClick={e => { e.stopPropagation(); onGoalChange(playerId, -1); }}
+                                disabled={goalCount === 0}
+                                className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/50 text-white/60 hover:bg-red-500/50 hover:text-white disabled:opacity-20 flex items-center justify-center text-[8px] sm:text-[10px]"
+                            >
+                                <Minus className="w-2.5 h-2.5" />
+                            </button>
+                            <span className={`text-[9px] sm:text-[11px] font-bold min-w-[14px] text-center ${goalCount > 0 ? 'text-white' : 'text-white/30'}`}>
+                                {goalCount}
+                            </span>
+                            <button
+                                onClick={e => { e.stopPropagation(); onGoalChange(playerId, 1); }}
+                                className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/50 text-green-400 hover:bg-green-500/50 hover:text-white flex items-center justify-center text-[8px] sm:text-[10px]"
+                            >
+                                <Plus className="w-2.5 h-2.5" />
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        });
 
     return (
         <div role="group" aria-label="Football pitch with team players" className="w-full aspect-video relative bg-green-600 border-2 border-white rounded-lg shadow-lg overflow-hidden sm:aspect-video sm:w-full sm:h-auto">
