@@ -36,6 +36,7 @@
   }
  
   .dark {
+    color-scheme: dark;
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
  
@@ -75,6 +76,11 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-color: #14532d;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 }
 
