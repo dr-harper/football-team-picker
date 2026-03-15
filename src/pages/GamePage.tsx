@@ -185,8 +185,6 @@ const GamePage: React.FC = () => {
                                 mergedPlayerId = evt.playerId ?? mergedPlayerId;
                                 mergedAssisterId = evt.assisterId ?? mergedAssisterId;
                                 mergedDescription = evt.description ?? mergedDescription;
-                            } else if (evt.type === 'assist') {
-                                mergedAssisterId = evt.playerId ?? mergedAssisterId;
                             }
                         }
 

@@ -3,7 +3,7 @@ import { VOICE_EVENT_PROMPT } from '../constants/aiPrompts';
 import { MatchEvent } from '../types';
 
 interface RawParsedEvent {
-    type: 'goal' | 'assist' | 'save' | 'tackle' | 'card' | 'swap' | 'highlight' | 'note';
+    type: 'goal' | 'own-goal' | 'assist' | 'penalty-scored' | 'penalty-missed' | 'penalty-conceded' | 'save' | 'tackle' | 'card' | 'swap' | 'highlight' | 'note';
     playerName: string | null;
     assisterName: string | null;
     cardColour?: 'yellow' | 'red' | null;

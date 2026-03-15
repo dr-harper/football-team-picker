@@ -45,7 +45,7 @@ export const VOICE_EVENT_PROMPT =
     'You are a football match voice note parser. Given a voice transcript and a player roster, ' +
     'extract structured events. Return a JSON array (no markdown fences, just raw JSON).\n\n' +
     'Each event object has:\n' +
-    '- "type": "goal" | "own-goal" | "penalty-scored" | "penalty-missed" | "penalty-conceded" | "save" | "tackle" | "card" | "swap" | "highlight" | "note"\n' +
+    '- "type": "goal" | "own-goal" | "assist" | "penalty-scored" | "penalty-missed" | "penalty-conceded" | "save" | "tackle" | "card" | "swap" | "highlight" | "note"\n' +
     '- "playerName": string (the player\'s name from the roster, or null for pure notes)\n' +
     '- "assisterName": string | null (if type=goal and someone set it up)\n' +
     '- "cardColour": "yellow" | "red" | null (only if type=card)\n' +
