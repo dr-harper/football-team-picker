@@ -4,6 +4,10 @@ const config: CapacitorConfig = {
   appId: 'uk.co.mlharper.teamshuffle',
   appName: 'TeamShuffle',
   webDir: 'dist',
+  server: {
+    androidScheme: 'https',
+    allowNavigation: ['geminiproxy-er7aa2fhsq-nw.a.run.app', 'generativelanguage.googleapis.com'],
+  },
   plugins: {
     GoogleAuth: {
       scopes: ['profile', 'email'],

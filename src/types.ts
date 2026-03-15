@@ -88,6 +88,23 @@ export interface GoalScorer {
     goalTimes?: number[];  // elapsed seconds since matchStartedAt for each goal
 }
 
+export type MatchEventType = 'goal' | 'own-goal' | 'penalty-scored' | 'penalty-missed' | 'penalty-conceded' | 'save' | 'tackle' | 'card' | 'swap' | 'highlight' | 'note';
+
+export interface MatchEvent {
+    id: string;                          // crypto.randomUUID()
+    type: MatchEventType;                // event category
+    playerId?: string;                   // who it's about (optional for pure notes)
+    assisterId?: string;                 // if type=goal and assister was mentioned
+    swappedWithId?: string;              // if type=swap: who they swapped with / which team
+    cardColour?: 'yellow' | 'red';       // if type=card
+    elapsedSec?: number;                 // match time in seconds
+    transcript: string;                  // raw voice text — always stored
+    description?: string;               // AI-generated short label
+    source: 'voice';                    // how it was created
+    status?: 'processing' | 'parsed' | 'applied'; // processing state
+    createdAt: number;                  // timestamp ms
+}
+
 export interface Game {
     id: string;
     leagueId: string;
@@ -115,6 +132,8 @@ export interface Game {
     gameCode?: string;             // short 6-char shareable code
     costPerPerson?: number;        // overrides league default; undefined = use league default
     attendees?: string[];          // playerIds who actually attended; set by admin post-game
+    matchEvents?: MatchEvent[];    // voice note transcripts + AI-parsed events
+    matchSummary?: string;         // AI-generated match report
     seasonId?: string;             // links game to a season (undefined = unassigned / pre-season)
     createdBy: string;
     createdAt: number;

@@ -270,6 +270,18 @@ export async function updateGameAssisters(gameId: string, assisters: GoalScorer[
     await updateDoc(doc(db, 'games', gameId), { assisters });
 }
 
+export async function updateGameMatchSummary(gameId: string, matchSummary: string): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { matchSummary });
+}
+
+export async function updateGameMatchEvents(gameId: string, matchEvents: import('../types').MatchEvent[]): Promise<void> {
+    // Strip undefined values — Firestore rejects them
+    const cleaned = matchEvents.map(e =>
+        Object.fromEntries(Object.entries(e).filter(([, v]) => v !== undefined))
+    );
+    await updateDoc(doc(db, 'games', gameId), { matchEvents: cleaned });
+}
+
 export async function updateGameMotm(gameId: string, manOfTheMatch: string | null): Promise<void> {
     await updateDoc(doc(db, 'games', gameId), { manOfTheMatch: manOfTheMatch ?? '' });
 }

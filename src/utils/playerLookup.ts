@@ -24,8 +24,19 @@ export function buildLookup(members: { id: string; displayName: string }[]): Rec
     return map;
 }
 
+export const OG_PREFIX = 'og:';
+
+export function isOwnGoal(id: PlayerId): boolean {
+    return id.startsWith(OG_PREFIX);
+}
+
 /** Resolve a playerId to a display name */
 export function resolvePlayerName(id: PlayerId, lookup: Record<string, string>): string {
+    if (isOwnGoal(id)) {
+        const realId = id.slice(OG_PREFIX.length);
+        const name = isGuest(realId) ? getGuestName(realId) : (lookup[realId] ?? realId);
+        return `${name} (OG)`;
+    }
     if (isGuest(id)) return getGuestName(id);
     return lookup[id] ?? id;
 }

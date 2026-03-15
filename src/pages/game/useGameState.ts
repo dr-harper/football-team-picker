@@ -22,11 +22,12 @@ import {
     updateMatchResumed,
     updateMatchEnded,
     clearMatchEnded,
+    updateGameMatchEvents,
     getLeague,
     getLeagueMembers,
     getGameByCode,
 } from '../../utils/firestore';
-import { Game, PlayerAvailability, AvailabilityStatus, League, Team, TeamSetup, WeatherForecast, GoalScorer } from '../../types';
+import { Game, PlayerAvailability, AvailabilityStatus, League, Team, TeamSetup, WeatherForecast, GoalScorer, MatchEvent } from '../../types';
 import { generateTeamsFromText } from '../../utils/teamGenerator';
 import { fetchWeather } from '../../utils/weather';
 import { buildLookup, makeGuestId } from '../../utils/playerLookup';
@@ -66,6 +67,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
     const [assisters, setAssisters] = useState<GoalScorer[]>([]);
     const [motm, setMotm] = useState('');
     const [motmNotes, setMotmNotes] = useState('');
+    const [matchEvents, setMatchEvents] = useState<MatchEvent[]>([]);
     const [isExporting, setIsExporting] = useState(false);
     const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1);
     const [attendees, setAttendees] = useState<string[] | null>(null);
@@ -101,6 +103,23 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
             if (g?.manOfTheMatch) setMotm(g.manOfTheMatch);
             if (g?.motmNotes !== undefined) setMotmNotes(g.motmNotes);
             if (g?.attendees !== undefined) setAttendees(g.attendees);
+            if (g?.matchEvents && g.matchEvents.length > 0) {
+                // Merge with local state: prefer local 'applied'/'parsed' over Firestore 'processing'
+                setMatchEvents(prev => {
+                    const localById = new Map(prev.map(e => [e.id, e]));
+                    const merged = g.matchEvents!.map(remote => {
+                        const local = localById.get(remote.id);
+                        // Keep local version if it has progressed further than remote
+                        if (local && remote.status === 'processing' && local.status !== 'processing') return local;
+                        return remote;
+                    });
+                    // Also include any local events not yet in Firestore (just added)
+                    for (const local of prev) {
+                        if (!merged.some(e => e.id === local.id)) merged.push(local);
+                    }
+                    return merged;
+                });
+            }
             setLoading(false);
         });
         const unsubAvail = subscribeToGameAvailability(gameDocId, setAvailabilityState);
@@ -159,12 +178,27 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         ? [...new Set([...availabilityPlayerIds, ...game.attendees])]
         : availabilityPlayerIds;
 
-    // Auto-calculate score from goal tallies
+    // Auto-calculate score from goal tallies (handles og: prefix for own goals)
     const computedScores = useMemo(() => {
         if (!generatedTeams || generatedTeams.length < 2 || goalScorers.length === 0) return null;
         const team0Ids = new Set(generatedTeams[0].players.map(p => p.playerId ?? p.name));
-        const s1 = goalScorers.filter(g => team0Ids.has(g.playerId)).reduce((sum, g) => sum + g.goals, 0);
-        const s2 = goalScorers.filter(g => !team0Ids.has(g.playerId)).reduce((sum, g) => sum + g.goals, 0);
+        let s1 = 0;
+        let s2 = 0;
+        for (const g of goalScorers) {
+            if (g.playerId.startsWith('og:')) {
+                // Own goal: the real scorer's team CONCEDES, so the other team gets the goal
+                const realId = g.playerId.slice(3);
+                if (team0Ids.has(realId)) {
+                    s2 += g.goals; // team 0 player scored OG → team 1 gets the goal
+                } else {
+                    s1 += g.goals; // team 1 player scored OG → team 0 gets the goal
+                }
+            } else if (team0Ids.has(g.playerId)) {
+                s1 += g.goals;
+            } else {
+                s2 += g.goals;
+            }
+        }
         return { team1: s1, team2: s2 };
     }, [goalScorers, generatedTeams]);
 
@@ -327,10 +361,54 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         setWizardStep(4);
     };
 
+    const handleRestartTimer = async () => {
+        if (!gameDocId) return;
+        const now = Date.now();
+        await updateMatchStartedAt(gameDocId, now);
+        // Reset paused time
+        await updateMatchResumed(gameDocId, 0);
+    };
+
     const handleUndoEnd = async () => {
         if (!gameDocId) return;
         await clearMatchEnded(gameDocId);
         setWizardStep(3);
+    };
+
+    const handleAddMatchEvents = async (newEvents: MatchEvent[]) => {
+        if (!gameDocId) return;
+        let updated: MatchEvent[] = [];
+        setMatchEvents(prev => { updated = [...prev, ...newEvents]; return updated; });
+        await updateGameMatchEvents(gameDocId, updated);
+    };
+
+    const handleReplaceMatchEvent = async (oldId: string, newEvents: MatchEvent[]) => {
+        if (!gameDocId) return;
+        let updated: MatchEvent[] = [];
+        setMatchEvents(prev => { updated = [...prev.filter(e => e.id !== oldId), ...newEvents]; return updated; });
+        await updateGameMatchEvents(gameDocId, updated);
+    };
+
+    const handleUpdateMatchEvent = async (eventId: string, updates: Partial<MatchEvent>) => {
+        if (!gameDocId) return;
+        let updated: MatchEvent[] = [];
+        setMatchEvents(prev => {
+            // Don't update if the event doesn't exist locally (prevents writing empty array)
+            if (!prev.some(e => e.id === eventId)) return prev;
+            updated = prev.map(e => e.id === eventId ? { ...e, ...updates } : e);
+            return updated;
+        });
+        if (updated.length > 0) await updateGameMatchEvents(gameDocId, updated);
+    };
+
+    const handleDeleteMatchEvent = async (eventId: string) => {
+        if (!gameDocId) return;
+        let updated: MatchEvent[] = [];
+        setMatchEvents(prev => {
+            updated = prev.filter(e => e.id !== eventId);
+            return updated;
+        });
+        await updateGameMatchEvents(gameDocId, updated);
     };
 
     const handleAssistChange = async (playerId: string, delta: number) => {
@@ -466,7 +544,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         score1, score2, selectedPlayer,
         weather, weatherLoading,
         leagueMembers, lookup,
-        newGuestName, goalScorers, assisters, motm, motmNotes, computedScores,
+        newGuestName, goalScorers, assisters, motm, motmNotes, computedScores, matchEvents,
         isExporting, setIsExporting,
         wizardStep, setWizardStep,
         attendees, editingCost, costInput, showTextarea,
@@ -480,7 +558,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         handleSetAvailability, handleAdminSetAvailability,
         generateFromAvailable, handleGenerateFromText,
         handlePickSetup, handleDeleteSetup, handleColorChange,
-        handleAddGuest, handleGoalChange, handleAssistChange, handleStartMatch, handlePauseMatch, handleResumeMatch, handleEndMatch, handleUndoEnd,
+        handleAddGuest, handleGoalChange, handleAssistChange, handleAddMatchEvents, handleReplaceMatchEvent, handleUpdateMatchEvent, handleDeleteMatchEvent, handleStartMatch, handlePauseMatch, handleResumeMatch, handleRestartTimer, handleEndMatch, handleUndoEnd,
         handleSetMotm, handleMotmNotesChange, handleSaveScore, handleReopen,
         handleToggleAttendee, handleSaveGameCost,
         handleGuestStatusChange, handlePositionToggle,

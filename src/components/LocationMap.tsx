@@ -14,9 +14,11 @@ interface Props {
     lat: number;
     lon: number;
     height?: number;
+    zoom?: number;
+    showMarker?: boolean;
 }
 
-const LocationMap: React.FC<Props> = ({ lat, lon, height = 140 }) => {
+const LocationMap: React.FC<Props> = ({ lat, lon, height = 140, zoom = 15, showMarker = true }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<L.Map | null>(null);
 
@@ -28,7 +30,7 @@ const LocationMap: React.FC<Props> = ({ lat, lon, height = 140 }) => {
         }
         const map = L.map(containerRef.current, {
             center: [lat, lon],
-            zoom: 15,
+            zoom,
             zoomControl: false,
             dragging: false,
             scrollWheelZoom: false,
@@ -39,13 +41,13 @@ const LocationMap: React.FC<Props> = ({ lat, lon, height = 140 }) => {
             subdomains: 'abcd',
             maxZoom: 19,
         }).addTo(map);
-        L.marker([lat, lon], { icon }).addTo(map);
+        if (showMarker) L.marker([lat, lon], { icon }).addTo(map);
         mapRef.current = map;
         return () => {
             map.remove();
             mapRef.current = null;
         };
-    }, [lat, lon]);
+    }, [lat, lon, showMarker, zoom]);
 
     return <div ref={containerRef} style={{ height, width: '100%' }} />;
 };

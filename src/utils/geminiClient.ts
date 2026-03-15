@@ -41,18 +41,24 @@ export async function callGemini(
     directKey?: string,
 ): Promise<GeminiResponse> {
     if (PROXY_URL) {
-        // Attach auth token if the user is signed in; unauthenticated requests
-        // are still allowed (CORS + model allowlist provide sufficient protection)
-        const idToken = await auth.currentUser?.getIdToken().catch(() => undefined);
-        const res = await fetch(PROXY_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {}),
-            },
-            body: JSON.stringify({ model, contents }),
-        });
-        return res.json();
+        try {
+            // Attach auth token if the user is signed in; unauthenticated requests
+            // are still allowed (CORS + model allowlist provide sufficient protection)
+            const idToken = await auth.currentUser?.getIdToken().catch(() => undefined);
+            const res = await fetch(PROXY_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {}),
+                },
+                body: JSON.stringify({ model, contents }),
+            });
+            return await res.json();
+        } catch (proxyErr) {
+            // Proxy fetch failed (e.g. CORS in Capacitor webview) — fall through to direct key
+            console.warn('Proxy fetch failed, trying direct key:', proxyErr);
+            if (!directKey) throw proxyErr;
+        }
     }
 
     if (!directKey) {

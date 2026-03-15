@@ -16,6 +16,7 @@ export interface ResultsImageData {
     motmNotes?: string;
     lookup: Record<string, string>;
     enableAssists?: boolean;
+    matchSummary?: string;
     weatherEmoji?: string;
     temperature?: number;
     rainProbability?: number;
@@ -117,6 +118,27 @@ export async function generateResultsImage(data: ResultsImageData): Promise<stri
         const team1Assists = data.enableAssists ? data.assisters.filter(a => findPlayerTeam(a.playerId, data.teams) === 0).sort((a, b) => b.goals - a.goals) : [];
         const team2Assists = data.enableAssists ? data.assisters.filter(a => findPlayerTeam(a.playerId, data.teams) === 1).sort((a, b) => b.goals - a.goals) : [];
 
+        // Measure summary text height
+        const hasSummary = !!data.matchSummary;
+        const summaryLines: string[] = [];
+        if (hasSummary) {
+            ctx.font = `italic 22px ${FONT}`;
+            const maxW = CONTENT_WIDTH - 80;
+            const words = data.matchSummary!.split(' ');
+            let line = '';
+            for (const word of words) {
+                const test = line + (line ? ' ' : '') + word;
+                if (ctx.measureText(test).width > maxW && line) {
+                    summaryLines.push(line);
+                    line = word;
+                } else {
+                    line = test;
+                }
+            }
+            if (line) summaryLines.push(line);
+        }
+        const summaryHeight = hasSummary ? summaryLines.length * 30 + 40 : 0;
+
         // Layout heights
         const headerHeight = 100;
         const scoreHeight = 160;
@@ -138,8 +160,9 @@ export async function generateResultsImage(data: ResultsImageData): Promise<stri
             : 0;
         const footerHeight = 60;
 
-        const totalHeight = headerHeight + scoreHeight + pitchGap + pitchHeight + pitchGap
-            + statsHeight + footerHeight + PAD;
+        const totalHeight = headerHeight + scoreHeight
+            + pitchGap + pitchHeight + pitchGap
+            + summaryHeight + statsHeight + footerHeight + PAD;
         canvas.width = WIDTH;
         canvas.height = totalHeight;
 
@@ -208,6 +231,19 @@ export async function generateResultsImage(data: ResultsImageData): Promise<stri
             y += pitchHeight + pitchGap;
         }
 
+        // === Match Summary ===
+        if (hasSummary) {
+            y += 8;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = WHITE_70;
+            ctx.font = `italic 22px ${FONT}`;
+            for (const line of summaryLines) {
+                ctx.fillText(line, WIDTH / 2, y + 14);
+                y += 30;
+            }
+            y += 8;
+        }
+
         // === Stats per team (Goals, Assists beneath respective teams) ===
         if (statsHeight > 0) {
             drawCard(ctx, PAD, y, CONTENT_WIDTH, statsHeight);
@@ -230,31 +266,38 @@ export async function generateResultsImage(data: ResultsImageData): Promise<stri
                 ctx.lineTo(WIDTH / 2, statsY + maxGoalRows * ROW_H);
                 ctx.stroke();
 
-                // Team 1 goals (left column)
-                team1Goals.forEach((gs, i) => {
+                const renderGoalRow = (gs: GoalScorer, i: number, xOffset: number, rightEdge: number) => {
                     const name = resolve(gs.playerId, data.lookup);
+                    const assist = data.enableAssists ? data.assisters.find(a => a.playerId === gs.playerId) : undefined;
                     ctx.textAlign = 'left';
                     ctx.fillStyle = WHITE_70;
                     ctx.font = `20px ${FONT}`;
-                    ctx.fillText(name, PAD + 28, statsY + i * ROW_H + 16);
+                    ctx.fillText(name, xOffset, statsY + i * ROW_H + 12);
                     ctx.textAlign = 'right';
                     ctx.fillStyle = WHITE;
                     ctx.font = `bold 20px ${FONT}`;
-                    ctx.fillText(`× ${gs.goals}`, PAD + colWidth - 20, statsY + i * ROW_H + 16);
-                });
+                    ctx.fillText(`× ${gs.goals}`, rightEdge, statsY + i * ROW_H + 12);
+                    // Goal times + assists
+                    const details: string[] = [];
+                    if (gs.goalTimes && gs.goalTimes.length > 0) {
+                        details.push('⚽ ' + gs.goalTimes.map(t => `${Math.floor(t / 60)}'`).join(', '));
+                    }
+                    if (assist) {
+                        details.push(`🅰️ × ${assist.goals}`);
+                    }
+                    if (details.length > 0) {
+                        ctx.textAlign = 'left';
+                        ctx.fillStyle = WHITE_40;
+                        ctx.font = `14px ${FONT}`;
+                        ctx.fillText(details.join('   '), xOffset, statsY + i * ROW_H + 30);
+                    }
+                };
+
+                // Team 1 goals (left column)
+                team1Goals.forEach((gs, i) => renderGoalRow(gs, i, PAD + 28, PAD + colWidth - 20));
 
                 // Team 2 goals (right column)
-                team2Goals.forEach((gs, i) => {
-                    const name = resolve(gs.playerId, data.lookup);
-                    ctx.textAlign = 'left';
-                    ctx.fillStyle = WHITE_70;
-                    ctx.font = `20px ${FONT}`;
-                    ctx.fillText(name, PAD + colWidth + 20, statsY + i * ROW_H + 16);
-                    ctx.textAlign = 'right';
-                    ctx.fillStyle = WHITE;
-                    ctx.font = `bold 20px ${FONT}`;
-                    ctx.fillText(`× ${gs.goals}`, PAD + CONTENT_WIDTH - 28, statsY + i * ROW_H + 16);
-                });
+                team2Goals.forEach((gs, i) => renderGoalRow(gs, i, PAD + colWidth + 20, PAD + CONTENT_WIDTH - 28));
 
                 statsY += maxGoalRows * ROW_H + 8;
             }

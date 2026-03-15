@@ -54,6 +54,7 @@ fun ScoringScreen(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onEndGame: () -> Unit,
+    onVoiceNote: () -> Unit,
 ) {
     var showPlayerPicker by remember { mutableStateOf<Int?>(null) }
 
@@ -77,6 +78,7 @@ fun ScoringScreen(
             onPause = onPause,
             onResume = onResume,
             onEndGame = onEndGame,
+            onVoiceNote = onVoiceNote,
         )
     }
 }
@@ -90,6 +92,7 @@ private fun MainScoreScreen(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onEndGame: () -> Unit,
+    onVoiceNote: () -> Unit,
 ) {
     val pagerState = rememberPagerState(pageCount = { 2 })
 
@@ -104,6 +107,7 @@ private fun MainScoreScreen(
                 game = game,
                 onScoreTap = onScoreTap,
                 onUndoGoal = onUndoGoal,
+                onVoiceNote = onVoiceNote,
                 showPageHint = true,
             )
             1 -> MatchControlsPage(
@@ -111,6 +115,7 @@ private fun MainScoreScreen(
                 onPause = onPause,
                 onResume = onResume,
                 onEndGame = onEndGame,
+                onVoiceNote = onVoiceNote,
             )
         }
     }
@@ -142,6 +147,7 @@ private fun ScorePage(
     game: ActiveGame,
     onScoreTap: (team: Int) -> Unit,
     onUndoGoal: (team: Int) -> Unit,
+    onVoiceNote: () -> Unit,
     showPageHint: Boolean,
 ) {
     val team1Colour = parseColour(game.team1Colour)
@@ -160,17 +166,20 @@ private fun ScorePage(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            // Game title
-            Text(
-                text = game.title.ifEmpty { "Match" },
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            // Mic button (replaces game title)
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF1E3A5F))
+                    .clickable {
+                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        onVoiceNote()
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("\uD83C\uDF99", fontSize = 12.sp)
+            }
 
             // Team names
             Row(
@@ -306,6 +315,7 @@ private fun ScorePage(
                     .padding(bottom = 4.dp),
             )
         }
+
     }
 }
 
@@ -315,6 +325,7 @@ private fun MatchControlsPage(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onEndGame: () -> Unit,
+    onVoiceNote: () -> Unit,
 ) {
     val view = LocalView.current
     var confirmEnd by remember { mutableStateOf(false) }
@@ -415,6 +426,29 @@ private fun MatchControlsPage(
                         text = if (game.paused) "▶  Resume" else "⏸  Pause",
                         color = Color.White,
                         fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Voice note button
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFF1E3A5F))
+                        .clickable {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            onVoiceNote()
+                        }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "\uD83C\uDF99  Voice Note",
+                        color = Color(0xFF93C5FD),
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                     )
                 }
