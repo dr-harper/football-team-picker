@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Check } from 'lucide-react';
 import { Button } from './ui/button';
 import PitchRenderer from './PitchRenderer';
 import { Team, Player, TeamSetup } from '../types';
@@ -19,6 +19,7 @@ interface TeamSetupCardProps {
     onPlayerClick: (setupIndex: number, teamIndex: number, playerIndex: number) => void;
     onDelete: () => void;
     onColorChange: (setupIndex: number, teamIndex: number, color: string) => void;
+    onPick?: () => void;
 }
 
 function getPlayerId(setupIndex: number, player: { name: string; shirtNumber: number | null }) {
@@ -33,6 +34,7 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = React.memo(({
     onPlayerClick,
     onDelete,
     onColorChange,
+    onPick,
 }) => {
     return (
         <motion.div
@@ -148,6 +150,14 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = React.memo(({
                 </div>
             )}
 
+            {onPick && (
+                <Button
+                    onClick={onPick}
+                    className="w-full mt-3 bg-green-600 hover:bg-green-500 text-white rounded-lg flex items-center justify-center gap-2"
+                >
+                    <Check className="w-4 h-4" /> Use these teams
+                </Button>
+            )}
         </motion.div>
     );
 });

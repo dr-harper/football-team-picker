@@ -4,12 +4,7 @@ import { placeholderPositions } from '../constants/positionsConstants';
 
 const PlaceholderPitch: React.FC = () => {
     return (
-        <div className="bg-green-700 dark:bg-green-800 p-4 shadow-lg text-white rounded-lg">
-            <div className="text-center mt-4">
-                <p className="text-white-400 text-sm sm:text-base font-bold">
-                    No teams generated yet. Enter players and click &quot;Generate Teams&quot; to get started!
-                </p>
-            </div>
+        <div className="rounded-lg overflow-hidden opacity-40">
             <div className="relative w-full aspect-video bg-green-600 border-2 border-white rounded-lg shadow-lg overflow-hidden">
                 <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-white"></div>
                 <div className="absolute top-1/2 left-1/2 w-16 h-16 sm:w-24 sm:h-24 rounded-full border-2 border-white transform -translate-x-1/2 -translate-y-1/2"></div>

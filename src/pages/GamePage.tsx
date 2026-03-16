@@ -332,7 +332,7 @@ const GamePage: React.FC = () => {
                 break;
             }
         }
-    }, [game, gameDocId, generatedTeams, score1, score2, goalScorers, handleGoalChange, handleAssistChange, handleSaveScore, setScore1, setScore2, setWizardStep, sendGameDataToWatch, handleAddMatchEvents, activeGeminiKey, handleUpdateMatchEvent]);
+    }, [game, gameDocId, generatedTeams, goalScorers, handleGoalChange, handleAssistChange, handleSaveScore, setScore1, setScore2, setWizardStep, sendGameDataToWatch, handleAddMatchEvents, activeGeminiKey, handleUpdateMatchEvent]);
 
     // Use a ref so the listener doesn't get torn down/recreated on every render
     const watchMessageRef = useRef(handleWatchMessage);
@@ -603,7 +603,7 @@ const GamePage: React.FC = () => {
                 }
             />
 
-            <div className="p-4 sm:p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4 pb-20 sm:pb-6">
                 <GameHeader game={game} weather={weather} weatherLoading={weatherLoading} isCompleted={isCompleted} />
 
                 {!isCompleted && (
@@ -632,6 +632,13 @@ const GamePage: React.FC = () => {
                         showTextarea={showTextarea} genError={genError}
                         pendingSetups={pendingSetups} isExporting={isExporting} isAdmin={isAdmin}
                         selectedPlayer={selectedPlayer}
+                        availablePlayers={[
+                            ...availablePlayers.map(a => ({ playerId: a.userId, name: a.displayName })),
+                            ...(game?.guestPlayers ?? [])
+                                .filter(n => (game?.guestAvailability ?? {})[n] !== 'unavailable' && (game?.guestAvailability ?? {})[n] !== 'maybe')
+                                .map(n => ({ playerId: `guest:${n}`, name: n })),
+                        ]}
+                        lookup={lookup}
                         onPlayersTextChange={setPlayersText} onToggleTextarea={() => setShowTextarea(t => !t)}
                         onGenerateFromAvailable={generateFromAvailable} onGenerateFromText={handleGenerateFromText}
                         onPickSetup={handlePickSetup} onDeleteSetup={handleDeleteSetup}
@@ -704,15 +711,19 @@ const GamePage: React.FC = () => {
                     />
                 )}
 
-                <GameHealthCard
-                    gameDate={game.date}
-                    gameStatus={game.status}
-                    matchDurationMinutes={league?.matchDurationMinutes ?? 60}
-                    gameId={game.id}
-                    userId={user?.uid}
-                    leagueId={game.leagueId}
-                />
-                <SharedHealthCards gameId={game.id} userId={user?.uid} lookup={lookup} />
+                {(isCompleted || wizardStep === 4) && (
+                    <>
+                        <GameHealthCard
+                            gameDate={game.date}
+                            gameStatus={game.status}
+                            matchDurationMinutes={league?.matchDurationMinutes ?? 60}
+                            gameId={game.id}
+                            userId={user?.uid}
+                            leagueId={game.leagueId}
+                        />
+                        <SharedHealthCards gameId={game.id} userId={user?.uid} lookup={lookup} />
+                    </>
+                )}
 
                 {isCompleted && generatedTeams && generatedTeams.length === 2 && (
                     <CompletedGameView

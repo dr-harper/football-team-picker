@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeftRight, ChevronLeft, ChevronRight, Watch, Clock, Smartphone, Pause, Play, Square, Mic, Check, Loader2, Goal, Trash2, ChevronDown, LayoutGrid, RotateCcw, Timer, Sparkles, SkipForward } from 'lucide-react';
+import { ArrowLeftRight, Watch, Clock, Smartphone, Pause, Play, Square, Mic, Check, Loader2, Goal, Trash2, ChevronDown, LayoutGrid, RotateCcw, SkipForward } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { Button } from '../../components/ui/button';
 import { Game, Team, GoalScorer, MatchEvent, MatchEventType } from '../../types';
@@ -66,7 +66,7 @@ interface MatchStepProps {
 const MatchStep: React.FC<MatchStepProps> = ({
     game, generatedTeams, isAdmin,
     selectedPlayer, goalScorers, matchEvents, computedScores, scoringControlsElement,
-    onPlayerClick, onBack, onNext, onGoToTeams,
+    onPlayerClick, onNext, onGoToTeams,
     onSendToWatch, onStartMatch, onPauseMatch, onResumeMatch, onEndMatch, onUndoEnd, onRestartTimer, onOpenOnWatch,
     onGoalChange, onUpdateMatchEvent, onDeleteMatchEvent, onAddMatchEvent, lookup,
 }) => {
@@ -192,6 +192,23 @@ const MatchStep: React.FC<MatchStepProps> = ({
             </div>
         )}
 
+        {/* Pitch — show before live scoring when match not started */}
+        {hasTeams && !matchStarted && (
+            <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                <PitchRenderer
+                    teams={generatedTeams!}
+                    setupIndex={0}
+                    selectedPlayer={selectedPlayer}
+                    onPlayerClick={(_, tIdx, pIdx) => onPlayerClick(0, tIdx, pIdx)}
+                    lookup={lookup}
+                />
+                <p className="text-center text-green-300/50 text-[10px] mt-2 flex items-center justify-center gap-1">
+                    <ArrowLeftRight className="w-3 h-3" />
+                    Tap any two players to swap positions
+                </p>
+            </div>
+        )}
+
         {/* Live scoring banner */}
         {isAdmin && hasTeams && (
             <div ref={scoreBannerRef} className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4 space-y-3">
@@ -282,84 +299,94 @@ const MatchStep: React.FC<MatchStepProps> = ({
                         )}
                     </>
                 ) : (
-                    <div className="space-y-4">
-                        {/* Feature pitch */}
-                        <div className="text-center space-y-1.5">
-                            <h4 className="text-white font-semibold text-sm">Track your match in real time</h4>
-                            <p className="text-white/40 text-xs leading-relaxed max-w-sm mx-auto">
-                                Start the clock to record goals, assists, saves, and match events with timestamps.
-                                Get an AI-generated match report when the game ends.
-                            </p>
-                        </div>
-
-                        {/* Feature highlights */}
-                        <div className="grid grid-cols-3 gap-2 text-center">
-                            <div className="bg-white/5 rounded-lg py-3 px-1">
-                                <Timer className="w-5 h-5 text-green-400 mx-auto" />
-                                <div className="text-white/50 text-[9px] mt-1.5">Live tracking</div>
-                            </div>
-                            <div className="bg-white/5 rounded-lg py-3 px-1">
-                                <Watch className="w-5 h-5 text-blue-400 mx-auto" />
-                                <div className="text-white/50 text-[9px] mt-1.5">Watch companion</div>
-                            </div>
-                            <div className="bg-white/5 rounded-lg py-3 px-1">
-                                <Sparkles className="w-5 h-5 text-amber-400 mx-auto" />
-                                <div className="text-white/50 text-[9px] mt-1.5">AI match report</div>
-                            </div>
-                        </div>
-
-                        {/* Action buttons */}
-                        <div className="flex gap-2">
-                            {hasWatchSupport && (
+                    <div className="space-y-3">
+                        {/* Watch card — premium, most prominent */}
+                        {hasWatchSupport ? (
+                            <div className={`rounded-xl p-4 transition-all ${
+                                watchSent
+                                    ? 'bg-green-900/30 border border-green-500/30'
+                                    : 'bg-blue-500/10 border border-blue-400/20 hover:bg-blue-500/15'
+                            }`}>
+                                <div className="flex items-start gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                                        <Watch className={`w-5 h-5 ${watchSent ? 'text-green-400' : 'text-blue-400'}`} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="text-white font-semibold text-sm">Score from your Watch</h4>
+                                        <p className="text-white/40 text-xs mt-0.5 leading-relaxed">
+                                            Tap goals from your wrist while you play. Voice dictation auto-tags events with AI.
+                                        </p>
+                                    </div>
+                                </div>
                                 <button
                                     onClick={handleWatchSend}
-                                    className={`flex-1 flex items-center gap-2.5 rounded-lg py-2.5 px-3 transition-all ${
+                                    className={`w-full mt-3 py-2 rounded-lg text-sm font-semibold transition-all ${
                                         watchSent
-                                            ? 'bg-green-900/40 border border-green-500/30'
-                                            : 'bg-blue-600/20 border border-blue-400/30 hover:bg-blue-600/30'
+                                            ? 'bg-green-600/30 text-green-300'
+                                            : 'bg-blue-600 hover:bg-blue-500 text-white'
                                     }`}
                                 >
-                                    <Watch className={`w-5 h-5 flex-shrink-0 ${watchSent ? 'text-green-400' : 'text-blue-400'}`} />
-                                    <div className="text-left">
-                                        <div className={`text-xs font-semibold ${watchSent ? 'text-green-300' : 'text-white'}`}>
-                                            {watchSent ? 'Sent to watch' : 'Send to watch'}
-                                        </div>
-                                        <div className="text-[10px] text-white/40">
-                                            {watchSent ? 'Tap Start Match on your watch' : 'Score from your wrist'}
-                                        </div>
-                                    </div>
+                                    {watchSent ? '✓ Sent — tap Start Match on your watch' : 'Send to Watch'}
                                 </button>
-                            )}
-                            <button
-                                onClick={onStartMatch}
-                                className="flex-1 flex items-center gap-2.5 rounded-lg py-2.5 px-3 bg-green-600/20 border border-green-500/30 hover:bg-green-600/30 transition-all"
-                            >
-                                <Smartphone className="w-5 h-5 flex-shrink-0 text-green-400" />
-                                <div className="text-left">
-                                    <div className="text-xs font-semibold text-white">Start match</div>
-                                    <div className="text-[10px] text-white/40">Score from phone or sideline</div>
-                                </div>
-                            </button>
-                        </div>
-
-                        {/* Watch app promo for non-native */}
-                        {!hasWatchSupport && (
-                            <div className="flex items-center gap-3 bg-blue-500/5 border border-blue-500/10 rounded-lg px-3 py-2">
-                                <Watch className="w-5 h-5 text-blue-400/50 shrink-0" />
-                                <div>
-                                    <div className="text-white/50 text-[10px] font-medium">Companion watch app available</div>
-                                    <div className="text-white/25 text-[9px]">Score hands-free with voice dictation on Apple Watch or Wear OS</div>
+                            </div>
+                        ) : (
+                            <div className="rounded-xl p-4 bg-blue-500/5 border border-blue-400/10">
+                                <div className="flex items-start gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                                        <Watch className="w-5 h-5 text-blue-400/40" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="text-white/50 font-semibold text-sm">Score from your Watch</h4>
+                                        <p className="text-white/25 text-xs mt-0.5 leading-relaxed">
+                                            Tap goals from your wrist while you play. Voice dictation auto-tags events with AI.
+                                        </p>
+                                        <p className="text-blue-300/40 text-[10px] mt-1.5">Available on Apple Watch &amp; Wear OS</p>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* Skip button */}
-                        <button
-                            onClick={onNext}
-                            className="w-full flex items-center justify-center gap-1.5 bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg py-2.5 text-white/60 hover:text-white/80 text-xs font-medium transition-all"
-                        >
-                            <SkipForward className="w-3.5 h-3.5" /> Skip to Results
-                        </button>
+                        {/* Phone card */}
+                        <div className="rounded-xl p-4 bg-green-500/10 border border-green-500/20 hover:bg-green-500/15 transition-all">
+                            <div className="flex items-start gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center shrink-0">
+                                    <Smartphone className="w-5 h-5 text-green-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="text-white font-semibold text-sm">Score from Phone</h4>
+                                    <p className="text-white/40 text-xs mt-0.5 leading-relaxed">
+                                        Track goals, events, and timestamps live. Get an AI match report when the game ends.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={onStartMatch}
+                                className="w-full mt-3 py-2 rounded-lg text-sm font-semibold bg-green-600 hover:bg-green-500 text-white transition-all"
+                            >
+                                Start Match
+                            </button>
+                        </div>
+
+                        {/* Skip card */}
+                        <div className="rounded-xl p-4 bg-white/5 border border-white/10 hover:bg-white/8 transition-all">
+                            <div className="flex items-start gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                                    <SkipForward className="w-5 h-5 text-white/40" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="text-white/70 font-semibold text-sm">Skip to Results</h4>
+                                    <p className="text-white/30 text-xs mt-0.5 leading-relaxed">
+                                        Record the final score after the game. No live tracking or event tagging.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={onNext}
+                                className="w-full mt-3 py-2 rounded-lg text-sm font-medium bg-white/10 hover:bg-white/15 text-white/60 hover:text-white/80 transition-all"
+                            >
+                                Go to Results
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
@@ -749,32 +776,6 @@ const MatchStep: React.FC<MatchStepProps> = ({
             </div>
         )}
 
-        {/* Show standalone pitch only when match not started (admin gets it inline above) */}
-        {hasTeams && !(isAdmin && matchStarted) && (
-            <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-5">
-                <div id="team-setup-0">
-                    <div className="flex justify-around mb-2">
-                        <h3 className="font-bold text-lg" style={{ color: generatedTeams![0].color }}>
-                            {generatedTeams![0].name}
-                        </h3>
-                        <h3 className="font-bold text-lg" style={{ color: generatedTeams![1].color }}>
-                            {generatedTeams![1].name}
-                        </h3>
-                    </div>
-                    <p className="text-center text-green-300/70 text-xs mb-3 flex items-center justify-center gap-1.5">
-                        <ArrowLeftRight className="w-3 h-3" />
-                        Click any two players to swap their positions
-                    </p>
-                    <PitchRenderer
-                        teams={generatedTeams!}
-                        setupIndex={0}
-                        selectedPlayer={selectedPlayer}
-                        onPlayerClick={(_, tIdx, pIdx) => onPlayerClick(0, tIdx, pIdx)}
-                        lookup={lookup}
-                    />
-                </div>
-            </div>
-        )}
         {!hasTeams && (
             <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
                 <p className="text-green-300 mb-3">No teams committed yet.</p>
@@ -787,22 +788,6 @@ const MatchStep: React.FC<MatchStepProps> = ({
             </div>
         )}
 
-        <div className="flex items-center justify-between">
-            <Button
-                onClick={onBack}
-                variant="ghost"
-                className="text-white/60 hover:text-white flex items-center gap-1 text-sm"
-            >
-                <ChevronLeft className="w-4 h-4" /> Back to Teams
-            </Button>
-            <Button
-                onClick={onNext}
-                variant="ghost"
-                className="text-white/60 hover:text-white flex items-center gap-1 text-sm"
-            >
-                {matchStarted ? 'Results' : 'Skip to Results'} <ChevronRight className="w-4 h-4" />
-            </Button>
-        </div>
 
         {/* Restart timer confirmation modal */}
         {confirmRestart && (
