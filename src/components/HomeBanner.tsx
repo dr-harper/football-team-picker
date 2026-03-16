@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Trophy, PlusCircle } from 'lucide-react';
+import { Calendar, Trophy, PlusCircle, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserLeagues, getLeagueGames } from '../utils/firestore';
 
 interface NextGame {
     title: string;
     leagueName: string;
+    leagueCode: string;
+    gameId: string;
     date: number;
 }
 
@@ -22,6 +24,7 @@ const HomeBanner: React.FC = () => {
     const navigate = useNavigate();
     const [nextGame, setNextGame] = useState<NextGame | null | undefined>(undefined);
     const [leagueCount, setLeagueCount] = useState(0);
+    const [singleLeagueCode, setSingleLeagueCode] = useState<string | null>(null);
 
     useEffect(() => {
         if (!user) return;
@@ -33,6 +36,7 @@ const HomeBanner: React.FC = () => {
             if (cancelled) return;
 
             setLeagueCount(leagues.length);
+            if (leagues.length === 1) setSingleLeagueCode(leagues[0].joinCode);
 
             if (leagues.length === 0) {
                 setNextGame(null);
@@ -48,7 +52,13 @@ const HomeBanner: React.FC = () => {
                     for (const game of games) {
                         if (game.status !== 'completed' && game.date > now) {
                             if (!earliest || game.date < earliest.date) {
-                                earliest = { title: game.title, leagueName: league.name, date: game.date };
+                                earliest = {
+                                    title: game.title,
+                                    leagueName: league.name,
+                                    leagueCode: league.joinCode,
+                                    gameId: game.id,
+                                    date: game.date,
+                                };
                             }
                         }
                     }
@@ -106,16 +116,7 @@ const HomeBanner: React.FC = () => {
         );
     }
 
-    // Logged in states
-    const dashboardLink = (
-        <button
-            onClick={() => navigate('/dashboard')}
-            className="px-3 py-1.5 rounded-md text-xs font-medium bg-white/10 hover:bg-white/20 transition-colors shrink-0"
-        >
-            &rarr; Dashboard
-        </button>
-    );
-
+    // New user: 0 leagues — onboarding CTAs
     if (leagueCount === 0) {
         return (
             <div className="rounded-xl px-5 py-4 flex items-center gap-4 bg-white/10 border border-white/15 backdrop-blur-sm text-white">
@@ -123,34 +124,59 @@ const HomeBanner: React.FC = () => {
                     <PlusCircle className="w-6 h-6 text-green-300" />
                 </div>
                 <p className="flex-1 text-sm text-green-100/90">Ready to organise your first league?</p>
-                {dashboardLink}
+                <div className="flex items-center gap-2 shrink-0">
+                    <button
+                        onClick={() => navigate('/dashboard?action=create')}
+                        className="px-3 py-1.5 rounded-md text-xs font-medium bg-green-600 hover:bg-green-500 text-white transition-colors"
+                    >
+                        Create a League
+                    </button>
+                    <button
+                        onClick={() => navigate('/dashboard?action=join')}
+                        className="px-3 py-1.5 rounded-md text-xs font-medium bg-white/10 hover:bg-white/20 transition-colors flex items-center gap-1"
+                    >
+                        <Users className="w-3 h-3" /> Join a League
+                    </button>
+                </div>
             </div>
         );
     }
 
-    if (!nextGame) {
+    // Has leagues, has next game — direct link to game
+    if (nextGame) {
         return (
             <div className="rounded-xl px-5 py-4 flex items-center gap-4 bg-white/10 border border-white/15 backdrop-blur-sm text-white">
                 <div className="w-9 h-9 shrink-0 flex items-center justify-center">
-                    <Trophy className="w-6 h-6 text-yellow-400" />
+                    <Calendar className="w-6 h-6 text-green-300" />
                 </div>
                 <p className="flex-1 text-sm text-green-100/90">
-                    {leagueCount} league{leagueCount !== 1 ? 's' : ''} &middot; No games scheduled
+                    Next up: <strong className="text-white">{nextGame.leagueName}</strong> &middot; {nextGame.title} &middot; {formatGameDate(nextGame.date)}
                 </p>
-                {dashboardLink}
+                <button
+                    onClick={() => navigate(`/league/${nextGame.leagueCode}/game/${nextGame.gameId}`)}
+                    className="px-3 py-1.5 rounded-md text-xs font-medium bg-white/10 hover:bg-white/20 transition-colors shrink-0"
+                >
+                    Go to game &rarr;
+                </button>
             </div>
         );
     }
 
+    // Has leagues, no upcoming games
     return (
         <div className="rounded-xl px-5 py-4 flex items-center gap-4 bg-white/10 border border-white/15 backdrop-blur-sm text-white">
             <div className="w-9 h-9 shrink-0 flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-green-300" />
+                <Trophy className="w-6 h-6 text-yellow-400" />
             </div>
             <p className="flex-1 text-sm text-green-100/90">
-                Next up: <strong className="text-white">{nextGame.leagueName}</strong> &middot; {nextGame.title} &middot; {formatGameDate(nextGame.date)}
+                {leagueCount} league{leagueCount !== 1 ? 's' : ''} &middot; No games scheduled
             </p>
-            {dashboardLink}
+            <button
+                onClick={() => navigate(singleLeagueCode ? `/league/${singleLeagueCode}` : '/dashboard')}
+                className="px-3 py-1.5 rounded-md text-xs font-medium bg-white/10 hover:bg-white/20 transition-colors shrink-0"
+            >
+                {singleLeagueCode ? 'Go to league' : '\u2192 Dashboard'} &rarr;
+            </button>
         </div>
     );
 };

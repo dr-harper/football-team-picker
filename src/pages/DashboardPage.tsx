@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Plus, Users, Calendar, Trophy, ArrowRight, Copy, Check, Goal, Star, Activity } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import { doc, getDoc } from 'firebase/firestore';
@@ -38,6 +38,19 @@ const DashboardPage: React.FC = () => {
     const [error, setError] = useState('');
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
     const [leagueStats, setLeagueStats] = useState<Map<string, LeagueStats>>(new Map());
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Auto-open create/join modal from ?action= param
+    useEffect(() => {
+        const action = searchParams.get('action');
+        if (action === 'create') {
+            setShowCreateModal(true);
+            setSearchParams({}, { replace: true });
+        } else if (action === 'join') {
+            setShowJoinModal(true);
+            setSearchParams({}, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
 
     // Auto-sync health data for recent games (native only)
     const { syncing: healthSyncing, message: healthMessage } = useAutoHealthSync(user?.uid, leagues);
