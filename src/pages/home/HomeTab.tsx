@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button';
 import { useAuth } from '../../contexts/AuthContext';
 import { getLeagueGames } from '../../utils/firestore';
 import { League } from '../../types';
+import { logger } from '../../utils/logger';
 
 interface UpcomingGame {
     id: string;
@@ -69,7 +70,8 @@ const HomeTab: React.FC<HomeTabProps> = ({ leagues, loading }) => {
             }
         };
 
-        fetchGames().catch(() => {
+        fetchGames().catch((err) => {
+            logger.error('[HomeTab] Failed to fetch games', err);
             if (!cancelled) setGamesLoading(false);
         });
 

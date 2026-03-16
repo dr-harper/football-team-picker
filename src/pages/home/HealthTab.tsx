@@ -204,7 +204,10 @@ const HealthTab: React.FC<HealthTabProps> = ({ leagues }) => {
                     try {
                         const health = await getMyGameHealth(game.id, user.uid);
                         return health ? { game, leagueName, leagueCode, health } : null;
-                    } catch { return null; }
+                    } catch (err) {
+                        logger.error(`[HealthTab] Failed to get health for game ${game.id}`, err);
+                        return null;
+                    }
                 })
             );
             const withHealth = results.filter((r): r is GameWithHealth => r !== null);

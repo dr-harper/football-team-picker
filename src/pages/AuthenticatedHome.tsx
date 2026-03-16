@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Home, Shuffle, User, Activity } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserLeagues } from '../utils/firestore';
+import { subscribeToUserLeagues } from '../utils/firestore';
 import { League } from '../types';
 import HomeTab from './home/HomeTab';
 import ProfileTab from './home/ProfileTab';
@@ -24,6 +24,7 @@ const AuthenticatedHome: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [leagues, setLeagues] = useState<League[]>([]);
     const [loading, setLoading] = useState(true);
+    const hasRedirected = useRef(false);
 
     const activeTab = (searchParams.get('tab') as TabKey) || 'home';
 
@@ -39,26 +40,21 @@ const AuthenticatedHome: React.FC = () => {
         }
     };
 
+    // Real-time subscription to user's leagues
     useEffect(() => {
         if (!user) return;
-
-        let cancelled = false;
-
-        getUserLeagues(user.uid).then(userLeagues => {
-            if (!cancelled) {
-                setLeagues(userLeagues);
-                setLoading(false);
-            }
-        }).catch(() => {
-            if (!cancelled) setLoading(false);
+        const unsubscribe = subscribeToUserLeagues(user.uid, (updatedLeagues) => {
+            setLeagues(updatedLeagues);
+            setLoading(false);
         });
-
-        return () => { cancelled = true; };
+        return unsubscribe;
     }, [user]);
 
-    // Single-league user: auto-redirect to their league
+    // Single-league user: one-time auto-redirect to their league on initial load
     useEffect(() => {
+        if (hasRedirected.current) return;
         if (!loading && leagues.length === 1 && activeTab === 'home') {
+            hasRedirected.current = true;
             navigate(`/league/${leagues[0].joinCode}`, { replace: true });
         }
     }, [loading, leagues, activeTab, navigate]);
@@ -84,8 +80,8 @@ const AuthenticatedHome: React.FC = () => {
                                     }`}
                                 >
                                     <Icon className="w-4 h-4" />
-                                    <span className="hidden xs:inline">{label}</span>
-                                    <span className="xs:hidden">{label.split(' ')[0]}</span>
+                                    <span className="hidden sm:inline">{label}</span>
+                                    <span className="sm:hidden">{label.split(' ')[0]}</span>
                                 </button>
                             );
                         })}

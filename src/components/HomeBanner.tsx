@@ -175,7 +175,7 @@ const HomeBanner: React.FC = () => {
                 onClick={() => navigate(singleLeagueCode ? `/league/${singleLeagueCode}` : '/dashboard')}
                 className="px-3 py-1.5 rounded-md text-xs font-medium bg-white/10 hover:bg-white/20 transition-colors shrink-0"
             >
-                {singleLeagueCode ? 'Go to league' : '\u2192 Dashboard'} &rarr;
+                {singleLeagueCode ? 'Go to league' : 'Dashboard'} &rarr;
             </button>
         </div>
     );

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getGame, getLeague } from '../utils/firestore';
+import { logger } from '../utils/logger';
 
 const GameRedirect: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -32,7 +33,8 @@ const GameRedirect: React.FC = () => {
             navigate(`/league/${league.joinCode}/game/${id}`, { replace: true });
         };
 
-        resolve().catch(() => {
+        resolve().catch((err) => {
+            logger.error('[GameRedirect] Failed to resolve game redirect', err);
             if (!cancelled) setError('Failed to load game');
         });
 
