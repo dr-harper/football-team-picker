@@ -69,7 +69,7 @@ const TeamSetupCard: React.FC<TeamSetupCardProps> = React.memo(({
 
             {setup.teams.length > 0 && setup.teams.length <= 2 && (
                 <>
-                    <div className="flex justify-center mb-3 gap-3">
+                    <div className="flex justify-center mb-3 gap-3 fold:grid fold:grid-cols-2 foldable-grid">
                         {setup.teams.map((team: Team, teamIndex: number) => (
                             <div
                                 key={`team-name-${teamIndex}`}

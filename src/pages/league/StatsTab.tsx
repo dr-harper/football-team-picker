@@ -151,7 +151,7 @@ function RecordsSection({
                 <span className="text-base">🏅</span>
                 <span className="font-semibold text-white text-sm">Records & Streaks</span>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {records.map(({ emoji, title, subtitle, playerId, value, colour }) => (
                     <div
                         key={title}
@@ -288,7 +288,7 @@ function FitnessSection({
                 <Activity className="w-4 h-4 text-red-400" />
                 <span className="font-semibold text-white text-sm">Fitness Records</span>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {awards.map(({ icon, title, funTitle, playerId, value, detail }) => (
                     <div
                         key={title}
