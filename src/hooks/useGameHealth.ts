@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { deriveAllMetrics, downsampleTimeSeries, type DerivedMetrics, type HeartRateSample, type SpeedSample, type ActivePeriod, type HrZone } from '../utils/healthMetrics';
-import { saveGameHealth, getMyGameHealth, getHealthSharingDefault } from '../utils/firestore';
+import { saveGameHealth, getMyGameHealth, getHealthSharingByLeague, getHealthSharingDefault, getHealthSyncEnabled } from '../utils/firestore';
 import { logger } from '../utils/logger';
+import { HEALTH_PERMS, areBasePermissionsGranted, isWorkoutsPermissionGranted } from '../utils/healthPerms';
 import type { StoredGameHealth } from '../types';
 
 export interface GameHealthData {
@@ -46,18 +47,8 @@ interface UseGameHealthResult {
     fromStore: boolean;
 }
 
-const HEALTH_PERMS = ['READ_STEPS', 'READ_ACTIVE_CALORIES', 'READ_DISTANCE', 'READ_HEART_RATE'] as const;
-
 const MAX_HR_SAMPLES = 100;
 const MAX_SPEED_SAMPLES = 80;
-
-// Plugin returns permissions as an object {READ_STEPS: true, ...} not an array
-function areAllPermissionsGranted(perms: unknown): boolean {
-    if (perms && typeof perms === 'object' && !Array.isArray(perms)) {
-        return Object.values(perms).every(v => v === true);
-    }
-    return false;
-}
 
 export function useGameHealth(
     gameDate: number | undefined,
@@ -94,7 +85,7 @@ export function useGameHealth(
                         const result = await Health.checkHealthPermissions({
                             permissions: [...HEALTH_PERMS],
                         });
-                        setPermissionGranted(areAllPermissionsGranted(result.permissions));
+                        setPermissionGranted(areBasePermissionsGranted(result.permissions));
                     } catch {
                         setPermissionGranted(false);
                     }
@@ -111,7 +102,7 @@ export function useGameHealth(
             const result = await Health.checkHealthPermissions({
                 permissions: [...HEALTH_PERMS],
             });
-            setPermissionGranted(areAllPermissionsGranted(result.permissions));
+            setPermissionGranted(areBasePermissionsGranted(result.permissions));
         } catch {
             // ignore
         }
@@ -140,7 +131,7 @@ export function useGameHealth(
             Health.requestHealthPermissions({
                 permissions: [...HEALTH_PERMS],
             }).then(result => {
-                setPermissionGranted(areAllPermissionsGranted(result.permissions));
+                setPermissionGranted(areBasePermissionsGranted(result.permissions));
             }).catch(() => {
                 // Permissions will be re-checked on app resume via appStateChange listener
             });
@@ -233,17 +224,31 @@ export function useGameHealth(
                 const startDate = new Date(gameDate).toISOString();
                 const endDate = new Date(gameDate + matchDurationMs).toISOString();
 
-                // Try workouts first — gives the richest data
-                const workoutResult = await Health.queryWorkouts({
-                    startDate,
-                    endDate,
-                    includeHeartRate: true,
-                    includeRoute: true,
-                    includeSteps: true,
+                // Check workout permission at runtime
+                const permResult = await Health.checkHealthPermissions({
+                    permissions: [...HEALTH_PERMS],
                 });
+                const hasWorkouts = isWorkoutsPermissionGranted(permResult.permissions);
 
-                if (workoutResult.workouts.length > 0) {
-                    const workout = workoutResult.workouts.reduce((best, w) =>
+                // Try workouts first — gives the richest data
+                let workouts: { duration: number; startDate: string; calories: number; steps?: number; distance?: number; workoutType?: string; heartRate?: HeartRateSample[]; route?: { lat: number; lng: number; timestamp: string }[] }[] = [];
+                if (hasWorkouts) {
+                    try {
+                        const workoutResult = await Health.queryWorkouts({
+                            startDate,
+                            endDate,
+                            includeHeartRate: true,
+                            includeRoute: true,
+                            includeSteps: true,
+                        });
+                        workouts = workoutResult.workouts;
+                    } catch (err) {
+                        logger.error('queryWorkouts failed:', err);
+                    }
+                }
+
+                if (workouts.length > 0) {
+                    const workout = workouts.reduce((best, w) =>
                         w.duration > best.duration ? w : best
                     );
 
@@ -313,9 +318,12 @@ export function useGameHealth(
 
                     setData(healthData);
 
-                    // Save to Firestore for web access
-                    if (gameId && userId && leagueId) {
-                        const shareDefault = await getHealthSharingDefault(userId).catch(() => false);
+                    // Save to Firestore if user has sync enabled (fail closed for privacy)
+                    const syncEnabled = userId ? await getHealthSyncEnabled(userId).catch(() => false) : false;
+                    if (gameId && userId && leagueId && syncEnabled) {
+                        const sharingByLeague = await getHealthSharingByLeague(userId).catch(() => ({}));
+                        const shareDefault = sharingByLeague[leagueId] ??
+                            await getHealthSharingDefault(userId).catch(() => false);
                         const stored: StoredGameHealth = {
                             gameId,
                             leagueId,
@@ -350,8 +358,8 @@ export function useGameHealth(
                 } else {
                     // Fallback: query aggregated steps and calories
                     const [stepsResult, caloriesResult] = await Promise.all([
-                        Health.queryAggregated({ startDate, endDate, dataType: 'steps', bucket: 'hour' }),
-                        Health.queryAggregated({ startDate, endDate, dataType: 'active-calories', bucket: 'hour' }),
+                        Health.queryAggregated({ startDate, endDate, dataType: 'steps', bucket: 'day' }),
+                        Health.queryAggregated({ startDate, endDate, dataType: 'active-calories', bucket: 'day' }),
                     ]);
 
                     const totalSteps = stepsResult.aggregatedData.reduce((sum, d) => sum + d.value, 0);

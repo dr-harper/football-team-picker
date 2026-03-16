@@ -1,11 +1,18 @@
 package uk.co.mlharper.teamshuffle.wear.presentation
 
 import android.view.HapticFeedbackConstants
+import android.view.KeyEvent
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,7 +40,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusTarget
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -95,12 +107,36 @@ private fun MainScoreScreen(
     onVoiceNote: () -> Unit,
 ) {
     val pagerState = rememberPagerState(pageCount = { 2 })
+    val view = LocalView.current
+    val focusRequester = remember { FocusRequester() }
+
+    // Grab focus so we receive hardware key events
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
 
     VerticalPager(
         state = pagerState,
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(Color.Black)
+            .focusRequester(focusRequester)
+            .focusTarget()
+            .onKeyEvent { event ->
+                // Side button (stem) press triggers voice mode
+                if (event.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
+                    when (event.nativeKeyEvent.keyCode) {
+                        KeyEvent.KEYCODE_STEM_1,
+                        KeyEvent.KEYCODE_STEM_2,
+                        KeyEvent.KEYCODE_STEM_3 -> {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            onVoiceNote()
+                            true
+                        }
+                        else -> false
+                    }
+                } else false
+            },
     ) { page ->
         when (page) {
             0 -> ScorePage(
@@ -108,7 +144,6 @@ private fun MainScoreScreen(
                 onScoreTap = onScoreTap,
                 onUndoGoal = onUndoGoal,
                 onVoiceNote = onVoiceNote,
-                showPageHint = true,
             )
             1 -> MatchControlsPage(
                 game = game,
@@ -148,12 +183,23 @@ private fun ScorePage(
     onScoreTap: (team: Int) -> Unit,
     onUndoGoal: (team: Int) -> Unit,
     onVoiceNote: () -> Unit,
-    showPageHint: Boolean,
 ) {
     val team1Colour = parseColour(game.team1Colour)
     val team2Colour = parseColour(game.team2Colour)
     val view = LocalView.current
     val elapsedMin = rememberElapsedMinutes(game)
+
+    // Subtle pulse animation for mic button glow
+    val infiniteTransition = rememberInfiniteTransition(label = "mic-pulse")
+    val micAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1500),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "mic-alpha",
+    )
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -166,19 +212,40 @@ private fun ScorePage(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            // Mic button (replaces game title)
-            Box(
+            // Timer + status badge (moved to top) — double-tap here for voice
+            Row(
                 modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF1E3A5F))
-                    .clickable {
-                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                        onVoiceNote()
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                onVoiceNote()
+                            },
+                        )
                     },
-                contentAlignment = Alignment.Center,
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("\uD83C\uDF99", fontSize = 12.sp)
+                Text("${elapsedMin}'", color = Color(0xFF9CA3AF), fontSize = 11.sp)
+                Spacer(modifier = Modifier.width(6.dp))
+                if (game.paused) {
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFFEAB308), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text("PAUSED", color = Color.Black, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFF22C55E), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text("LIVE", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
 
             // Team names
@@ -269,53 +336,32 @@ private fun ScorePage(
                 }
             }
 
-            Text(
-                text = if (game.paused) "Paused — swipe down" else "Tap +goal · Hold -goal",
-                color = if (game.paused) Color(0xFFEAB308) else Color(0xFF6B7280),
-                fontSize = 10.sp,
-                textAlign = TextAlign.Center,
-            )
-
-            // Timer + status badge
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
+            // Mic button + hint row (moved to bottom, larger and more accessible)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("${elapsedMin}'", color = Color(0xFF9CA3AF), fontSize = 11.sp)
-                Spacer(modifier = Modifier.width(6.dp))
-                if (game.paused) {
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0xFFEAB308), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                    ) {
-                        Text("PAUSED", color = Color.Black, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0xFF22C55E), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                    ) {
-                        Text("LIVE", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                    }
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF2563EB).copy(alpha = micAlpha))
+                        .clickable {
+                            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            onVoiceNote()
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("\uD83C\uDF99", fontSize = 16.sp)
                 }
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = if (game.paused) "Paused — swipe ▾" else "2x tap or button = voice",
+                    color = if (game.paused) Color(0xFFEAB308) else Color(0xFF6B7280),
+                    fontSize = 9.sp,
+                    textAlign = TextAlign.Center,
+                )
             }
         }
-
-        // Down arrow hint at bottom
-        if (showPageHint) {
-            Text(
-                text = "▾",
-                color = Color(0xFF4B5563),
-                fontSize = 18.sp,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp),
-            )
-        }
-
     }
 }
 

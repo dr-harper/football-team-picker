@@ -454,7 +454,7 @@ function HeartRateChart({
                 <span className="text-white/40 text-[10px] uppercase tracking-wider">Heart Rate</span>
                 <span className="text-white/30 text-[10px]">{minBpm}–{maxBpm} bpm</span>
             </div>
-            <ResponsiveContainer width="100%" height="100%" className="!h-[100px] sm:!h-[80px]">
+            <ResponsiveContainer width="100%" height={100}>
                 <AreaChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
                     <defs>
                         <linearGradient id="hrFill" x1="0" y1="0" x2="0" y2="1">
@@ -524,7 +524,7 @@ function DistanceChart({
                 <span className="text-cyan-400/50 text-[10px] uppercase tracking-wider">Distance Per 5 Min</span>
                 <span className="text-cyan-400/30 text-[10px]">{totalKm.toFixed(1)} km total</span>
             </div>
-            <ResponsiveContainer width="100%" height="100%" className="!h-[92px] sm:!h-[72px]">
+            <ResponsiveContainer width="100%" height={92}>
                 <BarChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
                     <XAxis
                         dataKey="label"

@@ -17,6 +17,7 @@ import PlayerProfilePage from './pages/PlayerProfilePage'
 import ProtectedRoute from './components/ProtectedRoute'
 import DemoLeaguePage from './pages/DemoLeaguePage'
 import FeaturesPage from './pages/FeaturesPage'
+import LeagueLayout from './components/LeagueLayout'
 import { useAndroidBackButton } from './hooks/useAndroidBackButton'
 import { initialiseNativeApp } from './utils/nativeSetup'
 
@@ -37,8 +38,10 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<App />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-          <Route path="/league/:code" element={<ProtectedRoute><LeaguePage /></ProtectedRoute>} />
-          <Route path="/league/:code/game/:id" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
+          <Route path="/league/:code" element={<ProtectedRoute><LeagueLayout /></ProtectedRoute>}>
+            <Route index element={<LeaguePage />} />
+            <Route path="game/:id" element={<GamePage />} />
+          </Route>
           <Route path="/game/:id" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
           <Route path="/profile/setup" element={<ProtectedRoute><PlayerProfilePage /></ProtectedRoute>} />
           <Route path="/demo" element={<DemoLeaguePage />} />

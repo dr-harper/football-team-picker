@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Calendar, Trophy, BarChart2, Users, User, Wallet, Copy, Check, TableProperties } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import { useAuth } from '../contexts/AuthContext';
@@ -18,7 +18,8 @@ import { League, Game, LeagueExpense } from '../types';
 import { computeGameStats, getPersonalStats } from './league/statsUtils';
 import { buildLookup } from '../utils/playerLookup';
 import UpcomingTab from './league/UpcomingTab';
-import MobileBottomNav, { type TabKey } from '../components/MobileBottomNav';
+import { type TabKey } from '../components/MobileBottomNav';
+import { useLeagueNav } from '../contexts/LeagueNavContext';
 import CompletedTab from './league/CompletedTab';
 import StatsTab from './league/StatsTab';
 import ProfileTab from './league/ProfileTab';
@@ -28,6 +29,7 @@ import LeagueTableTab from './league/LeagueTableTab';
 
 const LeaguePage: React.FC = () => {
     const { code } = useParams<{ code: string }>();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [leagueId, setLeagueId] = useState<string | null>(null);
     const id = leagueId;
     const { user, updatePlayerTags, updateBio } = useAuth();
@@ -37,7 +39,24 @@ const LeaguePage: React.FC = () => {
     const [members, setMembers] = useState<{ id: string; displayName: string; email: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [copiedCode, setCopiedCode] = useState(false);
-    const [tab, setTab] = useState<TabKey>('upcoming');
+
+    // Sync tab state with shared layout nav context
+    const leagueNav = useLeagueNav();
+    const { tab, setTab: setNavTab, setUpcomingCount } = leagueNav;
+
+    // Read ?tab= param on mount and sync to context
+    useEffect(() => {
+        const validTabs: TabKey[] = ['upcoming', 'completed', 'table', 'stats', 'members', 'profile', 'finance'];
+        const tabParam = searchParams.get('tab') as TabKey | null;
+        if (tabParam && validTabs.includes(tabParam)) {
+            setNavTab(tabParam);
+            setSearchParams({}, { replace: true });
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const setTab = useCallback((t: TabKey) => {
+        setNavTab(t);
+    }, [setNavTab]);
 
     // Expense modal state (rendered at root level, triggered from ProfileTab)
     const [showMyExpenseForm, setShowMyExpenseForm] = useState(false);
@@ -81,6 +100,11 @@ const LeaguePage: React.FC = () => {
 
     const upcomingGames = games.filter(g => g.status !== 'completed').sort((a, b) => a.date - b.date);
     const completedGames = games.filter(g => g.status === 'completed');
+
+    // Keep layout nav in sync with upcoming count
+    useEffect(() => {
+        setUpcomingCount(upcomingGames.length);
+    }, [upcomingGames.length, setUpcomingCount]);
 
     // Player identity
     const myId = user?.uid ?? '';
@@ -381,9 +405,6 @@ const LeaguePage: React.FC = () => {
                     />
                 )}
             </div>
-
-            {/* Mobile bottom nav — hidden on desktop */}
-            <MobileBottomNav tab={tab} setTab={setTab} upcomingCount={upcomingGames.length} />
 
         </div>
     );
