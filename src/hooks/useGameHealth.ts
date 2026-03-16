@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { deriveAllMetrics, downsampleTimeSeries, type DerivedMetrics, type HeartRateSample, type SpeedSample, type ActivePeriod, type HrZone } from '../utils/healthMetrics';
 import { saveGameHealth, getMyGameHealth, getHealthSharingByLeague, getHealthSharingDefault, getHealthSyncEnabled } from '../utils/firestore';
 import { logger } from '../utils/logger';
-import { HEALTH_PERMS, areAllPermissionsGranted } from '../utils/healthPerms';
+import { HEALTH_PERMS, areBasePermissionsGranted, isWorkoutsPermissionGranted } from '../utils/healthPerms';
 import type { StoredGameHealth } from '../types';
 
 export interface GameHealthData {
@@ -85,7 +85,7 @@ export function useGameHealth(
                         const result = await Health.checkHealthPermissions({
                             permissions: [...HEALTH_PERMS],
                         });
-                        setPermissionGranted(areAllPermissionsGranted(result.permissions));
+                        setPermissionGranted(areBasePermissionsGranted(result.permissions));
                     } catch {
                         setPermissionGranted(false);
                     }
@@ -102,7 +102,7 @@ export function useGameHealth(
             const result = await Health.checkHealthPermissions({
                 permissions: [...HEALTH_PERMS],
             });
-            setPermissionGranted(areAllPermissionsGranted(result.permissions));
+            setPermissionGranted(areBasePermissionsGranted(result.permissions));
         } catch {
             // ignore
         }
@@ -131,7 +131,7 @@ export function useGameHealth(
             Health.requestHealthPermissions({
                 permissions: [...HEALTH_PERMS],
             }).then(result => {
-                setPermissionGranted(areAllPermissionsGranted(result.permissions));
+                setPermissionGranted(areBasePermissionsGranted(result.permissions));
             }).catch(() => {
                 // Permissions will be re-checked on app resume via appStateChange listener
             });
@@ -224,17 +224,31 @@ export function useGameHealth(
                 const startDate = new Date(gameDate).toISOString();
                 const endDate = new Date(gameDate + matchDurationMs).toISOString();
 
-                // Try workouts first — gives the richest data
-                const workoutResult = await Health.queryWorkouts({
-                    startDate,
-                    endDate,
-                    includeHeartRate: true,
-                    includeRoute: true,
-                    includeSteps: true,
+                // Check workout permission at runtime
+                const permResult = await Health.checkHealthPermissions({
+                    permissions: [...HEALTH_PERMS],
                 });
+                const hasWorkouts = isWorkoutsPermissionGranted(permResult.permissions);
 
-                if (workoutResult.workouts.length > 0) {
-                    const workout = workoutResult.workouts.reduce((best, w) =>
+                // Try workouts first — gives the richest data
+                let workouts: { duration: number; startDate: string; calories: number; steps?: number; distance?: number; workoutType?: string; heartRate?: HeartRateSample[]; route?: { lat: number; lng: number; timestamp: string }[] }[] = [];
+                if (hasWorkouts) {
+                    try {
+                        const workoutResult = await Health.queryWorkouts({
+                            startDate,
+                            endDate,
+                            includeHeartRate: true,
+                            includeRoute: true,
+                            includeSteps: true,
+                        });
+                        workouts = workoutResult.workouts;
+                    } catch (err) {
+                        logger.error('queryWorkouts failed:', err);
+                    }
+                }
+
+                if (workouts.length > 0) {
+                    const workout = workouts.reduce((best, w) =>
                         w.duration > best.duration ? w : best
                     );
 

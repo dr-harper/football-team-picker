@@ -47,10 +47,11 @@ const HealthStatusModal: React.FC<HealthStatusModalProps> = ({ onClose }) => {
     const [sampleData, setSampleData] = useState<SampleData | null>(null);
     const [sampleLoading, setSampleLoading] = useState(false);
     const [requesting, setRequesting] = useState(false);
-    const [syncToAccount, setSyncToAccount] = useState(true);
+    const [syncToAccount, setSyncToAccount] = useState(false); // fail closed for privacy
     const [leagues, setLeagues] = useState<League[]>([]);
     const [leagueSharing, setLeagueSharing] = useState<Record<string, boolean>>({});
     const [prefsLoaded, setPrefsLoaded] = useState(false);
+    const [prefsError, setPrefsError] = useState(false);
 
     const allGranted = HEALTH_PERMS.every(p => permStatus[p] === true);
     const allLeaguesShared = leagues.length > 0 && leagues.every(l => leagueSharing[l.id] === true);
@@ -68,7 +69,10 @@ const HealthStatusModal: React.FC<HealthStatusModalProps> = ({ onClose }) => {
             setLeagueSharing(sharing);
             setLeagues(userLeagues);
             setPrefsLoaded(true);
-        }).catch(() => setPrefsLoaded(true));
+        }).catch(() => {
+            setPrefsError(true);
+            setPrefsLoaded(true);
+        });
     }, [user?.uid]);
 
     const handleToggleSync = async () => {
@@ -485,7 +489,15 @@ const HealthStatusModal: React.FC<HealthStatusModalProps> = ({ onClose }) => {
                                 <div className="bg-white/5 rounded-lg p-3 h-16 animate-pulse" />
                             </div>
                         )}
-                        {prefsLoaded && (
+                        {prefsLoaded && prefsError && (
+                            <div className="space-y-2">
+                                <h3 className="text-white/50 text-xs uppercase tracking-wider">Your Data</h3>
+                                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+                                    <p className="text-red-300 text-sm">Could not load your preferences. Data sharing is disabled until preferences load successfully.</p>
+                                </div>
+                            </div>
+                        )}
+                        {prefsLoaded && !prefsError && (
                             <div className="space-y-2">
                                 <h3 className="text-white/50 text-xs uppercase tracking-wider">Your Data</h3>
 

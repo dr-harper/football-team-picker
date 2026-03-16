@@ -3,7 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { deriveAllMetrics, downsampleTimeSeries, type HeartRateSample } from '../utils/healthMetrics';
 import { getLeagueGames, saveGameHealth, getMyGameHealth, getHealthSharingByLeague, getHealthSharingDefault, getHealthSyncEnabled } from '../utils/firestore';
 import { logger } from '../utils/logger';
-import { HEALTH_PERMS, areAllPermissionsGranted } from '../utils/healthPerms';
+import { HEALTH_PERMS, areBasePermissionsGranted, isWorkoutsPermissionGranted } from '../utils/healthPerms';
 import type { League, Game, StoredGameHealth } from '../types';
 
 const MAX_HR_SAMPLES = 100;
@@ -47,7 +47,9 @@ export function useAutoHealthSync(
                 const result = await Health.checkHealthPermissions({
                     permissions: [...HEALTH_PERMS],
                 });
-                if (!areAllPermissionsGranted(result.permissions)) return;
+                // Require base permissions (steps/calories/distance/HR); workouts are optional
+                if (!areBasePermissionsGranted(result.permissions)) return;
+                const hasWorkoutsPermission = isWorkoutsPermissionGranted(result.permissions);
 
                 // Check if user has sync to account enabled (fail closed for privacy)
                 const syncEnabled = await getHealthSyncEnabled(userId).catch(() => false);
@@ -95,6 +97,9 @@ export function useAutoHealthSync(
                         const matchDurationMs = matchDurationMinutes * 60 * 1000;
                         const startDate = new Date(game.date).toISOString();
                         const endDate = new Date(game.date + matchDurationMs).toISOString();
+
+                        // Only query workouts if permission is granted; skip game otherwise
+                        if (!hasWorkoutsPermission) continue;
 
                         const workoutResult = await Health.queryWorkouts({
                             startDate,

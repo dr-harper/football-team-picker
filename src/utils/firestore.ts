@@ -723,11 +723,11 @@ export async function getHealthSharingDefault(userId: string): Promise<boolean> 
     return snap.data().shareHealthByDefault ?? false;
 }
 
-/** Update per-league health sharing preference */
+/** Update per-league health sharing preference (dot-notation to avoid overwriting other leagues) */
 export async function updateLeagueHealthSharing(userId: string, leagueId: string, share: boolean): Promise<void> {
-    await setDoc(doc(db, 'users', userId), {
-        healthSharingByLeague: { [leagueId]: share },
-    }, { merge: true });
+    await updateDoc(doc(db, 'users', userId), {
+        [`healthSharingByLeague.${leagueId}`]: share,
+    });
 }
 
 /** Get per-league health sharing map */

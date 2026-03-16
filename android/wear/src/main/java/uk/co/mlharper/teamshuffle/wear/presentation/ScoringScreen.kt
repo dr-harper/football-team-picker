@@ -219,7 +219,7 @@ private fun ScorePage(
                     .pointerInput(Unit) {
                         detectTapGestures(
                             onDoubleTap = {
-                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                 onVoiceNote()
                             },
                         )
