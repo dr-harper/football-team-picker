@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, LogOut, LayoutDashboard } from 'lucide-react';
+import { ArrowLeft, LogOut, LayoutDashboard, Shuffle } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { HealthMenuItem } from './HealthStatus';
@@ -48,7 +48,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                         <ArrowLeft className="w-5 h-5" />
                     </Button>
                 ) : (
-                    <Link to="/dashboard" className="flex items-center gap-2 shrink-0">
+                    <Link to="/" className="flex items-center gap-2 shrink-0">
                         <img src="/logo.png" alt="Team Shuffle Logo" className="w-8 h-8" />
                         <span className="font-bold text-xl">Team Shuffle</span>
                     </Link>
@@ -93,6 +93,13 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                                 </div>
                             </div>
                             <HealthMenuItem />
+                            <Link
+                                to="/pick-teams"
+                                onClick={() => setShowMenu(false)}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-green-300/70 hover:bg-white/5 hover:text-green-300 transition-colors"
+                            >
+                                <Shuffle className="w-4 h-4" /> Team Generator
+                            </Link>
                             {menuExtras}
                             <button
                                 onClick={() => { logout(); navigate('/'); }}

@@ -17,7 +17,11 @@ import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import { AI_FIX_INPUT_THROTTLE_MS } from './constants/gameConstants';
 import { callGemini } from './utils/geminiClient';
 
-const FootballTeamPickerInner = () => {
+interface FootballTeamPickerInnerProps {
+    showBanner?: boolean;
+}
+
+const FootballTeamPickerInner: React.FC<FootballTeamPickerInnerProps> = ({ showBanner = true }) => {
     const {
         places,
         selectedLocation,
@@ -200,7 +204,7 @@ const FootballTeamPickerInner = () => {
                 )}
 
                 <div className="max-w-6xl mx-auto mt-4 space-y-6">
-                <HomeBanner />
+                {showBanner && <HomeBanner />}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 foldable-grid">
                     <div className="space-y-4">
                         <PlayerInput
@@ -280,11 +284,15 @@ const FootballTeamPickerInner = () => {
     );
 };
 
-const FootballTeamPicker = () => {
+interface FootballTeamPickerProps {
+    showBanner?: boolean;
+}
+
+const FootballTeamPicker: React.FC<FootballTeamPickerProps> = ({ showBanner = true }) => {
     return (
         <SettingsProvider>
             <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
-                <FootballTeamPickerInner />
+                <FootballTeamPickerInner showBanner={showBanner} />
             </div>
         </SettingsProvider>
     );
