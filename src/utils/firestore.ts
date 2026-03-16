@@ -308,13 +308,22 @@ export async function updateLeagueMatchDuration(leagueId: string, minutes: numbe
     await updateDoc(doc(db, 'leagues', leagueId), { matchDurationMinutes: minutes });
 }
 
+function validateFormatConfig(config: GameFormatConfig): void {
+    if (config.minPlayers < 2) throw new Error('minPlayers must be at least 2');
+    if (config.maxPlayers < config.minPlayers) throw new Error('maxPlayers must be >= minPlayers');
+    if (config.maxPlayers > 50) throw new Error('maxPlayers cannot exceed 50');
+    if (!['5v5', '6v6', '7v7', 'custom'].includes(config.format)) throw new Error('Invalid format');
+}
+
 export async function updateLeagueDefaultFormat(leagueId: string, format: GameFormatConfig | null): Promise<void> {
+    if (format) validateFormatConfig(format);
     await updateDoc(doc(db, 'leagues', leagueId), {
         defaultFormat: format ?? deleteField(),
     });
 }
 
 export async function updateGameFormatOverride(gameId: string, format: GameFormatConfig | null): Promise<void> {
+    if (format) validateFormatConfig(format);
     await updateDoc(doc(db, 'games', gameId), {
         formatOverride: format ?? deleteField(),
     });

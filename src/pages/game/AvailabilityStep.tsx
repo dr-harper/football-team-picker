@@ -44,7 +44,13 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
     onGuestStatusChange, onPositionToggle, onNextStep,
 }) => {
     const waitlistedTotal = waitlist.waitlistedAvailable.length + waitlist.waitlistedMaybe.length;
-    const capacityPct = Math.min(100, (waitlist.inPlayers.length / waitlist.maxPlayers) * 100);
+    const capacityPct = waitlist.maxPlayers > 0
+        ? Math.min(100, (waitlist.inPlayers.length / waitlist.maxPlayers) * 100)
+        : 0;
+    // Maybe players already promoted to "in" shouldn't be double-counted
+    const inPlayerIds = new Set(waitlist.inPlayers.map(p => p.id));
+    const maybeNotIn = maybePlayers.filter(m => !inPlayerIds.has(m.userId)).length
+        + guestsMaybe.filter(n => !inPlayerIds.has(`guest:${n}`)).length;
     const isUserWaitlisted = user && waitlist.isFull && (
         waitlist.waitlistedAvailable.some(p => p.id === user.uid) ||
         waitlist.waitlistedMaybe.some(p => p.id === user.uid)
@@ -110,7 +116,7 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
             <div className="flex gap-4 text-xs mb-2">
                 <span className="text-green-400">{waitlist.inPlayers.length} in</span>
                 {waitlistedTotal > 0 && <span className="text-amber-400">{waitlistedTotal} waitlisted</span>}
-                <span className="text-yellow-400">{maybePlayers.length + guestsMaybe.length} maybe</span>
+                {maybeNotIn > 0 && <span className="text-yellow-400">{maybeNotIn} maybe</span>}
                 <span className="text-red-400">{unavailablePlayers.length + guestsUnavailable.length} out</span>
             </div>
 

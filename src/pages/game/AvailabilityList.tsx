@@ -58,13 +58,13 @@ const PlayerRow: React.FC<{
                 </div>
             )}
             <div className="flex gap-1 shrink-0">
-                <button onClick={() => (isMe || isAdmin) && onToggleAvailability('available')}
+                <button onClick={(isMe || isAdmin) ? () => onToggleAvailability('available') : undefined}
                     className={`p-0.5 transition-colors ${status === 'available' ? 'text-green-400' : (isMe || isAdmin) ? 'text-white/20 hover:text-green-400' : 'text-white/20 cursor-default'}`}
                     title="Available"><CheckCircle className="w-4 h-4" /></button>
-                <button onClick={() => (isMe || isAdmin) && onToggleAvailability('maybe')}
+                <button onClick={(isMe || isAdmin) ? () => onToggleAvailability('maybe') : undefined}
                     className={`p-0.5 transition-colors ${status === 'maybe' ? 'text-yellow-400' : (isMe || isAdmin) ? 'text-white/20 hover:text-yellow-400' : 'text-white/20 cursor-default'}`}
                     title="Maybe"><HelpCircle className="w-4 h-4" /></button>
-                <button onClick={() => (isMe || isAdmin) && onToggleAvailability('unavailable')}
+                <button onClick={(isMe || isAdmin) ? () => onToggleAvailability('unavailable') : undefined}
                     className={`p-0.5 transition-colors ${status === 'unavailable' ? 'text-red-400' : (isMe || isAdmin) ? 'text-white/20 hover:text-red-400' : 'text-white/20 cursor-default'}`}
                     title="Can't make it"><XCircle className="w-4 h-4" /></button>
             </div>

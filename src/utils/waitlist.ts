@@ -36,6 +36,9 @@ export function resolveGameFormat(game: Game | null, league: League | null): Gam
  * and placed into "in" slots up to maxPlayers. Overflow available players
  * go to waitlistedAvailable. Maybe players always rank below available
  * overflow and go to waitlistedMaybe.
+ *
+ * Guest players (no account) always sort last within their priority tier
+ * since they have no timestamp — uses MAX_SAFE_INTEGER as updatedAt.
  */
 export function computeWaitlist(
     available: PlayerAvailability[],

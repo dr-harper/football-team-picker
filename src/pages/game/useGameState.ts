@@ -171,7 +171,10 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
     const totalAvailable = availablePlayers.length + guestsAvailable.length;
 
     // Waitlist computation
-    const effectiveFormat = resolveGameFormat(game, league);
+    const effectiveFormat = useMemo(
+        () => resolveGameFormat(game, league),
+        [game?.formatOverride, league?.defaultFormat],
+    );
     const waitlist = useMemo<WaitlistResult>(
         () => computeWaitlist(availablePlayers, maybePlayers, guestsAvailable, guestsMaybe, effectiveFormat),
         [availablePlayers, maybePlayers, guestsAvailable, guestsMaybe, effectiveFormat],

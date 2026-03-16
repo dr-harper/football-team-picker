@@ -457,7 +457,11 @@ const MembersTab: React.FC<MembersTabProps> = ({
                             <FormatSelector
                                 value={league.defaultFormat ?? DEFAULT_FORMAT}
                                 onChange={async (config: GameFormatConfig) => {
-                                    await updateLeagueDefaultFormat(leagueId, config);
+                                    try {
+                                        await updateLeagueDefaultFormat(leagueId, config);
+                                    } catch (err) {
+                                        logger.error('[updateLeagueDefaultFormat]', err);
+                                    }
                                 }}
                             />
                         </div>

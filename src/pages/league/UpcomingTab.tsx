@@ -309,11 +309,13 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                         </div>
                     </div>
                     {/* Format override */}
-                    <div>
+                    {(() => {
+                        const leagueFormat = league.defaultFormat ?? DEFAULT_FORMAT;
+                        return (<div>
                         {!showFormatOverride ? (
                             <div className="flex items-center justify-between">
                                 <div className="text-xs text-white/40">
-                                    Format: {(league.defaultFormat ?? DEFAULT_FORMAT).format} ({(league.defaultFormat ?? DEFAULT_FORMAT).minPlayers}–{(league.defaultFormat ?? DEFAULT_FORMAT).maxPlayers} players)
+                                    Format: {leagueFormat.format} ({leagueFormat.minPlayers}–{leagueFormat.maxPlayers} players)
                                 </div>
                                 <button
                                     type="button"
@@ -337,12 +339,13 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                                 </div>
                                 <FormatSelector
                                     compact
-                                    value={formatOverride ?? league.defaultFormat ?? DEFAULT_FORMAT}
+                                    value={formatOverride ?? leagueFormat}
                                     onChange={setFormatOverride}
                                 />
                             </div>
                         )}
-                    </div>
+                    </div>);
+                    })()}
 
                     <div>
                         <label className="block text-xs font-medium text-green-300 mb-1">Repeat weekly</label>
