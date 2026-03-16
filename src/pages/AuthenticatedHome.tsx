@@ -5,6 +5,7 @@ import AppHeader from '../components/AppHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeToUserLeagues } from '../utils/firestore';
 import { League } from '../types';
+import App from '../App';
 import HomeTab from './home/HomeTab';
 import ProfileTab from './home/ProfileTab';
 import HealthTab from './home/HealthTab';
@@ -14,7 +15,7 @@ type TabKey = 'home' | 'quick' | 'profile' | 'health';
 const tabs: { key: TabKey; icon: typeof Home; label: string }[] = [
     { key: 'home', icon: Home, label: 'Home' },
     { key: 'quick', icon: Shuffle, label: 'Quick Mode' },
-    { key: 'profile', icon: User, label: 'My Profile' },
+    { key: 'profile', icon: User, label: 'Me' },
     { key: 'health', icon: Activity, label: 'Health' },
 ];
 
@@ -29,10 +30,6 @@ const AuthenticatedHome: React.FC = () => {
     const activeTab = (searchParams.get('tab') as TabKey) || 'home';
 
     const setTab = (tab: TabKey) => {
-        if (tab === 'quick') {
-            navigate('/pick-teams');
-            return;
-        }
         if (tab === 'home') {
             setSearchParams({}, { replace: true });
         } else {
@@ -68,7 +65,7 @@ const AuthenticatedHome: React.FC = () => {
                 <div className="max-w-3xl mx-auto px-4">
                     <div className="flex">
                         {tabs.map(({ key, icon: Icon, label }) => {
-                            const active = key === 'quick' ? false : activeTab === key;
+                            const active = activeTab === key;
                             return (
                                 <button
                                     key={key}
@@ -90,17 +87,21 @@ const AuthenticatedHome: React.FC = () => {
             </div>
 
             {/* Tab content */}
-            <div className="max-w-3xl mx-auto p-4 sm:p-6">
-                {!loading && leagues.length !== 1 && (
-                    <h1 className="text-2xl font-bold text-white mb-5">
-                        Hey, {user?.displayName || 'Player'}!
-                    </h1>
-                )}
+            {activeTab === 'quick' ? (
+                <App embedded />
+            ) : (
+                <div className="max-w-3xl mx-auto p-4 sm:p-6">
+                    {!loading && leagues.length !== 1 && (
+                        <h1 className="text-2xl font-bold text-white mb-5">
+                            Hey, {user?.displayName || 'Player'}!
+                        </h1>
+                    )}
 
-                {activeTab === 'home' && <HomeTab leagues={leagues} loading={loading} />}
-                {activeTab === 'profile' && <ProfileTab leagues={leagues} />}
-                {activeTab === 'health' && <HealthTab leagues={leagues} />}
-            </div>
+                    {activeTab === 'home' && <HomeTab leagues={leagues} loading={loading} />}
+                    {activeTab === 'profile' && <ProfileTab leagues={leagues} />}
+                    {activeTab === 'health' && <HealthTab leagues={leagues} />}
+                </div>
+            )}
         </div>
     );
 };

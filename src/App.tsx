@@ -19,9 +19,10 @@ import { callGemini } from './utils/geminiClient';
 
 interface FootballTeamPickerInnerProps {
     showBanner?: boolean;
+    embedded?: boolean;
 }
 
-const FootballTeamPickerInner: React.FC<FootballTeamPickerInnerProps> = ({ showBanner = true }) => {
+const FootballTeamPickerInner: React.FC<FootballTeamPickerInnerProps> = ({ showBanner = true, embedded = false }) => {
     const {
         places,
         selectedLocation,
@@ -193,7 +194,7 @@ const FootballTeamPickerInner: React.FC<FootballTeamPickerInnerProps> = ({ showB
 
     return (
         <>
-            <HeaderBar />
+            {!embedded && <HeaderBar />}
             <div className="flex-grow p-4 sm:p-6">
                 {notifications.length > 0 && (
                     <div aria-live="polite" className="fixed bottom-24 right-4 flex flex-col items-end space-y-2 z-50">
@@ -256,7 +257,7 @@ const FootballTeamPickerInner: React.FC<FootballTeamPickerInnerProps> = ({ showB
                 </div>
             </div>
 
-            <Footer />
+            {!embedded && <Footer />}
             <FloatingFooter
                 visible={teamSetups.length > 0}
                 isExporting={isExporting}
@@ -286,9 +287,18 @@ const FootballTeamPickerInner: React.FC<FootballTeamPickerInnerProps> = ({ showB
 
 interface FootballTeamPickerProps {
     showBanner?: boolean;
+    embedded?: boolean;
 }
 
-const FootballTeamPicker: React.FC<FootballTeamPickerProps> = ({ showBanner = true }) => {
+const FootballTeamPicker: React.FC<FootballTeamPickerProps> = ({ showBanner = true, embedded = false }) => {
+    if (embedded) {
+        return (
+            <SettingsProvider>
+                <FootballTeamPickerInner showBanner={false} embedded />
+            </SettingsProvider>
+        );
+    }
+
     return (
         <SettingsProvider>
             <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
