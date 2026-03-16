@@ -1,21 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { deriveAllMetrics, downsampleTimeSeries, type HeartRateSample } from '../utils/healthMetrics';
-import { getLeagueGames, saveGameHealth, getMyGameHealth, getHealthSharingDefault } from '../utils/firestore';
+import { getLeagueGames, saveGameHealth, getMyGameHealth, getHealthSharingByLeague, getHealthSharingDefault, getHealthSyncEnabled } from '../utils/firestore';
 import { logger } from '../utils/logger';
+import { HEALTH_PERMS, areAllPermissionsGranted } from '../utils/healthPerms';
 import type { League, Game, StoredGameHealth } from '../types';
 
-const HEALTH_PERMS = ['READ_STEPS', 'READ_ACTIVE_CALORIES', 'READ_DISTANCE', 'READ_HEART_RATE'] as const;
 const MAX_HR_SAMPLES = 100;
 const MAX_SPEED_SAMPLES = 80;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-
-function areAllPermissionsGranted(perms: unknown): boolean {
-    if (perms && typeof perms === 'object' && !Array.isArray(perms)) {
-        return Object.values(perms).every(v => v === true);
-    }
-    return false;
-}
 
 export interface HealthSyncResult {
     syncing: boolean;
@@ -55,6 +48,10 @@ export function useAutoHealthSync(
                     permissions: [...HEALTH_PERMS],
                 });
                 if (!areAllPermissionsGranted(result.permissions)) return;
+
+                // Check if user has sync to account enabled (fail closed for privacy)
+                const syncEnabled = await getHealthSyncEnabled(userId).catch(() => false);
+                if (!syncEnabled) return;
 
                 // Gather recent games across all leagues
                 const now = Date.now();
@@ -163,7 +160,9 @@ export function useAutoHealthSync(
                             logger.error('Failed to query distance buckets during auto-sync:', err);
                         }
 
-                        const shareDefault = await getHealthSharingDefault(userId).catch(() => false);
+                        const sharingByLeague = await getHealthSharingByLeague(userId).catch(() => ({}));
+                        const shareDefault = sharingByLeague[league.id] ??
+                            await getHealthSharingDefault(userId).catch(() => false);
 
                         const stored: StoredGameHealth = {
                             gameId: game.id,

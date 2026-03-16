@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { deriveAllMetrics, downsampleTimeSeries, type DerivedMetrics, type HeartRateSample, type SpeedSample, type ActivePeriod, type HrZone } from '../utils/healthMetrics';
-import { saveGameHealth, getMyGameHealth, getHealthSharingDefault } from '../utils/firestore';
+import { saveGameHealth, getMyGameHealth, getHealthSharingByLeague, getHealthSharingDefault, getHealthSyncEnabled } from '../utils/firestore';
 import { logger } from '../utils/logger';
+import { HEALTH_PERMS, areAllPermissionsGranted } from '../utils/healthPerms';
 import type { StoredGameHealth } from '../types';
 
 export interface GameHealthData {
@@ -46,18 +47,8 @@ interface UseGameHealthResult {
     fromStore: boolean;
 }
 
-const HEALTH_PERMS = ['READ_STEPS', 'READ_ACTIVE_CALORIES', 'READ_DISTANCE', 'READ_HEART_RATE'] as const;
-
 const MAX_HR_SAMPLES = 100;
 const MAX_SPEED_SAMPLES = 80;
-
-// Plugin returns permissions as an object {READ_STEPS: true, ...} not an array
-function areAllPermissionsGranted(perms: unknown): boolean {
-    if (perms && typeof perms === 'object' && !Array.isArray(perms)) {
-        return Object.values(perms).every(v => v === true);
-    }
-    return false;
-}
 
 export function useGameHealth(
     gameDate: number | undefined,
@@ -313,9 +304,12 @@ export function useGameHealth(
 
                     setData(healthData);
 
-                    // Save to Firestore for web access
-                    if (gameId && userId && leagueId) {
-                        const shareDefault = await getHealthSharingDefault(userId).catch(() => false);
+                    // Save to Firestore if user has sync enabled (fail closed for privacy)
+                    const syncEnabled = userId ? await getHealthSyncEnabled(userId).catch(() => false) : false;
+                    if (gameId && userId && leagueId && syncEnabled) {
+                        const sharingByLeague = await getHealthSharingByLeague(userId).catch(() => ({}));
+                        const shareDefault = sharingByLeague[leagueId] ??
+                            await getHealthSharingDefault(userId).catch(() => false);
                         const stored: StoredGameHealth = {
                             gameId,
                             leagueId,
@@ -350,8 +344,8 @@ export function useGameHealth(
                 } else {
                     // Fallback: query aggregated steps and calories
                     const [stepsResult, caloriesResult] = await Promise.all([
-                        Health.queryAggregated({ startDate, endDate, dataType: 'steps', bucket: 'hour' }),
-                        Health.queryAggregated({ startDate, endDate, dataType: 'active-calories', bucket: 'hour' }),
+                        Health.queryAggregated({ startDate, endDate, dataType: 'steps', bucket: 'day' }),
+                        Health.queryAggregated({ startDate, endDate, dataType: 'active-calories', bucket: 'day' }),
                     ]);
 
                     const totalSteps = stepsResult.aggregatedData.reduce((sum, d) => sum + d.value, 0);

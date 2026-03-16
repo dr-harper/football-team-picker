@@ -722,3 +722,39 @@ export async function getHealthSharingDefault(userId: string): Promise<boolean> 
     if (!snap.exists()) return false;
     return snap.data().shareHealthByDefault ?? false;
 }
+
+/** Update per-league health sharing preference */
+export async function updateLeagueHealthSharing(userId: string, leagueId: string, share: boolean): Promise<void> {
+    await setDoc(doc(db, 'users', userId), {
+        healthSharingByLeague: { [leagueId]: share },
+    }, { merge: true });
+}
+
+/** Get per-league health sharing map */
+export async function getHealthSharingByLeague(userId: string): Promise<Record<string, boolean>> {
+    const snap = await getDoc(doc(db, 'users', userId));
+    if (!snap.exists()) return {};
+    return snap.data().healthSharingByLeague ?? {};
+}
+
+/** Set all leagues to the same sharing value. Only updates shareHealthByDefault when explicitly requested. */
+export async function updateAllLeagueHealthSharing(
+    userId: string, leagueIds: string[], share: boolean, updateDefault = false,
+): Promise<void> {
+    const map: Record<string, boolean> = Object.fromEntries(leagueIds.map(id => [id, share]));
+    const data: Record<string, unknown> = { healthSharingByLeague: map };
+    if (updateDefault) data.shareHealthByDefault = share;
+    await setDoc(doc(db, 'users', userId), data, { merge: true });
+}
+
+/** Update whether health data is saved to the user's account (for cross-device access) */
+export async function updateHealthSyncEnabled(userId: string, syncHealthToAccount: boolean): Promise<void> {
+    await setDoc(doc(db, 'users', userId), { syncHealthToAccount }, { merge: true });
+}
+
+/** Get whether health data sync to account is enabled */
+export async function getHealthSyncEnabled(userId: string): Promise<boolean> {
+    const snap = await getDoc(doc(db, 'users', userId));
+    if (!snap.exists()) return true; // default on — opt-out model
+    return snap.data().syncHealthToAccount ?? true;
+}

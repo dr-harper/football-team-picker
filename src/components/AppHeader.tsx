@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, LogOut, LayoutDashboard } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
+import { HealthMenuItem } from './HealthStatus';
 
 interface AppHeaderProps {
     title?: string;
@@ -91,6 +92,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                                     {user?.displayName || user?.email}
                                 </div>
                             </div>
+                            <HealthMenuItem />
                             {menuExtras}
                             <button
                                 onClick={() => { logout(); navigate('/'); }}
