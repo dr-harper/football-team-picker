@@ -73,6 +73,7 @@ export interface League {
     matchDurationMinutes?: number;             // match length in minutes (default 60)
     seasons?: Record<string, Season>;          // season map keyed by ID
     activeSeasonId?: string;                   // which season is currently active
+    defaultFormat?: GameFormatConfig;          // default game format for new games
 }
 
 export type GameStatus = 'scheduled' | 'in_progress' | 'completed';
@@ -135,6 +136,7 @@ export interface Game {
     matchEvents?: MatchEvent[];    // voice note transcripts + AI-parsed events
     matchSummary?: string;         // AI-generated match report
     seasonId?: string;             // links game to a season (undefined = unassigned / pre-season)
+    formatOverride?: GameFormatConfig; // per-game format override (falls back to league default)
     createdBy: string;
     createdAt: number;
 }
@@ -146,6 +148,7 @@ export interface NotificationPreferences {
     resultRecorded: boolean;
     paymentReminder: boolean;
     memberJoined: boolean;
+    waitlistPromotion: boolean;
 }
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
@@ -155,6 +158,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
     resultRecorded: false,
     paymentReminder: false,
     memberJoined: true,
+    waitlistPromotion: true,
 };
 
 // --- Stored Health Data ---
@@ -195,6 +199,14 @@ export interface WeatherForecast {
     rainProbability: number;
     windSpeed: number;
     weatherCode: number;
+}
+
+export type GameFormat = '5v5' | '6v6' | '7v7' | 'custom';
+
+export interface GameFormatConfig {
+    format: GameFormat;
+    minPlayers: number;
+    maxPlayers: number;
 }
 
 export type AvailabilityStatus = 'available' | 'unavailable' | 'maybe';

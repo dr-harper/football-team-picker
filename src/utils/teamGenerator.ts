@@ -87,28 +87,33 @@ export function generateTeamsFromText(
     playersText: string,
     places: string[],
     existingPlayerNumbers: { [playerName: string]: number },
+    dynamicMin?: number,
+    dynamicMax?: number,
 ): GenerateTeamsResult {
+    const minPlayers = dynamicMin ?? MIN_PLAYERS;
+    const maxPlayers = dynamicMax ?? MAX_PLAYERS;
+
     if (!playersText.trim()) {
         return { teams: [], noGoalkeepers: false, playerNumbers: existingPlayerNumbers, error: 'Please enter player names' };
     }
 
     const playerLines = playersText.split('\n').filter(line => line.trim().length > 0);
 
-    if (playerLines.length < MIN_PLAYERS) {
+    if (playerLines.length < minPlayers) {
         return {
             teams: [],
             noGoalkeepers: false,
             playerNumbers: existingPlayerNumbers,
-            error: `You need at least ${MIN_PLAYERS} players for two 5-a-side teams`,
+            error: `You need at least ${minPlayers} players for two teams`,
         };
     }
 
-    if (playerLines.length > MAX_PLAYERS) {
+    if (playerLines.length > maxPlayers) {
         return {
             teams: [],
             noGoalkeepers: false,
             playerNumbers: existingPlayerNumbers,
-            error: `You can only have a maximum of ${MAX_PLAYERS} players`,
+            error: `You can only have a maximum of ${maxPlayers} players`,
         };
     }
 

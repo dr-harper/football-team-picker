@@ -12,6 +12,10 @@ import {
     subscribeToGameAvailability,
     updateGameDetails,
 } from '../../utils/firestore';
+import type { GameFormatConfig } from '../../types';
+import FormatSelector from '../../components/FormatSelector';
+import { DEFAULT_FORMAT } from '../../constants/gameConstants';
+import { computeWaitlist, resolveGameFormat } from '../../utils/waitlist';
 import CalendarPicker from '../../components/CalendarPicker';
 import { geocodeLocation, GeoResult } from '../../utils/weather';
 import AvailabilityGrid from './AvailabilityGrid';
@@ -57,6 +61,8 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
     const [scheduleAvailability, setScheduleAvailability] = useState<Map<string, PlayerAvailability[]>>(new Map());
     const [expandedAvailGame, setExpandedAvailGame] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'list' | 'grid' | 'calendar'>('list');
+    const [formatOverride, setFormatOverride] = useState<GameFormatConfig | null>(null);
+    const [showFormatOverride, setShowFormatOverride] = useState(false);
     const [editingGameId, setEditingGameId] = useState<string | null>(null);
     const [editTitle, setEditTitle] = useState('');
     const [editDate, setEditDate] = useState('');
@@ -136,6 +142,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                     verifiedLocation?.lon,
                     costPerPerson,
                     undefined, // seasonId auto-determined by date range
+                    formatOverride ?? undefined,
                 );
             })
         );
@@ -145,6 +152,8 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
         setVerifiedLocation(null);
         setRepeatWeeks(1);
         setNewGameCost('');
+        setFormatOverride(null);
+        setShowFormatOverride(false);
         setShowNewGame(false);
     };
 
@@ -299,6 +308,42 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                             />
                         </div>
                     </div>
+                    {/* Format override */}
+                    <div>
+                        {!showFormatOverride ? (
+                            <div className="flex items-center justify-between">
+                                <div className="text-xs text-white/40">
+                                    Format: {(league.defaultFormat ?? DEFAULT_FORMAT).format} ({(league.defaultFormat ?? DEFAULT_FORMAT).minPlayers}–{(league.defaultFormat ?? DEFAULT_FORMAT).maxPlayers} players)
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowFormatOverride(true)}
+                                    className="text-xs text-green-400 hover:text-green-300 transition-colors"
+                                >
+                                    Override
+                                </button>
+                            </div>
+                        ) : (
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-xs font-medium text-green-300">Format override</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowFormatOverride(false); setFormatOverride(null); }}
+                                        className="text-xs text-white/30 hover:text-white/60 transition-colors"
+                                    >
+                                        Use league default
+                                    </button>
+                                </div>
+                                <FormatSelector
+                                    compact
+                                    value={formatOverride ?? league.defaultFormat ?? DEFAULT_FORMAT}
+                                    onChange={setFormatOverride}
+                                />
+                            </div>
+                        )}
+                    </div>
+
                     <div>
                         <label className="block text-xs font-medium text-green-300 mb-1">Repeat weekly</label>
                         <div className="flex items-center gap-3">
@@ -391,9 +436,14 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                     const avail = scheduleAvailability.get(game.id) ?? [];
                     const myStatus = avail.find(a => a.userId === user?.uid)?.status;
                     const guestStatusMap = game.guestAvailability ?? {};
-                    const inCount = avail.filter(a => a.status === 'available').length
-                        + (game.guestPlayers ?? []).filter(n => (guestStatusMap[n] ?? 'available') === 'available').length;
-                    const maybeCount = avail.filter(a => a.status === 'maybe').length;
+                    const availableAvail = avail.filter(a => a.status === 'available');
+                    const maybeAvail = avail.filter(a => a.status === 'maybe');
+                    const gAvailable = (game.guestPlayers ?? []).filter(n => (guestStatusMap[n] ?? 'available') === 'available');
+                    const gMaybe = (game.guestPlayers ?? []).filter(n => guestStatusMap[n] === 'maybe');
+                    const effectiveFormat = resolveGameFormat(game, league);
+                    const waitlist = computeWaitlist(availableAvail, maybeAvail, gAvailable, gMaybe, effectiveFormat);
+                    const inCount = waitlist.inPlayers.length;
+                    const waitlistedCount = waitlist.waitlistedAvailable.length + waitlist.waitlistedMaybe.length;
                     const noResponseCount = members.filter(m => !avail.find(a => a.userId === m.id)).length;
                     const isExpanded = expandedAvailGame === game.id;
                     return (
@@ -452,8 +502,8 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                                         {game.location && <span className="text-white/40 ml-2">· {game.location}</span>}
                                     </div>
                                     <div className="flex items-center gap-3 mt-1 text-xs">
-                                        <span className="text-green-400">{inCount} in</span>
-                                        {maybeCount > 0 && <span className="text-yellow-400">{maybeCount} maybe</span>}
+                                        <span className="text-green-400">{inCount}/{waitlist.maxPlayers} spots</span>
+                                        {waitlistedCount > 0 && <span className="text-amber-400">{waitlistedCount} waitlisted</span>}
                                         {noResponseCount > 0 && (
                                             <button
                                                 onClick={e => { e.preventDefault(); if (isAdmin) setExpandedAvailGame(isExpanded ? null : game.id); }}

@@ -15,7 +15,7 @@ import {
     Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { League, Game, Season, PlayerAvailability, GameStatus, GameScore, Team, GoalScorer, PaymentRecord, LeagueExpense, StoredGameHealth } from '../types';
+import { League, Game, Season, PlayerAvailability, GameStatus, GameScore, Team, GoalScorer, PaymentRecord, LeagueExpense, StoredGameHealth, GameFormatConfig } from '../types';
 
 // ---- Leagues ----
 
@@ -146,6 +146,7 @@ export async function createGame(
     locationLon?: number,
     costPerPerson?: number,
     seasonId?: string,
+    formatOverride?: GameFormatConfig,
 ): Promise<Game> {
     const gameCode = generateJoinCode();
     const data: Omit<Game, 'id'> = {
@@ -161,6 +162,7 @@ export async function createGame(
         ...(locationLon !== undefined ? { locationLon } : {}),
         ...(costPerPerson !== undefined ? { costPerPerson } : {}),
         ...(seasonId ? { seasonId } : {}),
+        ...(formatOverride ? { formatOverride } : {}),
     };
     const ref = await addDoc(collection(db, 'games'), data);
     return { id: ref.id, ...data };
@@ -304,6 +306,18 @@ export async function updateLeagueDefaultCost(leagueId: string, cost: number | n
 
 export async function updateLeagueMatchDuration(leagueId: string, minutes: number): Promise<void> {
     await updateDoc(doc(db, 'leagues', leagueId), { matchDurationMinutes: minutes });
+}
+
+export async function updateLeagueDefaultFormat(leagueId: string, format: GameFormatConfig | null): Promise<void> {
+    await updateDoc(doc(db, 'leagues', leagueId), {
+        defaultFormat: format ?? deleteField(),
+    });
+}
+
+export async function updateGameFormatOverride(gameId: string, format: GameFormatConfig | null): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), {
+        formatOverride: format ?? deleteField(),
+    });
 }
 
 export async function updateLeaguePayments(leagueId: string, payments: Record<string, PaymentRecord[]>): Promise<void> {

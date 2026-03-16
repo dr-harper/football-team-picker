@@ -31,6 +31,7 @@ import { Game, PlayerAvailability, AvailabilityStatus, League, Team, TeamSetup, 
 import { generateTeamsFromText } from '../../utils/teamGenerator';
 import { fetchWeather } from '../../utils/weather';
 import { buildLookup, makeGuestId } from '../../utils/playerLookup';
+import { computeWaitlist, resolveGameFormat, WaitlistResult } from '../../utils/waitlist';
 
 interface UseGameStateArgs {
     rawId: string | undefined;
@@ -168,6 +169,13 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
     const guestsUnavailable = (game?.guestPlayers ?? []).filter(n => guestStatusMap[n] === 'unavailable');
     const positionMap = game?.playerPositions ?? {};
     const totalAvailable = availablePlayers.length + guestsAvailable.length;
+
+    // Waitlist computation
+    const effectiveFormat = resolveGameFormat(game, league);
+    const waitlist = useMemo<WaitlistResult>(
+        () => computeWaitlist(availablePlayers, maybePlayers, guestsAvailable, guestsMaybe, effectiveFormat),
+        [availablePlayers, maybePlayers, guestsAvailable, guestsMaybe, effectiveFormat],
+    );
     const availabilityPlayerIds = [
         ...availablePlayers.map(a => a.userId),
         ...guestsAvailable.map(makeGuestId),
@@ -223,7 +231,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         let lastNumbers = playerNumbers;
         let hasError = false;
         for (let i = 0; i < count; i++) {
-            const result = generateTeamsFromText(text, places, lastNumbers);
+            const result = generateTeamsFromText(text, places, lastNumbers, effectiveFormat.minPlayers, effectiveFormat.maxPlayers);
             if (result.error) { setGenError(result.error); hasError = true; break; }
             lastNumbers = result.playerNumbers;
             const teams = result.teams.map(t => ({
@@ -238,24 +246,20 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
             setPendingSetups(prev => [...prev, ...newSetups]);
             setGenError('');
         }
-    }, [places, playerNumbers, availability, game?.guestPlayers]);
+    }, [places, playerNumbers, availability, game?.guestPlayers, effectiveFormat.minPlayers, effectiveFormat.maxPlayers]);
 
     const generateFromAvailable = useCallback((count = 3) => {
-        const statusMap = game?.guestAvailability ?? {};
         const positions = game?.playerPositions ?? {};
-        const availableGuests = (game?.guestPlayers ?? []).filter(n => (statusMap[n] ?? 'available') === 'available');
         const withTag = (displayName: string, playerId: string) => {
             const tag = positions[playerId];
             return tag ? `${displayName} #${tag}` : displayName;
         };
-        const names = [
-            ...availablePlayers.map(a => withTag(a.displayName, a.userId)),
-            ...availableGuests.map(n => withTag(n, makeGuestId(n))),
-        ];
+        // Only include players who are "in" (not waitlisted)
+        const names = waitlist.inPlayers.map(p => withTag(p.displayName, p.id));
         const playerList = names.join('\n');
         setPlayersText(playerList);
         addSetup(playerList, count);
-    }, [availablePlayers, game?.guestPlayers, game?.guestAvailability, game?.playerPositions, addSetup]);
+    }, [waitlist.inPlayers, game?.playerPositions, addSetup]);
 
     const handleGenerateFromText = useCallback((count = 1) => {
         addSetup(playersText, count);
@@ -540,6 +544,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         guestsAvailable, guestsMaybe, guestsUnavailable,
         guestStatusMap, positionMap,
         totalAvailable, allPlayerIds,
+        effectiveFormat, waitlist,
         playersText, generatedTeams, pendingSetups, genError,
         score1, score2, selectedPlayer,
         weather, weatherLoading,
