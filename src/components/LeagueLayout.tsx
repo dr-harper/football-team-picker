@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { LeagueNavProvider, useLeagueNav } from '../contexts/LeagueNavContext';
 import MobileBottomNav from './MobileBottomNav';
+import NavigationRail from './NavigationRail';
 
 const LeagueLayoutInner: React.FC = () => {
     const { code } = useParams<{ code: string }>();
@@ -13,7 +14,6 @@ const LeagueLayoutInner: React.FC = () => {
 
     const handleSetTab = (t: typeof tab) => {
         if (isGamePage) {
-            // Navigate back to league page — context tab will be set by LeaguePage on mount
             navigate(`/league/${code}?tab=${t}`);
         } else {
             setTab(t);
@@ -22,12 +22,21 @@ const LeagueLayoutInner: React.FC = () => {
 
     return (
         <>
-            <Outlet />
-            <MobileBottomNav
+            <NavigationRail
                 tab={isGamePage ? 'completed' : tab}
                 setTab={handleSetTab}
                 upcomingCount={upcomingCount}
             />
+            <div className="md:pl-[72px] transition-[padding] duration-200 ease-out">
+                <Outlet />
+            </div>
+            <div className="md:hidden">
+                <MobileBottomNav
+                    tab={isGamePage ? 'completed' : tab}
+                    setTab={handleSetTab}
+                    upcomingCount={upcomingCount}
+                />
+            </div>
         </>
     );
 };

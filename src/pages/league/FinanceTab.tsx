@@ -107,6 +107,7 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
             {isAdmin && (() => {
                 const pending = (league.expenses ?? []).filter(e => e.status === 'pending');
                 if (pending.length === 0) return null;
+
                 return (
                     <div className="bg-yellow-500/8 border border-yellow-500/20 rounded-2xl overflow-hidden">
                         <div className="flex items-center gap-2 px-4 pt-4 pb-3">
@@ -194,12 +195,13 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
                     </div>
                 ) : (
                     <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
-                        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 px-4 py-2.5 text-[10px] text-white/30 uppercase tracking-wider border-b border-white/5">
+                        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] md:grid-cols-[1fr_auto_auto_auto_auto_auto] gap-x-3 px-4 py-2.5 text-[10px] text-white/30 uppercase tracking-wider border-b border-white/5">
                             <span>Player</span>
                             <span className="text-right">Games</span>
                             <span className="text-right">Owed</span>
                             <span className="text-right">Paid</span>
                             <span className="text-right">Balance</span>
+                            <span className="hidden md:block text-right" />
                         </div>
                         {financeLedger.map(row => {
                             const isExpanded = selectedPlayerChart === row.playerId;
@@ -208,7 +210,7 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
                             return (
                                 <div key={row.playerId} className="border-t border-white/5">
                                     <button
-                                        className="w-full text-left grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 px-4 py-3 items-center hover:bg-white/3 transition-colors"
+                                        className="w-full text-left grid grid-cols-[1fr_auto_auto_auto_auto] md:grid-cols-[1fr_auto_auto_auto_auto_auto] gap-x-3 px-4 py-3 items-center hover:bg-white/3 transition-colors"
                                         onClick={() => setSelectedPlayerChart(isExpanded ? null : row.playerId)}
                                     >
                                         <PlayerName id={row.playerId} lookup={lookup} className="text-sm text-white truncate" />
@@ -226,6 +228,25 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
                                                 {row.balance === 0 ? '✓' : row.balance > 0 ? `-£${row.balance.toFixed(0)}` : `+£${(-row.balance).toFixed(0)}`}
                                             </span>
                                         </div>
+                                        {/* Inline record payment on wider screens */}
+                                        {!isSettled ? (
+                                            <div className="hidden md:block" onClick={e => e.stopPropagation()}>
+                                                {!isExpanded && (
+                                                    <PaymentInput
+                                                        playerId={row.playerId}
+                                                        isOpen={addingPaymentFor === row.playerId}
+                                                        value={paymentInputs[row.playerId] ?? ''}
+                                                        onChange={handlePaymentInputChange}
+                                                        onSubmit={handleRecordPayment}
+                                                        onOpen={handleOpenPayment}
+                                                        onClose={() => setAddingPaymentFor(null)}
+                                                        stopPropagation
+                                                    />
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <span className="hidden md:block" />
+                                        )}
                                     </button>
 
                                     {/* Expanded: chart + payment history + record payment */}
@@ -273,9 +294,9 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
                                         );
                                     })()}
 
-                                    {/* Collapsed quick-pay for debtors */}
+                                    {/* Collapsed quick-pay for debtors (mobile only — inline on md+) */}
                                     {!isExpanded && !isSettled && (
-                                        <div className="px-4 pb-2.5">
+                                        <div className="px-4 pb-2.5 md:hidden">
                                             <PaymentInput
                                                 playerId={row.playerId}
                                                 isOpen={addingPaymentFor === row.playerId}

@@ -139,11 +139,11 @@ const AvailabilityGrid: React.FC<AvailabilityGridProps> = ({
     return (
         <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
-                <table className="w-full border-collapse" style={{ minWidth: `${140 + gameCount * 90}px` }}>
+                <table className="w-full border-collapse" style={{ minWidth: `${160 + gameCount * 100}px` }}>
                     <thead>
                         {/* Date headers */}
                         <tr className="border-b border-white/8">
-                            <th className="sticky left-0 z-10 bg-green-900/90 backdrop-blur-sm p-0 w-[140px] min-w-[140px]" />
+                            <th className="sticky left-0 z-10 bg-green-900/90 backdrop-blur-sm p-0 w-[140px] min-w-[140px] md:w-[200px] md:min-w-[200px]" />
                             {upcomingGames.map(game => {
                                 const d = new Date(game.date);
                                 return (
@@ -168,7 +168,7 @@ const AvailabilityGrid: React.FC<AvailabilityGridProps> = ({
                         </tr>
                         {/* Availability counts */}
                         <tr className="border-b border-white/8">
-                            <th className="sticky left-0 z-10 bg-green-900/90 backdrop-blur-sm p-0 w-[140px] min-w-[140px]" />
+                            <th className="sticky left-0 z-10 bg-green-900/90 backdrop-blur-sm p-0 w-[140px] min-w-[140px] md:w-[200px] md:min-w-[200px]" />
                             {upcomingGames.map(game => {
                                 const avail = scheduleAvailability.get(game.id) ?? [];
                                 const guestStatusMap = game.guestAvailability ?? {};
@@ -199,7 +199,7 @@ const AvailabilityGrid: React.FC<AvailabilityGridProps> = ({
                                         </tr>
                                     )}
                                     <tr className={`border-b border-white/5 ${row.isMe ? 'bg-green-500/8' : ''}`}>
-                                        <td className={`sticky left-0 z-10 backdrop-blur-sm px-3 py-2 w-[140px] min-w-[140px] ${row.isMe ? 'bg-green-900/95' : 'bg-green-900/90'}`}>
+                                        <td className={`sticky left-0 z-10 backdrop-blur-sm px-3 py-2 w-[140px] min-w-[140px] md:w-[200px] md:min-w-[200px] ${row.isMe ? 'bg-green-900/95' : 'bg-green-900/90'}`}>
                                             <div className={`text-sm font-medium truncate ${
                                                 row.isMe ? 'text-green-300' :
                                                 row.isGuest ? 'text-orange-300' :

@@ -131,12 +131,12 @@ const CompletedGameView: React.FC<CompletedGameViewProps> = ({
     ).sort((a, b) => a.timeSec - b.timeSec);
 
     return (
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl md:max-w-none mx-auto">
             <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-3 sm:p-5">
                 {/* Score first on mobile — most important info */}
                 {game.score && (
                     <div className="pb-3 mb-3 border-b border-white/10">
-                        <div className="flex items-center justify-center gap-3 sm:gap-6 text-white">
+                        <div className="flex items-center justify-center gap-3 sm:gap-6 text-white foldable-grid fold:grid fold:grid-cols-2">
                             <div className="text-center flex-1">
                                 <div className="text-xs sm:text-sm text-green-300 truncate">{generatedTeams[0]?.name}</div>
                                 <div className="text-3xl sm:text-4xl font-bold">{game.score.team1}</div>

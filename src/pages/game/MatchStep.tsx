@@ -172,10 +172,10 @@ const MatchStep: React.FC<MatchStepProps> = ({
     const scores = computedScores ?? { team1: 0, team2: 0 };
 
     return (
-    <div className="max-w-4xl mx-auto space-y-4">
+    <div className="max-w-4xl md:max-w-none mx-auto space-y-4">
         {/* Sticky score pill */}
         {matchStarted && hasTeams && showStickyPill && (
-            <div className="fixed top-0 left-0 right-0 z-40 flex justify-center pointer-events-none">
+            <div className="fixed top-0 left-0 md:left-[72px] right-0 z-40 flex justify-center pointer-events-none">
                 <div className="mt-2 bg-black/80 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 flex items-center gap-3 shadow-lg pointer-events-auto">
                     <span className="text-xs font-bold" style={{ color: generatedTeams![0].color }}>{scores.team1}</span>
                     <span className="text-white/30 text-xs">–</span>

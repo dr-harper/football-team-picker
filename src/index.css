@@ -98,3 +98,17 @@
     row-gap: calc(env(viewport-segment-top 0 1) - env(viewport-segment-bottom 0 0));
   }
 }
+
+/* Dual-pane layout sized exactly to viewport segments */
+@media (horizontal-viewport-segments: 2) {
+  .dual-pane-foldable {
+    display: grid;
+    grid-template-columns: env(viewport-segment-width 0 0) env(viewport-segment-width 1 0);
+    column-gap: calc(env(viewport-segment-left 1 0) - env(viewport-segment-right 0 0));
+  }
+}
+
+/* Smooth layout transitions for fold/unfold */
+.layout-transition {
+  transition: padding 200ms ease-out, margin 200ms ease-out;
+}
