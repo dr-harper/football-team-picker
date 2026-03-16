@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Calendar, Trophy, BarChart2, Users, User, Wallet, Copy, Check, TableProperties } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -281,30 +281,7 @@ const LeaguePage: React.FC = () => {
                 }
             />
 
-            <div className="max-w-4xl md:max-w-6xl mx-auto p-4 sm:p-6 pb-24 sm:pb-6 space-y-4">
-                {/* Desktop top tabs — hidden on mobile */}
-                <div className="hidden sm:grid md:hidden grid-cols-7 gap-1 bg-white/5 rounded-lg p-1">
-                    {([
-                        { key: 'upcoming', icon: Calendar, label: `Games (${upcomingGames.length})` },
-                        { key: 'completed', icon: Trophy, label: `Results (${completedGames.length})` },
-                        { key: 'table', icon: TableProperties, label: 'Table' },
-                        { key: 'stats', icon: BarChart2, label: 'Stats' },
-                        { key: 'finance', icon: Wallet, label: 'Finance' },
-                        { key: 'members', icon: Users, label: 'Settings' },
-                        { key: 'profile', icon: User, label: 'Me' },
-                    ] as const).map(({ key, icon: Icon, label }) => (
-                        <button
-                            key={key}
-                            onClick={() => setTab(key)}
-                            className={`py-2 px-1 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                                tab === key ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white'
-                            }`}
-                        >
-                            <Icon className="w-3.5 h-3.5 shrink-0" /> {label}
-                        </button>
-                    ))}
-                </div>
-
+            <div className="max-w-4xl md:max-w-6xl mx-auto p-4 sm:p-6 pb-24 md:pb-6 space-y-4">
                 {tab === 'upcoming' && user && (
                     <UpcomingTab
                         leagueId={id!}

@@ -229,21 +229,24 @@ const FinanceTab: React.FC<FinanceTabProps> = ({
                                             </span>
                                         </div>
                                         {/* Inline record payment on wider screens */}
-                                        {!isExpanded && !isSettled && (
+                                        {!isSettled ? (
                                             <div className="hidden md:block" onClick={e => e.stopPropagation()}>
-                                                <PaymentInput
-                                                    playerId={row.playerId}
-                                                    isOpen={addingPaymentFor === row.playerId}
-                                                    value={paymentInputs[row.playerId] ?? ''}
-                                                    onChange={handlePaymentInputChange}
-                                                    onSubmit={handleRecordPayment}
-                                                    onOpen={handleOpenPayment}
-                                                    onClose={() => setAddingPaymentFor(null)}
-                                                    stopPropagation
-                                                />
+                                                {!isExpanded && (
+                                                    <PaymentInput
+                                                        playerId={row.playerId}
+                                                        isOpen={addingPaymentFor === row.playerId}
+                                                        value={paymentInputs[row.playerId] ?? ''}
+                                                        onChange={handlePaymentInputChange}
+                                                        onSubmit={handleRecordPayment}
+                                                        onOpen={handleOpenPayment}
+                                                        onClose={() => setAddingPaymentFor(null)}
+                                                        stopPropagation
+                                                    />
+                                                )}
                                             </div>
+                                        ) : (
+                                            <span className="hidden md:block" />
                                         )}
-                                        {!isExpanded && isSettled && <span className="hidden md:block" />}
                                     </button>
 
                                     {/* Expanded: chart + payment history + record payment */}

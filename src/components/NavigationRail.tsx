@@ -18,7 +18,7 @@ const allTabs: { key: TabKey; icon: typeof Calendar; label: string }[] = [
     { key: 'profile', icon: User, label: 'Profile' },
 ];
 
-const NavigationRail: React.FC<NavigationRailProps> = ({ tab, setTab }) => {
+const NavigationRail: React.FC<NavigationRailProps> = ({ tab, setTab, upcomingCount }) => {
     return (
         <nav className="hidden md:flex flex-col items-center fixed left-0 top-0 bottom-0 w-[72px] z-30 bg-green-950/95 backdrop-blur-lg border-r border-white/10 pt-16 pb-4 gap-1 overflow-y-auto">
             {allTabs.map(({ key, icon: Icon, label }) => {
@@ -27,7 +27,7 @@ const NavigationRail: React.FC<NavigationRailProps> = ({ tab, setTab }) => {
                     <button
                         key={key}
                         onClick={() => setTab(key)}
-                        className="group flex flex-col items-center justify-center w-full py-2 transition-colors"
+                        className="group relative flex flex-col items-center justify-center w-full py-2 transition-colors"
                     >
                         <div
                             className={`flex items-center justify-center w-12 h-8 rounded-2xl transition-all ${
@@ -40,6 +40,11 @@ const NavigationRail: React.FC<NavigationRailProps> = ({ tab, setTab }) => {
                                 active ? 'text-green-400' : 'text-white/40 group-hover:text-white/60'
                             }`} />
                         </div>
+                        {key === 'upcoming' && upcomingCount > 0 && (
+                            <span className="absolute top-1 right-2.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-green-500 text-white text-[9px] font-bold px-1">
+                                {upcomingCount}
+                            </span>
+                        )}
                         <span className={`text-[10px] mt-0.5 font-medium transition-colors ${
                             active ? 'text-green-400' : 'text-white/40 group-hover:text-white/60'
                         }`}>
