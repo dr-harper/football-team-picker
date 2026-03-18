@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { NOTIFICATION_TIMEOUT_MS } from '../constants/gameConstants';
 
 interface NotificationProps {
@@ -13,9 +14,17 @@ const Notification: React.FC<NotificationProps> = ({ message, onClose }) => {
     }, [onClose]);
 
     return (
-        <div role="status" aria-live="polite" className="bg-purple-600 dark:bg-purple-700 text-white px-4 py-2 rounded shadow-lg">
+        <motion.div
+            role="status"
+            aria-live="polite"
+            className="bg-purple-600 dark:bg-purple-700 text-white px-4 py-2 rounded shadow-lg"
+            initial={{ x: 50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 50, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+        >
             {message}
-        </div>
+        </motion.div>
     );
 };
 

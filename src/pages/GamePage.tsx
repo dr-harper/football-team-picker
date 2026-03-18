@@ -1,6 +1,8 @@
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import AppHeader from '../components/AppHeader';
+import FootballLoader from '../components/FootballLoader';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { describeWeatherCode } from '../utils/weather';
@@ -469,7 +471,7 @@ const GamePage: React.FC = () => {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
-                <div className="text-white text-lg">Loading...</div>
+                <FootballLoader />
             </div>
         );
     }
@@ -610,7 +612,9 @@ const GamePage: React.FC = () => {
                     <WizardProgressBar steps={WIZARD_STEPS} currentStep={wizardStep} onStepClick={setWizardStep} />
                 )}
 
+                <AnimatePresence mode="wait">
                 {!isCompleted && wizardStep === 1 && (
+                    <motion.div key="step-1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
                     <AvailabilityStep
                         game={game} gameDocId={gameDocId} user={user}
                         availability={availability} myAvailability={myAvailability}
@@ -624,9 +628,11 @@ const GamePage: React.FC = () => {
                         onGuestStatusChange={handleGuestStatusChange} onPositionToggle={handlePositionToggle}
                         onNextStep={() => setWizardStep(2)}
                     />
+                    </motion.div>
                 )}
 
                 {!isCompleted && wizardStep === 2 && (
+                    <motion.div key="step-2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
                     <TeamsStep
                         totalAvailable={totalAvailable} playersText={playersText}
                         showTextarea={showTextarea} genError={genError}
@@ -646,9 +652,11 @@ const GamePage: React.FC = () => {
                         onShare={handleShare} onExport={handleExport}
                         onBack={() => setWizardStep(1)}
                     />
+                    </motion.div>
                 )}
 
                 {!isCompleted && wizardStep === 3 && (
+                    <motion.div key="step-3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
                     <MatchStep
                         game={game} generatedTeams={generatedTeams} isAdmin={isAdmin}
                         selectedPlayer={selectedPlayer}
@@ -694,9 +702,11 @@ const GamePage: React.FC = () => {
                         onAddMatchEvent={handleAddStructuredEvent}
                         lookup={lookup}
                     />
+                    </motion.div>
                 )}
 
                 {!isCompleted && wizardStep === 4 && (
+                    <motion.div key="step-4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
                     <ResultsStep
                         game={game} generatedTeams={generatedTeams} isAdmin={isAdmin} isPast={isPast}
                         score1={score1} score2={score2} isExporting={isExporting}
@@ -709,7 +719,9 @@ const GamePage: React.FC = () => {
                         onBack={() => setWizardStep(3)} onGoToTeams={() => setWizardStep(2)}
                         onGenerateSummary={handleGenerateSummary} summaryLoading={summaryLoading}
                     />
+                    </motion.div>
                 )}
+                </AnimatePresence>
 
                 {(isCompleted || wizardStep === 4) && (
                     <>

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import './index.css'
 import App from './App.tsx'
 import HomePage from './pages/HomePage'
@@ -30,13 +31,18 @@ function AndroidBackHandler({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <AuthProvider>
-      <SettingsProvider>
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <AndroidBackHandler>
-        <Routes>
+function AnimatedRoutes() {
+  const location = useLocation()
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+      >
+        <Routes location={location}>
           <Route path="/" element={<HomePage />} />
           <Route path="/pick-teams" element={<App showBanner={false} />} />
           <Route path="/auth" element={<AuthPage />} />
@@ -53,6 +59,18 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
         </Routes>
+      </motion.div>
+    </AnimatePresence>
+  )
+}
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <AuthProvider>
+      <SettingsProvider>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
+      <AndroidBackHandler>
+        <AnimatedRoutes />
         <SetNameModal />
       </AndroidBackHandler>
       </BrowserRouter>

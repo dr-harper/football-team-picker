@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Sparkles, MapPin, Users, Shield, Bot } from 'lucide-react';
@@ -58,7 +59,7 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
     return (
         <div className="bg-green-800/80 dark:bg-green-900/80 border border-green-600/40 p-5 shadow-xl text-white rounded-2xl">
             <div className="mb-4">
-                <h2 className="text-2xl font-extrabold mb-1 text-white tracking-tight">Enter Players</h2>
+                <h2 className="text-2xl font-extrabold mb-1 text-white tracking-tight">Who's Playing</h2>
                 <p className="text-xs text-green-300 leading-relaxed">
                     One player per line.{' '}
                     <span className="font-semibold text-green-200">#g</span> goalkeeper &middot;{' '}
@@ -116,17 +117,33 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                 <div className="flex gap-2 mt-3">
                     <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${playerCount < MIN_PLAYERS ? 'bg-red-500/25 text-red-300' : 'bg-black/20 text-green-200'}`}>
                         <Users className="w-3 h-3" />
-                        {playerCount} / {MAX_PLAYERS} players
+                        <motion.span
+                            key={playerCount}
+                            initial={{ y: -8, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                        >
+                            {playerCount}
+                        </motion.span>
+                        {' '} / {MAX_PLAYERS} players
                     </div>
                     <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${goalkeeperCount < NUM_TEAMS ? 'bg-orange-500/25 text-orange-300' : 'bg-black/20 text-green-200'}`}>
                         <Shield className="w-3 h-3" />
-                        {goalkeeperCount}/{NUM_TEAMS} keepers
+                        <motion.span
+                            key={goalkeeperCount}
+                            initial={{ y: -8, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                        >
+                            {goalkeeperCount}
+                        </motion.span>
+                        /{NUM_TEAMS} keepers
                     </div>
                 </div>
 
                 <p className="text-xs text-green-400/70 mt-3 mb-1">
                     <MapPin className="w-3 h-3 inline mr-1 -mt-0.5" />
-                    Used for local team name suggestions
+                    Helps pick local-sounding team names
                 </p>
                 <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-green-400 shrink-0" />
@@ -166,7 +183,11 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                         <span className="text-xs opacity-60">{aiEnabled ? 'Team taglines, name fixing' : 'Off'}</span>
                     </div>
                     <div className={`relative w-9 h-5 rounded-full transition-colors ${aiOn ? 'bg-green-500' : 'bg-white/20'}`}>
-                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${aiOn ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        <motion.div
+                            className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow"
+                            animate={{ x: aiOn ? 16 : 2 }}
+                            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                        />
                     </div>
                 </button>
 
@@ -176,20 +197,20 @@ const PlayerInput: React.FC<PlayerInputProps> = ({
                         disabled={hasValidationErrors}
                         className="flex-1 bg-gradient-to-r from-emerald-400 to-green-600 hover:from-emerald-300 hover:to-green-500 text-white py-2.5 rounded-xl font-bold shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Create Teams
+                        Pick Teams
                     </Button>
                     <Button
                         onClick={onGenerateMultiple}
                         disabled={hasValidationErrors}
                         className="flex-1 bg-gradient-to-r from-blue-500 to-blue-700 text-white py-2.5 rounded-xl font-bold shadow-md hover:shadow-lg hover:from-blue-400 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Create ×3
+                        Shuffle ×3
                     </Button>
                     <Button
                         onClick={onReset}
                         className="px-4 py-2.5 rounded-xl font-bold bg-transparent border border-white/20 text-white/60 hover:text-red-400 hover:border-red-400/40 hover:bg-red-400/10 transition-all"
                     >
-                        Reset
+                        Clear All
                     </Button>
                 </div>
 

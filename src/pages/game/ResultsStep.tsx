@@ -51,38 +51,40 @@ const ResultsStep: React.FC<ResultsStepProps> = ({
 
                 {(isPast || game.status === 'in_progress') && isAdmin && (
                     <div>
-                        <h3 className="text-white font-bold text-center mb-3 flex items-center justify-center gap-2">
-                            <Trophy className="w-4 h-4" /> Record Score
+                        <h3 className="text-white font-bold text-center mb-4 flex items-center justify-center gap-2">
+                            <Trophy className="w-4 h-4" /> Final Score
                         </h3>
-                        <div className="flex items-center justify-center gap-3">
-                            <div className="text-center">
-                                <div className="text-sm text-green-300 mb-1">{generatedTeams![0]?.name}</div>
-                                <input
-                                    type="number"
-                                    value={score1}
-                                    onChange={e => onScore1Change(e.target.value)}
-                                    className="w-16 text-center text-2xl font-bold border border-white/10 rounded-lg p-2 bg-white/5 text-white"
-                                    min="0"
-                                />
-                            </div>
-                            <span className="text-white text-2xl font-bold">-</span>
-                            <div className="text-center">
-                                <div className="text-sm text-green-300 mb-1">{generatedTeams![1]?.name}</div>
-                                <input
-                                    type="number"
-                                    value={score2}
-                                    onChange={e => onScore2Change(e.target.value)}
-                                    className="w-16 text-center text-2xl font-bold border border-white/10 rounded-lg p-2 bg-white/5 text-white"
-                                    min="0"
-                                />
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+                            <div className="flex items-center justify-center gap-4">
+                                <div className="text-center flex-1">
+                                    <div className="text-sm text-green-300 mb-2 truncate">{generatedTeams![0]?.name}</div>
+                                    <input
+                                        type="number"
+                                        value={score1}
+                                        onChange={e => onScore1Change(e.target.value)}
+                                        className="w-20 text-center text-3xl font-bold border border-white/15 rounded-xl p-3 bg-white/5 text-white focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-colors"
+                                        min="0"
+                                    />
+                                </div>
+                                <span className="text-white/30 text-2xl font-bold mt-6">-</span>
+                                <div className="text-center flex-1">
+                                    <div className="text-sm text-green-300 mb-2 truncate">{generatedTeams![1]?.name}</div>
+                                    <input
+                                        type="number"
+                                        value={score2}
+                                        onChange={e => onScore2Change(e.target.value)}
+                                        className="w-20 text-center text-3xl font-bold border border-white/15 rounded-xl p-3 bg-white/5 text-white focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-colors"
+                                        min="0"
+                                    />
+                                </div>
                             </div>
                         </div>
                         <Button
                             onClick={onSaveScore}
                             disabled={score1 === '' || score2 === ''}
-                            className="mt-3 w-full bg-green-600 hover:bg-green-500 text-white rounded-lg"
+                            className="mt-4 w-full bg-green-600 hover:bg-green-500 text-white rounded-xl py-2.5 font-bold"
                         >
-                            Save Final Score
+                            Full Time
                         </Button>
                     </div>
                 )}
@@ -121,12 +123,12 @@ const ResultsStep: React.FC<ResultsStepProps> = ({
             </div>
         ) : (
             <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
-                <p className="text-green-300 mb-3">No teams committed yet.</p>
+                <p className="text-green-300 mb-3">No teams on the pitch yet.</p>
                 <Button
                     onClick={onGoToTeams}
                     className="bg-green-600 hover:bg-green-500 text-white rounded-lg"
                 >
-                    Go to Generate Teams
+                    Set up the teams
                 </Button>
             </div>
         )}

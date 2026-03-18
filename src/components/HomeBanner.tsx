@@ -169,7 +169,7 @@ const HomeBanner: React.FC = () => {
                 <Trophy className="w-6 h-6 text-yellow-400" />
             </div>
             <p className="flex-1 text-sm text-green-100/90">
-                {leagueCount} league{leagueCount !== 1 ? 's' : ''} &middot; No games scheduled
+                {leagueCount} league{leagueCount !== 1 ? 's' : ''} &middot; No games on the horizon
             </p>
             <button
                 onClick={() => navigate(singleLeagueCode ? `/league/${singleLeagueCode}` : '/dashboard')}

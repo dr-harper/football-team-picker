@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeftRight, Watch, Clock, Smartphone, Pause, Play, Square, Mic, Check, Loader2, Goal, Trash2, ChevronDown, LayoutGrid, RotateCcw, SkipForward } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Capacitor } from '@capacitor/core';
 import { Button } from '../../components/ui/button';
 import { Game, Team, GoalScorer, MatchEvent, MatchEventType } from '../../types';
@@ -223,12 +224,34 @@ const MatchStep: React.FC<MatchStepProps> = ({
                             <div className="flex items-center gap-4">
                                 <div className="text-center">
                                     <div className="text-[10px] uppercase tracking-wider truncate" style={{ color: generatedTeams![0].color }}>{generatedTeams![0].name}</div>
-                                    <div className="text-white font-bold text-3xl">{scores.team1}</div>
+                                    <AnimatePresence mode="wait">
+                                        <motion.div
+                                            key={scores.team1}
+                                            className="text-white font-bold text-3xl"
+                                            initial={{ y: 15, opacity: 0 }}
+                                            animate={{ y: 0, opacity: 1 }}
+                                            exit={{ y: -15, opacity: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                        >
+                                            {scores.team1}
+                                        </motion.div>
+                                    </AnimatePresence>
                                 </div>
                                 <div className="text-white/30 text-lg font-light">–</div>
                                 <div className="text-center">
                                     <div className="text-[10px] uppercase tracking-wider truncate" style={{ color: generatedTeams![1].color }}>{generatedTeams![1].name}</div>
-                                    <div className="text-white font-bold text-3xl">{scores.team2}</div>
+                                    <AnimatePresence mode="wait">
+                                        <motion.div
+                                            key={scores.team2}
+                                            className="text-white font-bold text-3xl"
+                                            initial={{ y: 15, opacity: 0 }}
+                                            animate={{ y: 0, opacity: 1 }}
+                                            exit={{ y: -15, opacity: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                        >
+                                            {scores.team2}
+                                        </motion.div>
+                                    </AnimatePresence>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -778,12 +801,12 @@ const MatchStep: React.FC<MatchStepProps> = ({
 
         {!hasTeams && (
             <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
-                <p className="text-green-300 mb-3">No teams committed yet.</p>
+                <p className="text-green-300 mb-3">No teams on the pitch yet.</p>
                 <Button
                     onClick={onGoToTeams}
                     className="bg-green-600 hover:bg-green-500 text-white rounded-lg"
                 >
-                    Go to Generate Teams
+                    Set up the teams
                 </Button>
             </div>
         )}

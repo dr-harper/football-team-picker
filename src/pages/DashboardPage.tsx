@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { Plus, Users, Calendar, Trophy, ArrowRight, Copy, Check, Goal, Star, Activity } from 'lucide-react';
+import { Plus, Users, Calendar, Trophy, ArrowRight, Copy, Check, Goal, Star, Activity, Award } from 'lucide-react';
+import { motion } from 'framer-motion';
 import AppHeader from '../components/AppHeader';
+import FootballLoader from '../components/FootballLoader';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Button } from '../components/ui/button';
@@ -201,7 +203,7 @@ const DashboardPage: React.FC = () => {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-800 to-green-700 dark:from-green-950 dark:via-green-900 dark:to-green-800">
-                <div className="text-white text-lg">Loading...</div>
+                <FootballLoader />
             </div>
         );
     }
@@ -241,6 +243,30 @@ const DashboardPage: React.FC = () => {
                         </Button>
                     </div>
                 </div>
+
+                {/* Stats Summary */}
+                {playerStats && playerStats.games > 0 && (
+                    <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                        {[
+                            { label: 'Games', value: playerStats.games, icon: <Calendar className="w-4 h-4 text-green-400" /> },
+                            { label: 'Goals', value: playerStats.goals, icon: <Goal className="w-4 h-4 text-green-400" /> },
+                            { label: 'Assists', value: playerStats.assists, icon: <Star className="w-4 h-4 text-blue-400" /> },
+                            { label: 'MOTM', value: playerStats.motm, icon: <Award className="w-4 h-4 text-yellow-400" /> },
+                        ].map((stat, i) => (
+                            <motion.div
+                                key={stat.label}
+                                className="bg-white/5 border border-white/10 rounded-xl p-3 sm:p-4 text-center"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3, delay: i * 0.07 }}
+                            >
+                                <div className="flex justify-center mb-1.5">{stat.icon}</div>
+                                <div className="text-white text-xl sm:text-2xl font-bold">{stat.value}</div>
+                                <div className="text-green-300/60 text-[10px] sm:text-xs uppercase tracking-wider mt-0.5">{stat.label}</div>
+                            </motion.div>
+                        ))}
+                    </div>
+                )}
 
                 {/* Player Profile Card */}
                 {playerProfile && (
@@ -298,7 +324,7 @@ const DashboardPage: React.FC = () => {
                     </h2>
                     {leagues.length === 0 ? (
                         <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
-                            <p className="text-green-300 mb-4">You haven't joined any leagues yet.</p>
+                            <p className="text-green-300 mb-4">No leagues yet — time to rally the squad.</p>
                             <div className="flex justify-center gap-2">
                                 <Button onClick={() => setShowCreateModal(true)} className="bg-green-600 hover:bg-green-500 text-white rounded-lg">
                                     Create a League
@@ -310,48 +336,56 @@ const DashboardPage: React.FC = () => {
                         </div>
                     ) : (
                         <div className="grid gap-3">
-                            {leagues.map(league => (
-                                <Link
-                                    key={league.id}
-                                    to={`/league/${league.joinCode}`}
-                                    className="bg-white/10 backdrop-blur-sm border border-white/10 hover:bg-white/15 rounded-xl p-4 flex items-center justify-between transition-colors"
-                                >
-                                    <div className="flex-1 min-w-0">
-                                        <div className="text-white font-bold text-lg">{league.name}</div>
-                                        <div className="text-green-300 text-sm flex items-center gap-3">
-                                            <span>{league.memberIds.length} member{league.memberIds.length !== 1 ? 's' : ''}</span>
-                                            <button
-                                                onClick={(e) => { e.preventDefault(); copyCode(league.joinCode); }}
-                                                className="flex items-center gap-1 hover:text-white transition-colors"
-                                            >
-                                                Code: {league.joinCode}
-                                                {copiedCode === league.joinCode ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                            </button>
-                                        </div>
-                                        {(() => {
-                                            const stats = leagueStats.get(league.id);
-                                            if (!stats || stats.gamesPlayed === 0) return null;
-                                            return (
-                                                <div className="flex flex-wrap gap-3 mt-1.5">
-                                                    {stats.topScorer && (
+                            {leagues.map((league, i) => {
+                                const accentColors = ['border-l-green-500', 'border-l-blue-500', 'border-l-yellow-500', 'border-l-purple-500', 'border-l-cyan-500', 'border-l-orange-500'];
+                                const accent = accentColors[i % accentColors.length];
+                                const stats = leagueStats.get(league.id);
+                                return (
+                                    <motion.div
+                                        key={league.id}
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.25, delay: i * 0.05 }}
+                                    >
+                                        <Link
+                                            to={`/league/${league.joinCode}`}
+                                            className={`bg-white/10 backdrop-blur-sm border border-white/10 border-l-[3px] ${accent} hover:bg-white/15 rounded-xl p-4 flex items-center justify-between transition-all`}
+                                        >
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-white font-bold text-lg">{league.name}</div>
+                                                <div className="text-green-300 text-sm flex items-center gap-3">
+                                                    <span>{league.memberIds.length} member{league.memberIds.length !== 1 ? 's' : ''}</span>
+                                                    <button
+                                                        onClick={(e) => { e.preventDefault(); copyCode(league.joinCode); }}
+                                                        className="flex items-center gap-1 hover:text-white transition-colors"
+                                                    >
+                                                        Code: {league.joinCode}
+                                                        {copiedCode === league.joinCode ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                                    </button>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                                                    {stats && stats.gamesPlayed > 0 && (
+                                                        <span className="text-xs text-white/40">{stats.gamesPlayed} game{stats.gamesPlayed !== 1 ? 's' : ''}</span>
+                                                    )}
+                                                    {stats?.topScorer && (
                                                         <span className="text-xs text-white/60 flex items-center gap-1">
                                                             <Goal className="w-3 h-3 text-green-400" />
                                                             {stats.topScorer.name} ({stats.topScorer.goals})
                                                         </span>
                                                     )}
-                                                    {stats.motmLeader && (
+                                                    {stats?.motmLeader && (
                                                         <span className="text-xs text-white/60 flex items-center gap-1">
                                                             <Star className="w-3 h-3 text-yellow-400" />
                                                             {stats.motmLeader.name} ×{stats.motmLeader.count}
                                                         </span>
                                                     )}
                                                 </div>
-                                            );
-                                        })()}
-                                    </div>
-                                    <ArrowRight className="w-5 h-5 text-white/40" />
-                                </Link>
-                            ))}
+                                            </div>
+                                            <ArrowRight className="w-5 h-5 text-white/40" />
+                                        </Link>
+                                    </motion.div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>

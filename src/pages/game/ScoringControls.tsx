@@ -1,7 +1,9 @@
 import React from 'react';
 import { Goal, Plus, Minus, Award, Star } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { GoalScorer, Team } from '../../types';
 import PlayerName from '../../components/PlayerName';
+import { hapticSuccess } from '../../utils/haptics';
 
 function findTeamIndex(playerId: string, teams: Team[]): number {
     for (let t = 0; t < teams.length; t++) {
@@ -42,7 +44,15 @@ function TallyRow({
                 <button onClick={handleUndo} disabled={count === 0} className="text-white/40 hover:text-white disabled:opacity-20 p-0.5">
                     <Minus className="w-3.5 h-3.5" />
                 </button>
-                <span className={`font-bold text-sm w-4 text-center transition-colors duration-300 ${undoFlash ? 'text-red-400' : 'text-white'}`}>{count}</span>
+                <motion.span
+                    key={count}
+                    className={`font-bold text-sm w-4 text-center transition-colors duration-300 ${undoFlash ? 'text-red-400' : 'text-white'}`}
+                    initial={{ scale: 1.4 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                >
+                    {count}
+                </motion.span>
                 <button onClick={() => onChange(pid, 1)} className={`${accentClass} p-0.5`}>
                     <Plus className="w-3.5 h-3.5" />
                 </button>
@@ -208,7 +218,7 @@ const ScoringControls: React.FC<ScoringControlsProps> = ({
                     {allPlayerIds.map(pid => (
                         <button
                             key={pid}
-                            onClick={() => onSetMotm(pid)}
+                            onClick={() => { onSetMotm(pid); hapticSuccess(); }}
                             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                                 motm === pid
                                     ? 'bg-yellow-500 text-green-900'
