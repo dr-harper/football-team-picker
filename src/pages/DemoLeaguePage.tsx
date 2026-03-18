@@ -7,6 +7,8 @@ import CompletedTab from './league/CompletedTab';
 import StatsTab from './league/StatsTab';
 import FinanceTab from './league/FinanceTab';
 import AvailabilityList from './game/AvailabilityList';
+import { computeWaitlist } from '../utils/waitlist';
+import { DEFAULT_FORMAT } from '../constants/gameConstants';
 import TeamSetupCard from '../components/TeamSetupCard';
 import DemoTour, { TourStep } from '../components/DemoTour';
 
@@ -73,7 +75,9 @@ const DemoLeaguePage: React.FC = () => {
         email: '',
     }));
     const guestsAvailable = guestNames.filter(n => (guestStatusMap[n] ?? 'available') === 'available');
+    const guestsMaybe = guestNames.filter(n => guestStatusMap[n] === 'maybe');
     const totalAvailable = available.length + guestsAvailable.length;
+    const demoWaitlist = computeWaitlist(available, maybe, guestsAvailable, guestsMaybe, DEFAULT_FORMAT);
 
     // When tour step changes, switch to the right tab
     useEffect(() => {
@@ -190,6 +194,7 @@ const DemoLeaguePage: React.FC = () => {
                                     onGuestStatusChange={() => {}}
                                     onPositionToggle={() => {}}
                                     onSetMemberAvailability={() => {}}
+                                    waitlist={demoWaitlist}
                                 />
                             </div>
 
