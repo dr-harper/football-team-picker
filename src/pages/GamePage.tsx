@@ -54,6 +54,7 @@ const GamePage: React.FC = () => {
         availablePlayers, maybePlayers, unavailablePlayers,
         guestsAvailable, guestsMaybe, guestsUnavailable,
         guestStatusMap, positionMap, totalAvailable, allPlayerIds,
+        waitlist,
         playersText, generatedTeams, pendingSetups, genError,
         score1, score2, selectedPlayer,
         weather, weatherLoading,
@@ -619,6 +620,7 @@ const GamePage: React.FC = () => {
                         guestStatusMap={guestStatusMap} positionMap={positionMap}
                         leagueMembers={leagueMembers} isAdmin={isAdmin}
                         totalAvailable={totalAvailable} newGuestName={newGuestName}
+                        waitlist={waitlist}
                         onNewGuestNameChange={setNewGuestName} onAddGuest={handleAddGuest}
                         onSetAvailability={handleSetAvailability} onAdminSetAvailability={handleAdminSetAvailability}
                         onGuestStatusChange={handleGuestStatusChange} onPositionToggle={handlePositionToggle}

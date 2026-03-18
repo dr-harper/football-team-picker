@@ -22,6 +22,7 @@ const PREF_LABELS: { key: keyof NotificationPreferences; label: string; descript
     { key: 'resultRecorded', label: 'Result recorded', description: 'When the final score is posted' },
     { key: 'paymentReminder', label: 'Payment reminder', description: 'Weekly reminder if you owe money' },
     { key: 'memberJoined', label: 'New member joined', description: 'When someone joins a league you manage (admins only)' },
+    { key: 'waitlistPromotion', label: 'Waitlist promotion', description: 'When a spot opens up and you move off the waitlist' },
 ];
 
 const NotificationSettings: React.FC = () => {

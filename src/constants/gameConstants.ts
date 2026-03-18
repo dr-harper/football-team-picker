@@ -1,11 +1,23 @@
-/** Minimum number of players required (two 5-a-side teams) */
+import type { GameFormat, GameFormatConfig } from '../types';
+
+/** Minimum number of players required (two 5-a-side teams) — legacy fallback */
 export const MIN_PLAYERS = 10;
 
-/** Maximum number of players allowed */
+/** Maximum number of players allowed — legacy fallback */
 export const MAX_PLAYERS = 16;
 
 /** Number of teams generated per setup */
 export const NUM_TEAMS = 2;
+
+/** Preset format configurations */
+export const FORMAT_PRESETS: Record<Exclude<GameFormat, 'custom'>, GameFormatConfig> = {
+    '5v5': { format: '5v5', minPlayers: 10, maxPlayers: 12 },
+    '6v6': { format: '6v6', minPlayers: 12, maxPlayers: 14 },
+    '7v7': { format: '7v7', minPlayers: 14, maxPlayers: 16 },
+};
+
+/** Default format when neither game nor league specifies one */
+export const DEFAULT_FORMAT: GameFormatConfig = FORMAT_PRESETS['5v5'];
 
 /** Range for outfield shirt numbers (goalkeeper always gets 1) */
 export const SHIRT_NUMBER_MIN = 2;

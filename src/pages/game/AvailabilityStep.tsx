@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Game, PlayerAvailability, AvailabilityStatus } from '../../types';
 import { setAvailability as setAvailabilityFirestore } from '../../utils/firestore';
 import AvailabilityList from './AvailabilityList';
+import type { WaitlistResult } from '../../utils/waitlist';
 
 interface AvailabilityStepProps {
     game: Game;
@@ -23,6 +24,7 @@ interface AvailabilityStepProps {
     isAdmin: boolean;
     totalAvailable: number;
     newGuestName: string;
+    waitlist: WaitlistResult;
     onNewGuestNameChange: (name: string) => void;
     onAddGuest: () => void;
     onSetAvailability: (status: AvailabilityStatus) => Promise<void>;
@@ -35,12 +37,26 @@ interface AvailabilityStepProps {
 const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
     game, gameDocId, user, availability, myAvailability,
     availablePlayers, maybePlayers, unavailablePlayers,
-    guestsAvailable, guestsMaybe, guestsUnavailable,
+    guestsMaybe, guestsUnavailable,
     guestStatusMap, positionMap, leagueMembers, isAdmin,
-    totalAvailable, newGuestName, onNewGuestNameChange,
+    totalAvailable, newGuestName, waitlist, onNewGuestNameChange,
     onAddGuest, onSetAvailability, onAdminSetAvailability,
     onGuestStatusChange, onPositionToggle, onNextStep,
-}) => (
+}) => {
+    const waitlistedTotal = waitlist.waitlistedAvailable.length + waitlist.waitlistedMaybe.length;
+    const capacityPct = waitlist.maxPlayers > 0
+        ? Math.min(100, (waitlist.inPlayers.length / waitlist.maxPlayers) * 100)
+        : 0;
+    // Maybe players already promoted to "in" shouldn't be double-counted
+    const inPlayerIds = new Set(waitlist.inPlayers.map(p => p.id));
+    const maybeNotIn = maybePlayers.filter(m => !inPlayerIds.has(m.userId)).length
+        + guestsMaybe.filter(n => !inPlayerIds.has(`guest:${n}`)).length;
+    const isUserWaitlisted = user && waitlist.isFull && (
+        waitlist.waitlistedAvailable.some(p => p.id === user.uid) ||
+        waitlist.waitlistedMaybe.some(p => p.id === user.uid)
+    );
+
+    return (
     <div className="max-w-2xl mx-auto space-y-4">
         <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-5">
             <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
@@ -80,11 +96,36 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
                     </Button>
                 </div>
             )}
+            {/* Capacity progress bar */}
+            <div className="mb-3">
+                <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-white/60">{waitlist.inPlayers.length}/{waitlist.maxPlayers} spots</span>
+                    {waitlist.isFull && <span className="text-amber-400 font-medium">Full</span>}
+                </div>
+                <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                        className={`h-full rounded-full transition-all ${
+                            waitlist.isFull ? 'bg-amber-500' : waitlist.inPlayers.length >= waitlist.minPlayers ? 'bg-green-500' : 'bg-blue-500'
+                        }`}
+                        style={{ width: `${capacityPct}%` }}
+                    />
+                </div>
+            </div>
+
+            {/* Summary stats */}
             <div className="flex gap-4 text-xs mb-2">
-                <span className="text-green-400">{availablePlayers.length + guestsAvailable.length} in</span>
-                <span className="text-yellow-400">{maybePlayers.length + guestsMaybe.length} maybe</span>
+                <span className="text-green-400">{waitlist.inPlayers.length} in</span>
+                {waitlistedTotal > 0 && <span className="text-amber-400">{waitlistedTotal} waitlisted</span>}
+                {maybeNotIn > 0 && <span className="text-yellow-400">{maybeNotIn} maybe</span>}
                 <span className="text-red-400">{unavailablePlayers.length + guestsUnavailable.length} out</span>
             </div>
+
+            {/* Waitlist feedback for current user */}
+            {isUserWaitlisted && (
+                <div className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 mb-2">
+                    You&apos;re on the waitlist. You&apos;ll move up if someone drops out.
+                </div>
+            )}
             <AvailabilityList
                 availablePlayers={availablePlayers}
                 maybePlayers={maybePlayers}
@@ -137,6 +178,7 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
             Next: Generate Teams <ChevronRight className="w-4 h-4" />
         </Button>
     </div>
-);
+    );
+};
 
 export default AvailabilityStep;

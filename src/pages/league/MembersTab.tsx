@@ -7,7 +7,11 @@ import {
     createSeason, archiveSeason, updateSeason, deleteSeason,
     extractGuestsFromGames, linkGuestToMember,
     updateLeagueEnableAssists, updateLeagueDefaultVenue, updateLeagueMatchDuration,
+    updateLeagueDefaultFormat,
 } from '../../utils/firestore';
+import type { GameFormatConfig } from '../../types';
+import FormatSelector from '../../components/FormatSelector';
+import { DEFAULT_FORMAT } from '../../constants/gameConstants';
 import type { User } from 'firebase/auth';
 import { logger } from '../../utils/logger';
 import CollapsibleSection from '../../components/CollapsibleSection';
@@ -444,6 +448,22 @@ const MembersTab: React.FC<MembersTabProps> = ({
                                 <option value={90}>90 min</option>
                                 <option value={120}>120 min</option>
                             </select>
+                        </div>
+
+                        {/* Default game format */}
+                        <div>
+                            <div className="text-white text-sm font-medium mb-1">Default game format</div>
+                            <div className="text-white/30 text-xs mb-2">Sets player limits for new games</div>
+                            <FormatSelector
+                                value={league.defaultFormat ?? DEFAULT_FORMAT}
+                                onChange={async (config: GameFormatConfig) => {
+                                    try {
+                                        await updateLeagueDefaultFormat(leagueId, config);
+                                    } catch (err) {
+                                        logger.error('[updateLeagueDefaultFormat]', err);
+                                    }
+                                }}
+                            />
                         </div>
                     </div>
                 </CollapsibleSection>
