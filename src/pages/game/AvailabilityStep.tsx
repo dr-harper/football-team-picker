@@ -138,6 +138,7 @@ const AvailabilityStep: React.FC<AvailabilityStepProps> = ({
                 isAdmin={isAdmin}
                 currentUserId={user?.uid}
                 gameDocId={gameDocId}
+                waitlist={waitlist}
                 onSetAvailability={onSetAvailability}
                 onAdminSetAvailability={onAdminSetAvailability}
                 onGuestStatusChange={onGuestStatusChange}
