@@ -103,6 +103,17 @@ describe('computeWaitlist', () => {
         expect(result.minPlayers).toBe(14);
         expect(result.maxPlayers).toBe(16);
     });
+
+    it('works with custom format with non-standard min/max', () => {
+        const customFormat: GameFormatConfig = { format: 'custom', minPlayers: 4, maxPlayers: 6 };
+        const available = Array.from({ length: 8 }, (_, i) => makeAvail(`p${i}`, 'available', 1000 + i));
+        const result = computeWaitlist(available, [], [], [], customFormat);
+        expect(result.inPlayers).toHaveLength(6);
+        expect(result.waitlistedAvailable).toHaveLength(2);
+        expect(result.isFull).toBe(true);
+        expect(result.minPlayers).toBe(4);
+        expect(result.maxPlayers).toBe(6);
+    });
 });
 
 describe('resolveGameFormat', () => {

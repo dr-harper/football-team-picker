@@ -430,21 +430,26 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                     code={code}
                     onSetAvailability={(gameId, status, currentStatus) => handleSetAvailability(gameId, status, currentStatus)}
                 />
-            ) : upcomingGames.length === 0 ? (
-                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
-                    <p className="text-green-300">No upcoming games. Schedule one!</p>
-                </div>
-            ) : (
-                upcomingGames.map(game => {
+            ) : (() => {
+                // Memoised outside the map to avoid recomputing every render
+                const gameWaitlists = upcomingGames.map(game => {
                     const avail = scheduleAvailability.get(game.id) ?? [];
-                    const myStatus = avail.find(a => a.userId === user?.uid)?.status;
                     const guestStatusMap = game.guestAvailability ?? {};
                     const availableAvail = avail.filter(a => a.status === 'available');
                     const maybeAvail = avail.filter(a => a.status === 'maybe');
                     const gAvailable = (game.guestPlayers ?? []).filter(n => (guestStatusMap[n] ?? 'available') === 'available');
                     const gMaybe = (game.guestPlayers ?? []).filter(n => guestStatusMap[n] === 'maybe');
-                    const effectiveFormat = resolveGameFormat(game, league);
-                    const waitlist = computeWaitlist(availableAvail, maybeAvail, gAvailable, gMaybe, effectiveFormat);
+                    const ef = resolveGameFormat(game, league);
+                    return { game, waitlist: computeWaitlist(availableAvail, maybeAvail, gAvailable, gMaybe, ef) };
+                });
+                return gameWaitlists.length === 0 ? (
+                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
+                    <p className="text-green-300">No upcoming games. Schedule one!</p>
+                </div>
+            ) : (
+                gameWaitlists.map(({ game, waitlist }) => {
+                    const avail = scheduleAvailability.get(game.id) ?? [];
+                    const myStatus = avail.find(a => a.userId === user?.uid)?.status;
                     const inCount = waitlist.inPlayers.length;
                     const waitlistedCount = waitlist.waitlistedAvailable.length + waitlist.waitlistedMaybe.length;
                     const noResponseCount = members.filter(m => !avail.find(a => a.userId === m.id)).length;
@@ -618,7 +623,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                         </div>
                     );
                 })
-            )}
+            )})()}
             </div>{/* end main game list */}
         </div>
     );
