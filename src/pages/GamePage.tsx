@@ -647,6 +647,7 @@ const GamePage: React.FC = () => {
                         onColorChange={handleColorChange} onPlayerClick={handlePlayerClick}
                         onShare={handleShare} onExport={handleExport}
                         onBack={() => setWizardStep(1)}
+                        onCompleteWithoutScore={handleCompleteWithoutScore}
                     />
                 )}
 

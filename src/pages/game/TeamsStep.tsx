@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shuffle, Check, Share2, Download, Users, ArrowRight, Scale } from 'lucide-react';
+import { Shuffle, Check, Share2, Download, Users, ArrowRight, Scale, UserCheck } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { TeamSetup, Player } from '../../types';
 import TeamSetupCard from '../../components/TeamSetupCard';
@@ -27,6 +27,7 @@ interface TeamsStepProps {
     onShare: (count: number) => void;
     onExport: (count: number) => void;
     onBack: () => void;
+    onCompleteWithoutScore?: () => void;
 }
 
 type AssignMode = 'choose' | 'shuffle' | 'manual';
@@ -54,7 +55,7 @@ const TeamsStep: React.FC<TeamsStepProps> = ({
     availablePlayers,
     onGenerateFromAvailable,
     onPickSetup, onDeleteSetup, onColorChange,
-    onPlayerClick, onShare, onExport,
+    onPlayerClick, onShare, onExport, onCompleteWithoutScore,
 }) => {
     const [mode, setMode] = useState<AssignMode>(pendingSetups.length > 0 ? 'shuffle' : 'choose');
 
@@ -164,6 +165,27 @@ const TeamsStep: React.FC<TeamsStepProps> = ({
                             </div>
                         </div>
                     </div>
+
+                    {/* Skip teams — attendance only */}
+                    {isAdmin && onCompleteWithoutScore && (
+                        <button
+                            onClick={onCompleteWithoutScore}
+                            className="w-full bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl p-4 text-left transition-all"
+                        >
+                            <div className="flex items-start gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                                    <UserCheck className="w-5 h-5 text-white/40" />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="text-white/60 font-semibold text-sm">Skip — just track attendance</h4>
+                                    <p className="text-white/25 text-xs mt-0.5">
+                                        Mark who showed up without generating teams or recording a score.
+                                    </p>
+                                </div>
+                                <ArrowRight className="w-4 h-4 text-white/20 shrink-0 mt-3" />
+                            </div>
+                        </button>
+                    )}
                 </div>
             )}
 
