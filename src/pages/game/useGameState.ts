@@ -26,6 +26,7 @@ import {
     getLeague,
     getLeagueMembers,
     getGameByCode,
+    completeGameWithoutScore,
 } from '../../utils/firestore';
 import { Game, PlayerAvailability, AvailabilityStatus, League, Team, TeamSetup, WeatherForecast, GoalScorer, MatchEvent } from '../../types';
 import { generateTeamsFromText } from '../../utils/teamGenerator';
@@ -471,6 +472,20 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         await updateGameStatus(gameDocId, 'in_progress');
     };
 
+    const handleCompleteWithoutScore = async () => {
+        if (!gameDocId) return;
+        // Auto-populate attendees from teams if available, otherwise from availability
+        const attendeeList = generatedTeams && generatedTeams.length > 0
+            ? generatedTeams.flatMap(t => t.players.map(p => p.playerId ?? p.name))
+            : [
+                ...availability.filter(a => a.status === 'available').map(a => a.userId),
+                ...(game?.guestPlayers ?? [])
+                    .filter(n => (game?.guestAvailability ?? {})[n] === 'available' || !(game?.guestAvailability ?? {})[n])
+                    .map(makeGuestId),
+            ];
+        await completeGameWithoutScore(gameDocId, attendeeList);
+    };
+
     const handleToggleAttendee = async (playerId: string) => {
         if (!gameDocId || !game) return;
         const defaultList = [
@@ -567,7 +582,7 @@ export function useGameState({ rawId, userId, userDisplayName, userEmail, places
         generateFromAvailable, handleGenerateFromText,
         handlePickSetup, handleDeleteSetup, handleColorChange,
         handleAddGuest, handleGoalChange, handleAssistChange, handleAddMatchEvents, handleReplaceMatchEvent, handleUpdateMatchEvent, handleDeleteMatchEvent, handleStartMatch, handlePauseMatch, handleResumeMatch, handleRestartTimer, handleEndMatch, handleUndoEnd,
-        handleSetMotm, handleMotmNotesChange, handleSaveScore, handleReopen,
+        handleSetMotm, handleMotmNotesChange, handleSaveScore, handleReopen, handleCompleteWithoutScore,
         handleToggleAttendee, handleSaveGameCost,
         handleGuestStatusChange, handlePositionToggle,
         handlePlayerClick,

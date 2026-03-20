@@ -134,7 +134,7 @@ const CompletedGameView: React.FC<CompletedGameViewProps> = ({
         <div className="max-w-4xl md:max-w-none mx-auto">
             <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-3 sm:p-5">
                 {/* Score first on mobile — most important info */}
-                {game.score && (
+                {game.score ? (
                     <div className="pb-3 mb-3 border-b border-white/10">
                         <div className="flex items-center justify-center gap-3 sm:gap-6 text-white foldable-grid fold:grid fold:grid-cols-2">
                             <div className="text-center flex-1">
@@ -147,6 +147,18 @@ const CompletedGameView: React.FC<CompletedGameViewProps> = ({
                                 <div className="text-3xl sm:text-4xl font-bold">{game.score.team2}</div>
                             </div>
                         </div>
+                    </div>
+                ) : (
+                    <div className="pb-3 mb-3 border-b border-white/10 text-center">
+                        <p className="text-white/30 text-sm">No score recorded</p>
+                        {isAdmin && (
+                            <Button
+                                onClick={onReopen}
+                                className="mt-2 bg-white/5 hover:bg-white/10 text-white/50 border border-white/10 rounded-lg text-xs"
+                            >
+                                Add Score
+                            </Button>
+                        )}
                     </div>
                 )}
 
@@ -307,12 +319,12 @@ const CompletedGameView: React.FC<CompletedGameViewProps> = ({
                 </div>
 
                 {/* Admin controls */}
-                {isAdmin && game.score && (
+                {isAdmin && (
                     <Button
                         onClick={onReopen}
                         className="mt-2 w-full bg-white/5 hover:bg-white/10 text-white/60 border border-white/10 rounded-lg text-xs"
                     >
-                        Edit Score
+                        {game.score ? 'Edit Score' : 'Reopen & Add Score'}
                     </Button>
                 )}
                 {isAdmin && allPlayerIds.length > 0 && scoringTableElement}

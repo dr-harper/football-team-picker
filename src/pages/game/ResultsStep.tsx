@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, Share2, Download, ChevronLeft, Sparkles, RefreshCw } from 'lucide-react';
+import { Trophy, Share2, Download, ChevronLeft, Sparkles, RefreshCw, UserCheck } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Game, Team } from '../../types';
 
@@ -21,6 +21,7 @@ interface ResultsStepProps {
     onExport: (count: number) => void;
     onBack: () => void;
     onGoToTeams: () => void;
+    onCompleteWithoutScore: () => void;
     onGenerateSummary?: () => Promise<void>;
     summaryLoading?: boolean;
 }
@@ -30,7 +31,7 @@ const ResultsStep: React.FC<ResultsStepProps> = ({
     isExporting, allPlayerIds,
     scoringControlsElement, attendanceSectionElement,
     onScore1Change, onScore2Change, onSaveScore,
-    onShare, onExport, onBack, onGoToTeams, onGenerateSummary, summaryLoading,
+    onShare, onExport, onBack, onGoToTeams, onCompleteWithoutScore, onGenerateSummary, summaryLoading,
 }) => {
     const hasTeams = generatedTeams && generatedTeams.length === 2;
 
@@ -84,6 +85,12 @@ const ResultsStep: React.FC<ResultsStepProps> = ({
                         >
                             Save Final Score
                         </Button>
+                        <Button
+                            onClick={onCompleteWithoutScore}
+                            className="mt-2 w-full bg-white/5 hover:bg-white/10 text-white/50 border border-white/10 rounded-lg text-xs flex items-center justify-center gap-1.5"
+                        >
+                            <UserCheck className="w-3.5 h-3.5" /> Complete Without Score
+                        </Button>
                     </div>
                 )}
                 {/* Match Summary */}
@@ -120,14 +127,22 @@ const ResultsStep: React.FC<ResultsStepProps> = ({
                 {(isPast || game.status === 'in_progress') && isAdmin && attendanceSectionElement}
             </div>
         ) : (
-            <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
-                <p className="text-green-300 mb-3">No teams committed yet.</p>
+            <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center space-y-3">
+                <p className="text-green-300">No teams committed yet.</p>
                 <Button
                     onClick={onGoToTeams}
-                    className="bg-green-600 hover:bg-green-500 text-white rounded-lg"
+                    className="w-full bg-green-600 hover:bg-green-500 text-white rounded-lg"
                 >
                     Go to Generate Teams
                 </Button>
+                {isAdmin && (
+                    <Button
+                        onClick={onCompleteWithoutScore}
+                        className="w-full bg-white/5 hover:bg-white/10 text-white/50 border border-white/10 rounded-lg text-xs flex items-center justify-center gap-1.5"
+                    >
+                        <UserCheck className="w-3.5 h-3.5" /> Complete Without Score
+                    </Button>
+                )}
             </div>
         )}
 

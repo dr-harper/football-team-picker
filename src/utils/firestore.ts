@@ -345,6 +345,10 @@ export async function updateGameAttendees(gameId: string, attendees: string[]): 
     await updateDoc(doc(db, 'games', gameId), { attendees });
 }
 
+export async function completeGameWithoutScore(gameId: string, attendees: string[]): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), { status: 'completed', attendees });
+}
+
 export async function updateGameDetails(
     gameId: string,
     details: { title?: string; date?: number; location?: string; locationLat?: number; locationLon?: number },

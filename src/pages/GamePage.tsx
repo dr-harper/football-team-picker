@@ -70,7 +70,7 @@ const GamePage: React.FC = () => {
         generateFromAvailable, handleGenerateFromText,
         handlePickSetup, handleDeleteSetup, handleColorChange,
         handleAddGuest, handleGoalChange, handleAssistChange, handleAddMatchEvents, handleUpdateMatchEvent, handleDeleteMatchEvent, handleStartMatch, handlePauseMatch, handleResumeMatch, handleRestartTimer, handleEndMatch, handleUndoEnd,
-        handleSetMotm, handleMotmNotesChange, handleSaveScore, handleReopen,
+        handleSetMotm, handleMotmNotesChange, handleSaveScore, handleReopen, handleCompleteWithoutScore,
         handleToggleAttendee, handleSaveGameCost,
         handleGuestStatusChange, handlePositionToggle,
         handlePlayerClick,
@@ -709,6 +709,7 @@ const GamePage: React.FC = () => {
                         onSaveScore={handleSaveScore}
                         onShare={handleShare} onExport={handleExport}
                         onBack={() => setWizardStep(3)} onGoToTeams={() => setWizardStep(2)}
+                        onCompleteWithoutScore={handleCompleteWithoutScore}
                         onGenerateSummary={handleGenerateSummary} summaryLoading={summaryLoading}
                     />
                 )}
