@@ -263,7 +263,13 @@ const LeaguePage: React.FC = () => {
             )}
 
             {/* League header — integrated with banner when cover image exists */}
-            {league.coverImageUrl ? (
+            {(() => {
+                const coverUrl = league.coverImageUrl;
+                const isSafeCover = coverUrl && (
+                    coverUrl.startsWith('/presets/') ||
+                    coverUrl.startsWith('https://firebasestorage.googleapis.com/')
+                );
+                return isSafeCover ? (
                 <div className="relative max-w-4xl md:max-w-6xl mx-auto overflow-hidden">
                     <img
                         src={league.coverImageUrl}
@@ -312,7 +318,8 @@ const LeaguePage: React.FC = () => {
                         </button>
                     }
                 />
-            )}
+            );
+            })()}
 
             <div className="max-w-4xl md:max-w-6xl mx-auto p-4 sm:p-6 pb-24 md:pb-6 space-y-4">
                 {tab === 'upcoming' && user && (

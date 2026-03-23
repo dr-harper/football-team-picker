@@ -126,9 +126,11 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
         const parsedCost = parseFloat(newGameCost);
         const costPerPerson = !isNaN(parsedCost) && newGameCost.trim() !== '' ? parsedCost : undefined;
         const deadlineTs = newGameDeadline ? new Date(newGameDeadline).getTime() : undefined;
+        const deadlineOffset = deadlineTs ? deadlineTs - base.getTime() : undefined;
         await Promise.all(
             Array.from({ length: repeatWeeks }, (_, i) => {
                 const date = new Date(base.getTime() + i * 7 * 24 * 60 * 60 * 1000);
+                const gameDeadline = deadlineOffset !== undefined ? date.getTime() + deadlineOffset : undefined;
                 return createGame(
                     leagueId,
                     newGameTitle.trim(),
@@ -140,7 +142,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                     costPerPerson,
                     undefined, // seasonId auto-determined by date range
                     formatOverride ?? undefined,
-                    deadlineTs,
+                    gameDeadline,
                 );
             })
         );
@@ -442,7 +444,8 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                             {group.label}
                         </div>
                         {group.games.map(game => {
-                    const waitlist = waitlistMap.get(game.id)!;
+                    const waitlist = waitlistMap.get(game.id);
+                    if (!waitlist) return null;
                     const avail = scheduleAvailability.get(game.id) ?? [];
                     const myStatus = avail.find(a => a.userId === user?.uid)?.status;
                     const inCount = waitlist.inPlayers.length;

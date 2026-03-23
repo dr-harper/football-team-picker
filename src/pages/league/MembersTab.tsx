@@ -469,7 +469,7 @@ const MembersTab: React.FC<MembersTabProps> = ({
                                         if (!file) return;
                                         setUploadingCover(true);
                                         try {
-                                            const url = await uploadLeagueCoverImage(leagueId, file);
+                                            const url = await uploadLeagueCoverImage(leagueId, user.uid, file);
                                             await updateLeagueCoverImage(leagueId, url);
                                         } catch (err) {
                                             logger.error('[uploadCover]', err);
