@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, ArrowLeft } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -53,10 +53,6 @@ const LeaguePage: React.FC = () => {
             setSearchParams({}, { replace: true });
         }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-    const setTab = useCallback((t: TabKey) => {
-        setNavTab(t);
-    }, [setNavTab]);
 
     // Expense modal state (rendered at root level, triggered from ProfileTab)
     const [showMyExpenseForm, setShowMyExpenseForm] = useState(false);
@@ -266,20 +262,64 @@ const LeaguePage: React.FC = () => {
                 </div>
             )}
 
-            <AppHeader
-                title={league.name}
-                onBack={() => navigate('/dashboard')}
-                showDashboardLink
-                menuExtras={
-                    <button
-                        onClick={() => { copyCode(); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors"
-                    >
-                        {copiedCode ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                        {copiedCode ? 'Link copied!' : 'Copy invite link'}
-                    </button>
-                }
-            />
+            {/* League header — integrated with banner when cover image exists */}
+            {(() => {
+                const coverUrl = league.coverImageUrl;
+                const isSafeCover = coverUrl && (
+                    coverUrl.startsWith('/presets/') ||
+                    coverUrl.startsWith('https://firebasestorage.googleapis.com/')
+                );
+                return isSafeCover ? (
+                <div className="relative max-w-4xl md:max-w-6xl mx-auto overflow-hidden">
+                    <img
+                        src={league.coverImageUrl}
+                        alt=""
+                        className="w-full h-44 sm:h-56 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/40" />
+                    {/* Back + title overlay */}
+                    <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                        <button onClick={() => navigate('/dashboard')} className="text-white/80 hover:text-white transition-colors">
+                            <ArrowLeft className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={() => { copyCode(); }}
+                            className="text-white/60 hover:text-white transition-colors"
+                            title={copiedCode ? 'Link copied!' : 'Copy invite link'}
+                        >
+                            {copiedCode ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                    </div>
+                    {/* League name + pills at bottom */}
+                    <div className="absolute bottom-3 left-4 right-4">
+                        <h1 className="text-white font-bold text-lg sm:text-xl mb-1.5 drop-shadow-lg">{league.name}</h1>
+                        <div className="flex gap-2">
+                            <span className="bg-black/40 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full">
+                                {members.length} members
+                            </span>
+                            <span className="bg-black/40 backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full">
+                                {upcomingGames.length} upcoming
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <AppHeader
+                    title={league.name}
+                    onBack={() => navigate('/dashboard')}
+                    showDashboardLink
+                    menuExtras={
+                        <button
+                            onClick={() => { copyCode(); }}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+                        >
+                            {copiedCode ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                            {copiedCode ? 'Link copied!' : 'Copy invite link'}
+                        </button>
+                    }
+                />
+            );
+            })()}
 
             <div className="max-w-4xl md:max-w-6xl mx-auto p-4 sm:p-6 pb-24 md:pb-6 space-y-4">
                 {tab === 'upcoming' && user && (
@@ -292,10 +332,6 @@ const LeaguePage: React.FC = () => {
                         upcomingGames={upcomingGames}
                         allGames={games}
                         isAdmin={isAdmin}
-                        myStats={myStats}
-                        hasCompletedGames={completedGames.length > 0}
-                        enableAssists={league.enableAssists}
-                        onNavigateToStats={() => setTab('stats')}
                     />
                 )}
 

@@ -74,6 +74,7 @@ export interface League {
     seasons?: Record<string, Season>;          // season map keyed by ID
     activeSeasonId?: string;                   // which season is currently active
     defaultFormat?: GameFormatConfig;          // default game format for new games
+    coverImageUrl?: string;                    // hero banner image URL
 }
 
 export type GameStatus = 'scheduled' | 'in_progress' | 'completed';
@@ -137,6 +138,7 @@ export interface Game {
     matchSummary?: string;         // AI-generated match report
     seasonId?: string;             // links game to a season (undefined = unassigned / pre-season)
     formatOverride?: GameFormatConfig; // per-game format override (falls back to league default)
+    responseDeadline?: number;         // optional timestamp — deadline for availability response
     createdBy: string;
     createdAt: number;
 }

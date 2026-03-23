@@ -7,11 +7,13 @@ import {
     createSeason, archiveSeason, updateSeason, deleteSeason,
     extractGuestsFromGames, linkGuestToMember,
     updateLeagueEnableAssists, updateLeagueDefaultVenue, updateLeagueMatchDuration,
-    updateLeagueDefaultFormat,
+    updateLeagueDefaultFormat, updateLeagueCoverImage,
 } from '../../utils/firestore';
 import type { GameFormatConfig } from '../../types';
 import FormatSelector from '../../components/FormatSelector';
 import { DEFAULT_FORMAT } from '../../constants/gameConstants';
+import { uploadLeagueCoverImage } from '../../utils/imageUpload';
+import { Upload, Trash2 as TrashIcon } from 'lucide-react';
 import type { User } from 'firebase/auth';
 import { logger } from '../../utils/logger';
 import CollapsibleSection from '../../components/CollapsibleSection';
@@ -73,6 +75,9 @@ const MembersTab: React.FC<MembersTabProps> = ({
     // Venue editing state
     const [editingVenue, setEditingVenue] = useState(false);
     const [venueInput, setVenueInput] = useState('');
+
+    // Cover image state
+    const [uploadingCover, setUploadingCover] = useState(false);
     const [verifiedVenue, setVerifiedVenue] = useState<GeoResult | null>(null);
     const [verifyingVenue, setVerifyingVenue] = useState(false);
 
@@ -406,6 +411,75 @@ const MembersTab: React.FC<MembersTabProps> = ({
                                     </button>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Cover image */}
+                        <div>
+                            <div className="text-white text-sm font-medium mb-1">Cover image</div>
+                            <div className="text-white/30 text-xs mb-2">Hero banner shown at the top of your league</div>
+                            {league.coverImageUrl && (
+                                <div className="relative mb-2 rounded-lg overflow-hidden">
+                                    <img src={league.coverImageUrl} alt="League cover" className="w-full h-24 object-cover" />
+                                    <button
+                                        onClick={async () => {
+                                            await updateLeagueCoverImage(leagueId, null);
+                                        }}
+                                        className="absolute top-1.5 right-1.5 bg-black/50 hover:bg-black/70 text-white rounded-full p-1 transition-colors"
+                                        title="Remove cover"
+                                    >
+                                        <TrashIcon className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            )}
+                            {/* Preset picker */}
+                            <div className="grid grid-cols-3 gap-1.5 mb-2">
+                                {[
+                                    { src: '/presets/sunset-pitch.webp', label: 'Sunset' },
+                                    { src: '/presets/rainy-night.webp', label: 'Rainy' },
+                                    { src: '/presets/stadium.webp', label: 'Stadium' },
+                                ].map(preset => {
+                                    const isActive = league.coverImageUrl === preset.src;
+                                    return (
+                                        <button
+                                            key={preset.src}
+                                            onClick={async () => {
+                                                await updateLeagueCoverImage(leagueId, isActive ? null : preset.src);
+                                            }}
+                                            className={`relative rounded-lg overflow-hidden aspect-video transition-all ${
+                                                isActive ? 'ring-2 ring-green-400' : 'ring-1 ring-white/10 hover:ring-white/30'
+                                            }`}
+                                        >
+                                            <img src={preset.src} alt={preset.label} className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/20" />
+                                            <span className="absolute bottom-1 left-1.5 text-[9px] text-white/70 font-medium">{preset.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <label className="flex items-center gap-2 text-xs text-white/30 hover:text-white/50 cursor-pointer transition-colors">
+                                <Upload className="w-3.5 h-3.5" />
+                                {uploadingCover ? 'Uploading...' : 'Upload custom image'}
+                                <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    className="hidden"
+                                    disabled={uploadingCover}
+                                    onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+                                        setUploadingCover(true);
+                                        try {
+                                            const url = await uploadLeagueCoverImage(leagueId, user.uid, file);
+                                            await updateLeagueCoverImage(leagueId, url);
+                                        } catch (err) {
+                                            logger.error('[uploadCover]', err);
+                                        } finally {
+                                            setUploadingCover(false);
+                                            e.target.value = '';
+                                        }
+                                    }}
+                                />
+                            </label>
                         </div>
 
                         {/* Track assists */}

@@ -3,7 +3,7 @@ import { Calendar, Trophy, BarChart2, Users, User, Wallet, TableProperties, More
 
 export type TabKey = 'upcoming' | 'completed' | 'table' | 'stats' | 'members' | 'profile' | 'finance';
 
-const moreTabKeys: TabKey[] = ['finance', 'members', 'profile'];
+const moreTabKeys: TabKey[] = ['finance', 'members'];
 
 interface MobileBottomNavProps {
     tab: TabKey;
@@ -11,7 +11,7 @@ interface MobileBottomNavProps {
     upcomingCount: number;
 }
 
-const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tab, setTab, upcomingCount }) => {
+const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tab, setTab }) => {
     const [moreOpen, setMoreOpen] = useState(false);
     const moreRef = useRef<HTMLDivElement>(null);
 
@@ -30,16 +30,16 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ tab, setTab, upcoming
     const isMoreActive = moreTabKeys.includes(tab);
 
     const primaryTabs: { key: TabKey; icon: typeof Calendar; label: string }[] = [
-        { key: 'upcoming', icon: Calendar, label: upcomingCount > 0 ? 'Games' : 'Games' },
+        { key: 'upcoming', icon: Calendar, label: 'Games' },
         { key: 'completed', icon: Trophy, label: 'Results' },
         { key: 'table', icon: TableProperties, label: 'Table' },
         { key: 'stats', icon: BarChart2, label: 'Stats' },
+        { key: 'profile', icon: User, label: 'Me' },
     ];
 
     const moreTabs: { key: TabKey; icon: typeof Calendar; label: string }[] = [
         { key: 'finance', icon: Wallet, label: 'Finance' },
         { key: 'members', icon: Users, label: 'Settings' },
-        { key: 'profile', icon: User, label: 'Profile' },
     ];
 
     return (
