@@ -134,18 +134,29 @@ const CompletedTab: React.FC<CompletedTabProps> = ({
                         <Link
                             key={game.id}
                             to={`/league/${code}/game/${game.gameCode || game.id}`}
-                            className="block bg-white/10 backdrop-blur-sm border border-white/10 hover:bg-white/15 rounded-xl p-4 transition-colors"
+                            className="block bg-white/10 backdrop-blur-sm border border-white/10 hover:bg-white/15 rounded-xl overflow-hidden border-l-4 border-l-green-500 transition-colors"
                         >
+                          <div className="p-4">
                             <div className="flex items-center justify-between">
-                                <div>
-                                    <div className="text-white font-bold">{game.title}</div>
-                                    <div className="text-green-300 text-sm">
-                                        {new Date(game.date).toLocaleDateString('en-GB', {
-                                            weekday: 'short',
-                                            day: 'numeric',
-                                            month: 'short',
-                                        })}
+                                <div className="flex items-center gap-3">
+                                    {/* Date badge */}
+                                    <div className="w-12 shrink-0 text-center">
+                                        <div className="text-[10px] uppercase text-white/40 font-semibold leading-tight">
+                                            {new Date(game.date).toLocaleDateString('en-GB', { month: 'short' })}
+                                        </div>
+                                        <div className="text-xl font-bold text-white leading-tight">
+                                            {new Date(game.date).getDate()}
+                                        </div>
                                     </div>
+                                    <div>
+                                        <div className="text-white font-bold">{game.title}</div>
+                                        <div className="text-green-300 text-sm">
+                                            {new Date(game.date).toLocaleDateString('en-GB', {
+                                                weekday: 'short',
+                                                day: 'numeric',
+                                                month: 'short',
+                                            })}
+                                        </div>
                                     {(gameCost !== undefined || attendeeCount !== undefined) && (
                                         <div className="text-white/40 text-xs mt-0.5">
                                             {gameCost !== undefined && `£${gameCost.toFixed(2)}/person`}
@@ -154,6 +165,7 @@ const CompletedTab: React.FC<CompletedTabProps> = ({
                                         </div>
                                     )}
                                     {health && <HealthBadge health={health} />}
+                                    </div>
                                 </div>
                                 {game.score && game.teams && (
                                     <div className="text-white font-bold text-lg">
@@ -163,6 +175,7 @@ const CompletedTab: React.FC<CompletedTabProps> = ({
                                     </div>
                                 )}
                             </div>
+                          </div>
                         </Link>
                     );
                 })

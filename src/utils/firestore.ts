@@ -147,6 +147,7 @@ export async function createGame(
     costPerPerson?: number,
     seasonId?: string,
     formatOverride?: GameFormatConfig,
+    responseDeadline?: number,
 ): Promise<Game> {
     const gameCode = generateJoinCode();
     const data: Omit<Game, 'id'> = {
@@ -163,6 +164,7 @@ export async function createGame(
         ...(costPerPerson !== undefined ? { costPerPerson } : {}),
         ...(seasonId ? { seasonId } : {}),
         ...(formatOverride ? { formatOverride } : {}),
+        ...(responseDeadline ? { responseDeadline } : {}),
     };
     const ref = await addDoc(collection(db, 'games'), data);
     return { id: ref.id, ...data };
@@ -329,6 +331,18 @@ export async function updateGameFormatOverride(gameId: string, format: GameForma
     });
 }
 
+export async function updateGameResponseDeadline(gameId: string, deadline: number | null): Promise<void> {
+    await updateDoc(doc(db, 'games', gameId), {
+        responseDeadline: deadline ?? deleteField(),
+    });
+}
+
+export async function updateLeagueCoverImage(leagueId: string, url: string | null): Promise<void> {
+    await updateDoc(doc(db, 'leagues', leagueId), {
+        coverImageUrl: url ?? deleteField(),
+    });
+}
+
 export async function updateLeaguePayments(leagueId: string, payments: Record<string, PaymentRecord[]>): Promise<void> {
     await updateDoc(doc(db, 'leagues', leagueId), { payments });
 }
@@ -351,7 +365,7 @@ export async function completeGameWithoutScore(gameId: string, attendees: string
 
 export async function updateGameDetails(
     gameId: string,
-    details: { title?: string; date?: number; location?: string; locationLat?: number; locationLon?: number },
+    details: { title?: string; date?: number; location?: string; locationLat?: number; locationLon?: number; responseDeadline?: number | null },
 ): Promise<void> {
     const updates: Record<string, unknown> = {};
     if (details.title !== undefined) updates.title = details.title;
@@ -359,6 +373,7 @@ export async function updateGameDetails(
     if (details.location !== undefined) updates.location = details.location;
     if (details.locationLat !== undefined) updates.locationLat = details.locationLat;
     if (details.locationLon !== undefined) updates.locationLon = details.locationLon;
+    if (details.responseDeadline !== undefined) updates.responseDeadline = details.responseDeadline ?? deleteField();
     await updateDoc(doc(db, 'games', gameId), updates);
 }
 

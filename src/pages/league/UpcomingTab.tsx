@@ -16,12 +16,12 @@ import type { GameFormatConfig } from '../../types';
 import FormatSelector from '../../components/FormatSelector';
 import { DEFAULT_FORMAT } from '../../constants/gameConstants';
 import { computeWaitlist, resolveGameFormat } from '../../utils/waitlist';
+import { groupGamesByWeek } from '../../utils/weekGrouping';
 import CalendarPicker from '../../components/CalendarPicker';
 import { geocodeLocation, GeoResult } from '../../utils/weather';
 import AvailabilityGrid from './AvailabilityGrid';
 import GameCalendar from './GameCalendar';
 import type { User } from 'firebase/auth';
-import type { PersonalStats } from './statsUtils';
 
 interface Member {
     id: string;
@@ -38,15 +38,10 @@ interface UpcomingTabProps {
     upcomingGames: Game[];
     allGames: Game[];
     isAdmin: boolean;
-    myStats: PersonalStats;
-    hasCompletedGames: boolean;
-    enableAssists?: boolean;
-    onNavigateToStats: () => void;
 }
 
 const UpcomingTab: React.FC<UpcomingTabProps> = ({
     leagueId, league, code, user, members, upcomingGames, allGames, isAdmin,
-    myStats, hasCompletedGames, enableAssists, onNavigateToStats,
 }) => {
     const today = new Date().toISOString().split('T')[0];
     const [showNewGame, setShowNewGame] = useState(false);
@@ -63,6 +58,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
     const [viewMode, setViewMode] = useState<'list' | 'grid' | 'calendar'>('list');
     const [formatOverride, setFormatOverride] = useState<GameFormatConfig | null>(null);
     const [showFormatOverride, setShowFormatOverride] = useState(false);
+    const [newGameDeadline, setNewGameDeadline] = useState('');
     const [editingGameId, setEditingGameId] = useState<string | null>(null);
     const [editTitle, setEditTitle] = useState('');
     const [editDate, setEditDate] = useState('');
@@ -129,6 +125,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
         const locationName = verifiedLocation?.displayName || newGameLocation.trim() || undefined;
         const parsedCost = parseFloat(newGameCost);
         const costPerPerson = !isNaN(parsedCost) && newGameCost.trim() !== '' ? parsedCost : undefined;
+        const deadlineTs = newGameDeadline ? new Date(newGameDeadline).getTime() : undefined;
         await Promise.all(
             Array.from({ length: repeatWeeks }, (_, i) => {
                 const date = new Date(base.getTime() + i * 7 * 24 * 60 * 60 * 1000);
@@ -143,6 +140,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                     costPerPerson,
                     undefined, // seasonId auto-determined by date range
                     formatOverride ?? undefined,
+                    deadlineTs,
                 );
             })
         );
@@ -154,6 +152,7 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
         setNewGameCost('');
         setFormatOverride(null);
         setShowFormatOverride(false);
+        setNewGameDeadline('');
         setShowNewGame(false);
     };
 
@@ -167,34 +166,6 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
 
     return (
         <div className="space-y-3">
-            {/* My Stats — horizontal bar */}
-            {hasCompletedGames && (
-                <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-3">
-                    <div className="flex items-center gap-3">
-                        <div className={`flex-1 grid ${enableAssists ? 'grid-cols-5' : 'grid-cols-4'} gap-2 text-center`}>
-                            {[
-                                { value: myStats.gamesPlayed, label: 'Games' },
-                                { value: myStats.wins, label: 'Wins' },
-                                { value: myStats.goals, label: 'Goals' },
-                                ...(enableAssists ? [{ value: myStats.assists, label: 'Assists' }] : []),
-                                { value: myStats.motm, label: 'MOTM' },
-                            ].map(({ value, label }) => (
-                                <div key={label}>
-                                    <div className="text-lg sm:text-xl font-bold text-white tabular-nums">{value}</div>
-                                    <div className="text-[10px] text-white/40 uppercase tracking-wide">{label}</div>
-                                </div>
-                            ))}
-                        </div>
-                        <button
-                            onClick={onNavigateToStats}
-                            className="text-xs text-green-300 hover:text-white transition-colors flex items-center gap-1 shrink-0"
-                        >
-                            More <ArrowRight className="w-3 h-3" />
-                        </button>
-                    </div>
-                </div>
-            )}
-
             {/* Main game list */}
             <div className="space-y-3">
 
@@ -348,6 +319,18 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                     })()}
 
                     <div>
+                        <label className="block text-xs font-medium text-green-300 mb-1">
+                            Response deadline <span className="text-white/30 font-normal">(optional)</span>
+                        </label>
+                        <input
+                            type="datetime-local"
+                            value={newGameDeadline}
+                            onChange={e => setNewGameDeadline(e.target.value)}
+                            className="w-full bg-white/10 border border-white/20 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm [color-scheme:dark]"
+                        />
+                    </div>
+
+                    <div>
                         <label className="block text-xs font-medium text-green-300 mb-1">Repeat weekly</label>
                         <div className="flex items-center gap-3">
                             <input
@@ -431,8 +414,8 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                     onSetAvailability={(gameId, status, currentStatus) => handleSetAvailability(gameId, status, currentStatus)}
                 />
             ) : (() => {
-                // Memoised outside the map to avoid recomputing every render
-                const gameWaitlists = upcomingGames.map(game => {
+                // Precompute waitlists
+                const waitlistMap = new Map(upcomingGames.map(game => {
                     const avail = scheduleAvailability.get(game.id) ?? [];
                     const guestStatusMap = game.guestAvailability ?? {};
                     const availableAvail = avail.filter(a => a.status === 'available');
@@ -440,22 +423,37 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                     const gAvailable = (game.guestPlayers ?? []).filter(n => (guestStatusMap[n] ?? 'available') === 'available');
                     const gMaybe = (game.guestPlayers ?? []).filter(n => guestStatusMap[n] === 'maybe');
                     const ef = resolveGameFormat(game, league);
-                    return { game, waitlist: computeWaitlist(availableAvail, maybeAvail, gAvailable, gMaybe, ef) };
-                });
-                return gameWaitlists.length === 0 ? (
+                    return [game.id, computeWaitlist(availableAvail, maybeAvail, gAvailable, gMaybe, ef)] as const;
+                }));
+                const weekGroups = groupGamesByWeek(upcomingGames);
+                const statusBorder = (status: string) =>
+                    status === 'in_progress' ? 'border-l-4 border-l-amber-500' :
+                    status === 'completed' ? 'border-l-4 border-l-green-500' :
+                    'border-l-4 border-l-blue-500';
+
+                return weekGroups.length === 0 ? (
                 <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center">
                     <p className="text-green-300">No upcoming games. Schedule one!</p>
                 </div>
             ) : (
-                gameWaitlists.map(({ game, waitlist }) => {
+                weekGroups.map(group => (
+                    <div key={group.label} className="space-y-2">
+                        <div className="text-xs font-semibold text-white/40 uppercase tracking-wider px-1 pt-2">
+                            {group.label}
+                        </div>
+                        {group.games.map(game => {
+                    const waitlist = waitlistMap.get(game.id)!;
                     const avail = scheduleAvailability.get(game.id) ?? [];
                     const myStatus = avail.find(a => a.userId === user?.uid)?.status;
                     const inCount = waitlist.inPlayers.length;
                     const waitlistedCount = waitlist.waitlistedAvailable.length + waitlist.waitlistedMaybe.length;
                     const noResponseCount = members.filter(m => !avail.find(a => a.userId === m.id)).length;
                     const isExpanded = expandedAvailGame === game.id;
+                    const gameDate = new Date(game.date);
+                    const deadlinePassed = game.responseDeadline && game.responseDeadline < Date.now();
                     return (
-                        <div key={game.id} className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                        <div key={game.id} className={`bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden ${statusBorder(game.status)}`}>
+                          <div className="p-4">
                             {editingGameId === game.id ? (
                                 <div className="space-y-2">
                                     <input
@@ -497,13 +495,23 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                                 </div>
                             ) : (<>
                             <div className="flex items-center gap-3">
+                                {/* Date badge */}
+                                <div className="w-12 shrink-0 text-center">
+                                    <div className="text-[10px] uppercase text-white/40 font-semibold leading-tight">
+                                        {gameDate.toLocaleDateString('en-GB', { month: 'short' })}
+                                    </div>
+                                    <div className="text-xl font-bold text-white leading-tight">
+                                        {gameDate.getDate()}
+                                    </div>
+                                </div>
                                 <Link to={`/league/${code}/game/${game.gameCode || game.id}`} className="flex-1 min-w-0 hover:text-green-300 transition-colors">
                                     <div className="text-white font-bold">{game.title}</div>
                                     <div className="text-green-300 text-sm mt-0.5">
-                                        {new Date(game.date).toLocaleDateString('en-GB', {
+                                        {gameDate.toLocaleDateString('en-GB', {
                                             weekday: 'long',
-                                            day: 'numeric',
-                                            month: 'long',
+                                        })}{' '}
+                                        at{' '}
+                                        {gameDate.toLocaleTimeString('en-GB', {
                                             hour: '2-digit',
                                             minute: '2-digit',
                                         })}
@@ -521,6 +529,11 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                                             </button>
                                         )}
                                     </div>
+                                    {game.responseDeadline && (
+                                        <div className={`mt-1 text-xs ${deadlinePassed ? 'text-white/30 line-through' : 'text-red-400'}`}>
+                                            {deadlinePassed ? 'Deadline passed' : `Respond by: ${new Date(game.responseDeadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}, ${new Date(game.responseDeadline).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
+                                        </div>
+                                    )}
                                 </Link>
                                 <div className="flex items-center gap-2 shrink-0">
                                     {user && isAdmin && (
@@ -620,9 +633,12 @@ const UpcomingTab: React.FC<UpcomingTabProps> = ({
                                 </div>
                             )}
                             </>)}
+                          </div>{/* end p-4 wrapper */}
                         </div>
                     );
-                })
+                })}
+                    </div>
+                ))
             )})()}
             </div>{/* end main game list */}
         </div>
